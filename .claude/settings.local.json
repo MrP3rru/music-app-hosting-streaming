@@ -1,0 +1,16 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm run:*)",
+      "WebSearch",
+      "Bash(npm install:*)",
+      "WebFetch(domain:reactbits.dev)",
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "Bash(npx vite:*)",
+      "Bash(node -e \"require\\(''discord-rpc''\\); console.log\\(''ok''\\)\")",
+      "Bash(node -e \"const r = require\\(''discord-rpc''\\); console.log\\(''version:'', require\\(''./node_modules/discord-rpc/package.json''\\).version\\)\")",
+      "Bash(\"c:/Users/mateu/Desktop/music app/src/App.css\")",
+      "Bash(node -e \":*)"
+    ]
+  }
+}

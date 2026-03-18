@@ -1,0 +1,3058 @@
+import { useEffect, useMemo, useRef, useState } from 'react'
+import ReactPlayer from 'react-player'
+import AudioMotionAnalyzer from 'audiomotion-analyzer'
+import ElectricBorder from './ElectricBorder'
+import { useListenTogether } from './useListenTogether'
+import UpdateModal from './UpdateModal'
+import './App.css'
+
+const genres = [
+  {
+    id: 'pl-hiphop',
+    label: 'Polski hip-hop',
+    preferredCountryCodes: ['PL'],
+    radioQueries: [
+      { countrycode: 'PL', tagList: 'hip-hop,rap' },
+      { countrycode: 'PL', tagList: 'rap' },
+      { countrycode: 'PL', tagList: 'hip hop' },
+      { tagList: 'hip-hop,rap' },
+      { name: 'hip hop' },
+      { countrycode: 'PL', tagList: 'urban,rap' },
+    ],
+    seedQuery: 'polski hip hop official audio',
+  },
+  {
+    id: 'usa-rap',
+    label: 'Rap USA',
+    preferredCountryCodes: ['US'],
+    radioQueries: [
+      { countrycode: 'US', tagList: 'hip-hop,rap,urban' },
+      { countrycode: 'US', tagList: 'rap' },
+      { countrycode: 'US', tagList: 'hip-hop' },
+      { tagList: 'hip-hop,rap,urban' },
+      { name: 'hip hop' },
+      { countrycode: 'US', tagList: 'urban' },
+    ],
+    seedQuery: 'usa rap official audio',
+  },
+  {
+    id: 'trap',
+    label: 'Trap',
+    radioQueries: [
+      { tagList: 'trap,hip-hop,rap' },
+      { tagList: 'trap,rap' },
+      { tagList: 'trap' },
+      { name: 'trap' },
+      { tagList: 'hip-hop,rap' },
+      { tagList: 'trap,electronic' },
+    ],
+    seedQuery: 'trap official audio',
+  },
+  {
+    id: 'oldschool',
+    label: 'Oldschool',
+    radioQueries: [
+      { tagList: 'old school hip hop,hip-hop,rap' },
+      { tagList: 'oldschool,rap' },
+      { name: 'old school' },
+      { tagList: 'hip-hop,rap,funk' },
+      { tagList: 'old school' },
+      { tagList: '90s,hip-hop' },
+    ],
+    seedQuery: 'old school hip hop official audio',
+  },
+  {
+    id: 'angielski-hiphop',
+    label: 'Angielski hip-hop',
+    preferredCountryCodes: ['GB', 'US'],
+    radioQueries: [
+      { countrycode: 'GB', tagList: 'hip-hop,rap,grime' },
+      { countrycode: 'GB', tagList: 'hip-hop,rap' },
+      { tagList: 'grime,uk,hip-hop' },
+      { name: 'uk hip hop' },
+      { tagList: 'british hip hop' },
+      { countrycode: 'GB', tagList: 'rap' },
+    ],
+    seedQuery: 'uk hip hop official audio',
+  },
+  {
+    id: 'techno',
+    label: 'Techno',
+    radioQueries: [
+      { tagList: 'techno,electronic' },
+      { tagList: 'techno' },
+      { tagList: 'techno,house,dance' },
+      { name: 'techno' },
+      { tagList: 'industrial,techno' },
+      { tagList: 'electronic,techno' },
+    ],
+    seedQuery: 'techno electronic official audio',
+  },
+  {
+    id: 'dance',
+    label: 'Dance/Electro',
+    radioQueries: [
+      { tagList: 'dance,electronic,house' },
+      { tagList: 'dance' },
+      { tagList: 'edm,electronic' },
+      { name: 'dance' },
+      { tagList: 'house,electronic' },
+      { tagList: 'ibiza,dance' },
+    ],
+    seedQuery: 'dance electronic official audio',
+  },
+  {
+    id: 'all',
+    label: 'Wszystkie',
+    radioQueries: [
+      { countrycode: 'PL' },
+      { countrycode: 'PL', tagList: 'pop,rap,hip-hop' },
+      { tagList: 'hip-hop,rap' },
+      { tagList: 'pop' },
+      { tagList: 'dance,electronic' },
+      { tagList: 'rock' },
+      { name: 'radio' },
+      { language: 'polish' },
+      { language: 'english' },
+    ],
+    seedQuery: 'worldwide top songs official audio',
+  },
+]
+
+
+const radioApiBases = [
+  'https://de1.api.radio-browser.info',
+  'https://fr1.api.radio-browser.info',
+  'https://nl1.api.radio-browser.info',
+]//zmianiam2
+
+const radioSearchEndpoint = '/json/stations/search'
+const failedImageUrls = new Set()
+const MIX_PATTERN = /\b(mix|mixtape|megamix|nonstop|non[ -]stop)\b/i
+const LIVE_PATTERN = /\b(live|concert|show)\b/i
+const COMPILATION_PATTERN = /\b(playlist|compilation|full album|full mixtape|dj set|type beat|best of|greatest hits|składanka|full ep|full lp|\d+\s*(songs?|tracks?|piosenek|hitów|utworów))\b/i
+const NON_MUSIC_PATTERN = /\b(gameplay|game|review|tutorial|how[ -]to|vlog|trailer|interview|podcast|episode|unboxing|reaction|challenge|prank|documentary|film|movie|gotowanie|przepis|recenzja|zgadnij|quiz|po bicie|rozpoznaj|test wiedzy|który to|odgadnij|trivia|challenge|ranking top|top \d+|#\d)\b/i
+
+const FILTER_TYPES = [
+  { id: 'track', label: 'Utwór' },
+  { id: 'mix', label: 'Mix / Mixtape' },
+  { id: 'live', label: 'Live / Koncert' },
+  { id: 'compilation', label: 'Składanka' },
+]
+
+const FILTER_LANGUAGES = [
+  { id: 'pl', label: '🇵🇱 PL', query: 'polskie' },
+  { id: 'en', label: '🇺🇸 EN', query: 'english' },
+  { id: 'es', label: '🇪🇸 ES', query: 'español' },
+  { id: 'fr', label: '🇫🇷 FR', query: 'français' },
+  { id: 'de', label: '🇩🇪 DE', query: 'deutsch' },
+  { id: 'it', label: '🇮🇹 IT', query: 'italiano' },
+  { id: 'ru', label: '🇷🇺 RU', query: 'русский' },
+]
+
+const FILTER_GENRES = [
+  { id: 'hiphop',     label: 'Hip-Hop',     query: 'hip-hop' },
+  { id: 'rap',        label: 'Rap',          query: 'rap' },
+  { id: 'trap',       label: 'Trap',         query: 'trap' },
+  { id: 'drill',      label: 'Drill',        query: 'drill' },
+  { id: 'pop',        label: 'Pop',          query: 'pop' },
+  { id: 'rnb',        label: 'R&B / Soul',   query: 'r&b soul' },
+  { id: 'discopolo',  label: 'Disco Polo',   query: 'disco polo' },
+  { id: 'biesiadna',  label: 'Biesiadna',    query: 'muzyka biesiadna' },
+  { id: 'rock',       label: 'Rock',         query: 'rock' },
+  { id: 'metal',      label: 'Metal',        query: 'metal' },
+  { id: 'edm',        label: 'EDM',          query: 'electronic dance music' },
+  { id: 'reggae',     label: 'Reggae',       query: 'reggae' },
+  { id: 'reggaeton',  label: 'Reggaeton',    query: 'reggaeton' },
+  { id: 'jazz',       label: 'Jazz',         query: 'jazz' },
+  { id: 'classical',  label: 'Klasyczna',    query: 'classical music' },
+  { id: 'afrobeats',  label: 'Afrobeats',    query: 'afrobeats' },
+]
+
+const FILTER_ERAS = [
+  { id: 'all',     label: 'Wszystkie' },
+  { id: 'retro',   label: 'Lata 90.' },
+  { id: 'classic', label: '2000–2010' },
+  { id: 'tens',    label: '2010–2020' },
+  { id: 'new',     label: 'Po 2020' },
+]
+
+const FILTER_DURATIONS = [
+  { id: 'all',    label: 'Wszystkie' },
+  { id: 'short',  label: 'Do 3 min',  max: 3 * 60 },
+  { id: 'medium', label: '3–6 min',   min: 3 * 60, max: 6 * 60 },
+  { id: 'long',   label: '6–12 min',  min: 6 * 60, max: 12 * 60 },
+  { id: 'xlong',  label: '12+ min',   min: 12 * 60 },
+]
+
+const RADIO_GENRES = [
+  { id: 'all',         label: 'Wszystkie' },
+  { id: 'pop',         label: 'Pop',        tags: ['pop'] },
+  { id: 'rock',        label: 'Rock',       tags: ['rock', 'alternative'] },
+  { id: 'hiphop',      label: 'Hip-Hop',    tags: ['hip-hop', 'hiphop', 'rap', 'urban'] },
+  { id: 'electronic',  label: 'Electronic', tags: ['electronic', 'dance', 'edm', 'techno', 'house', 'trance'] },
+  { id: 'rnb',         label: 'R&B',        tags: ['rnb', 'r&b', 'soul', 'urban'] },
+  { id: 'jazz',        label: 'Jazz',       tags: ['jazz', 'blues'] },
+  { id: 'classical',   label: 'Klasyczna',  tags: ['classical', 'classic'] },
+  { id: 'oldies',      label: 'Oldies',     tags: ['oldies', 'retro', '80s', '90s'] },
+  { id: 'news',        label: 'Info / Talk', tags: ['news', 'talk', 'speech', 'information', 'informacje'] },
+]
+
+const DEFAULT_FILTERS = {
+  types: ['track'],
+  languages: [],
+  genres: [],
+  era: 'all',
+  duration: 'all',
+}
+
+const ERA_DATE_RANGES = {
+  retro:   { publishedAfter: '1990-01-01T00:00:00Z', publishedBefore: '2000-01-01T00:00:00Z' },
+  classic: { publishedAfter: '2000-01-01T00:00:00Z', publishedBefore: '2010-01-01T00:00:00Z' },
+  tens:    { publishedAfter: '2010-01-01T00:00:00Z', publishedBefore: '2020-01-01T00:00:00Z' },
+  new:     { publishedAfter: '2021-01-01T00:00:00Z' },
+}
+
+function buildFilteredQuery(filters) {
+  const parts = []
+
+  if (filters.genres.length > 0) {
+    parts.push(...filters.genres.map((id) => FILTER_GENRES.find((g) => g.id === id)?.query).filter(Boolean))
+  }
+  if (filters.languages.length > 0) {
+    parts.push(...filters.languages.map((id) => FILTER_LANGUAGES.find((l) => l.id === id)?.query).filter(Boolean))
+  }
+  const hasPL = filters.languages.includes('pl')
+  const isPolishGenre = ['discopolo', 'biesiadna'].some((g) => filters.genres.includes(g))
+  if (hasPL && !isPolishGenre) parts.push('polskie')
+
+  // Era keywords only for eras where API date filtering is less reliable
+  if (filters.era === 'retro') parts.push('lata 90 oldschool retro classics')
+  else if (filters.era === 'classic') parts.push('klasyki 2000s hits')
+  else if (filters.era === 'tens') parts.push('2010s hits')
+  // 'new' uses publishedAfter only — no keywords needed
+
+  if (parts.length === 0) parts.push('muzyka')
+
+  const isSpecificGenre = ['discopolo', 'biesiadna', 'classical', 'jazz', 'reggae'].some((g) => filters.genres.includes(g))
+  const suffixes = isSpecificGenre
+    ? ['piosenka', 'hit', 'najlepsze', '']
+    : ['official audio', 'official video', 'single', 'lyric video']
+  const suffix = suffixes[Math.floor(Math.random() * suffixes.length)]
+  if (suffix) parts.push(suffix)
+
+  return parts.join(' ')
+}
+
+function getEraDateRange(era) {
+  return ERA_DATE_RANGES[era] || {}
+}
+
+function loadSavedFilters() {
+  try {
+    const raw = localStorage.getItem('hiphop-player-trackfilters')
+    if (!raw) return DEFAULT_FILTERS
+    return { ...DEFAULT_FILTERS, ...JSON.parse(raw) }
+  } catch { return DEFAULT_FILTERS }
+}
+
+function applyFilters(items, filters) {
+  return items.filter((item) => {
+    if (!item?.title || !item?.id) return false
+    const title = item.title
+    const secs = item.seconds || 0
+    if (secs > 90 * 60) return false
+
+    const isMix = MIX_PATTERN.test(title)
+    const isLive = LIVE_PATTERN.test(title)
+    const isCompilation = COMPILATION_PATTERN.test(title)
+    const isTrack = !isMix && !isLive && !isCompilation
+
+    if (isTrack && !filters.types.includes('track')) return false
+    if (isMix && !filters.types.includes('mix')) return false
+    if (isLive && !filters.types.includes('live')) return false
+    if (isCompilation && !filters.types.includes('compilation')) return false
+
+    // Heurystyka: jeśli tryb tylko "utwór" i brak wyboru długości, odrzuć filmy >12min (prawdopodobne składanki bez tagu)
+    const onlyTrack = filters.types.includes('track') && !filters.types.includes('compilation') && !filters.types.includes('mix')
+    if (onlyTrack && filters.duration === 'all' && secs > 12 * 60) return false
+
+    const dur = filters.duration
+    if (dur === 'short'  && secs > 3 * 60) return false
+    if (dur === 'medium' && secs > 0 && (secs < 3 * 60 || secs > 6 * 60)) return false
+    if (dur === 'long'   && secs > 0 && (secs < 6 * 60 || secs > 12 * 60)) return false
+    if (dur === 'xlong'  && secs > 0 && secs < 12 * 60) return false
+
+    return true
+  })
+}
+
+function buildRadioSearchUrl(base, query) {
+  const params = new URLSearchParams({
+    hidebroken: 'true',
+    order: 'votes',
+    reverse: 'true',
+    ...query,
+  })
+
+  return `${base}${radioSearchEndpoint}?${params.toString()}`
+}
+
+async function fetchStationsFromMirrors(query) {
+  for (const base of radioApiBases) {
+    try {
+      const response = await fetch(buildRadioSearchUrl(base, query))
+
+      if (!response.ok) {
+        continue
+      }
+
+      const data = await response.json()
+
+      if (Array.isArray(data)) {
+        return data
+      }
+    } catch {
+      // Try next mirror.
+    }
+  }
+
+  return []
+}
+
+function loadStoredFavorites() {
+  const raw = localStorage.getItem('hiphop-player-favorites')
+
+  if (!raw) {
+    return []
+  }
+
+  try {
+    const parsed = JSON.parse(raw)
+    return Array.isArray(parsed) ? parsed.filter((item) => item && typeof item === 'object' && item.key) : []
+  } catch {
+    return []
+  }
+}
+
+function normalizeStation(station) {
+  const streamCandidates = dedupeById(
+    [station.urlResolved, station.url, station.url_resolved, station.url].filter(Boolean).map((url) => ({ id: url, url })),
+  ).map((entry) => entry.url)
+
+  return {
+    id: station.stationuuid,
+    name: station.name,
+    country: station.country || 'Online',
+    countryCode: station.countrycode || '',
+    votes: Number(station.votes || 0),
+    codec: station.codec,
+    bitrate: station.bitrate,
+    tags: station.tags,
+    homepage: station.homepage,
+    url: station.urlResolved || station.url,
+    streamCandidates,
+    favicon: station.favicon,
+    lastSong: station.lastsong || '',
+  }
+}
+
+function dedupeStations(items) {
+  const map = new Map()
+
+  for (const station of items) {
+    const key = `${(station.name || '').trim().toLowerCase()}|${station.countryCode || ''}`
+    const existing = map.get(key)
+
+    if (!existing || station.votes > existing.votes) {
+      map.set(key, station)
+    }
+  }
+
+  return Array.from(map.values())
+}
+
+function normalizeStationFamilyName(name) {
+  return (name || '')
+    .toLowerCase()
+    .replace(/\[[^\]]*\]|\([^)]*\)/g, ' ')
+    .replace(/\b\d{2,3}\s*(kbps|k)\b/gi, ' ')
+    .replace(/\b(aac|mp3|ogg|hls|stream)\b/gi, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+}
+
+function sortStationsByFamily(items) {
+  return [...items].sort((left, right) => {
+    const leftFamily = normalizeStationFamilyName(left.name)
+    const rightFamily = normalizeStationFamilyName(right.name)
+    const familyCompare = leftFamily.localeCompare(rightFamily, 'pl')
+
+    if (familyCompare !== 0) {
+      return familyCompare
+    }
+
+    const votesCompare = (Number(right.votes) || 0) - (Number(left.votes) || 0)
+    if (votesCompare !== 0) {
+      return votesCompare
+    }
+
+    return (left.name || '').localeCompare(right.name || '', 'pl')
+  })
+}
+
+function buildStationPlaybackCandidates(station, allStations) {
+  if (!station) {
+    return {
+      entries: [],
+      primaryCount: 0,
+    }
+  }
+
+  const familyName = normalizeStationFamilyName(station.name)
+  const primaryCandidates = (station.streamCandidates || []).slice(0, 3)
+  const siblingStations = allStations
+    .filter((entry) => entry.id !== station.id)
+    .filter((entry) => normalizeStationFamilyName(entry.name) === familyName)
+    .filter((entry) => !station.countryCode || entry.countryCode === station.countryCode)
+    .sort((left, right) => {
+      const leftHas128 = /\b128\b|128kbps/i.test(left.name || '')
+      const rightHas128 = /\b128\b|128kbps/i.test(right.name || '')
+
+      if (leftHas128 !== rightHas128) {
+        return rightHas128 ? 1 : -1
+      }
+
+      const bitrateCompare = (Number(right.bitrate) || 0) - (Number(left.bitrate) || 0)
+      if (bitrateCompare !== 0) {
+        return bitrateCompare
+      }
+
+      return (Number(right.votes) || 0) - (Number(left.votes) || 0)
+    })
+
+  return {
+    entries: dedupeById(
+      [
+        ...(primaryCandidates.map((url) => ({ id: url, url, label: station.name, isPrimary: true }))),
+        ...siblingStations.flatMap((entry) =>
+          (entry.streamCandidates || []).map((url) => ({
+            id: url,
+            url,
+            label: entry.name,
+            isPrimary: false,
+          })),
+        ),
+      ],
+    ),
+    primaryCount: primaryCandidates.length,
+  }
+}
+
+function pickPreferredStation(stations, previousStation) {
+  if (previousStation?.id) {
+    const same = stations.find((station) => station.id === previousStation.id)
+    if (same) {
+      return same
+    }
+  }
+
+  const vibe = stations.find((station) => station.name?.toLowerCase().includes('vibefm'))
+  if (vibe) {
+    return vibe
+  }
+
+  return stations[0] ?? null
+}
+
+function dedupeById(items) {
+  return items.filter((item, index, list) => list.findIndex((entry) => entry.id === item.id) === index)
+}
+
+function filterPlayableTracks(items) {
+  return items.filter((item) => {
+    if (!item?.title || !item?.id) return false
+    if (item.seconds > 0 && item.seconds < 75) return false
+    if (item.seconds > 90 * 60) return false
+    if (NON_MUSIC_PATTERN.test(item.title)) return false
+    return true
+  })
+}
+
+function spreadByAuthor(tracks) {
+  if (tracks.length <= 2) return tracks
+  const byAuthor = new Map()
+  for (const t of tracks) {
+    const key = (t.author || '').toLowerCase().trim()
+    if (!byAuthor.has(key)) byAuthor.set(key, [])
+    byAuthor.get(key).push(t)
+  }
+  const queues = shuffleArray(Array.from(byAuthor.values()))
+  const result = []
+  while (queues.some((q) => q.length > 0)) {
+    for (const q of queues) {
+      if (q.length > 0) result.push(q.shift())
+    }
+  }
+  return result
+}
+
+function loadHistory() {
+  try {
+    const raw = localStorage.getItem('hiphop-player-history')
+    if (!raw) return []
+    const cutoff = Date.now() - 2 * 24 * 60 * 60 * 1000
+    return JSON.parse(raw).filter((e) => e?.ts > cutoff && e?.track?.id)
+  } catch { return [] }
+}
+
+function saveHistory(entries) {
+  try {
+    localStorage.setItem('hiphop-player-history', JSON.stringify(entries.slice(0, 40)))
+  } catch {}
+}
+
+function countryFlagEmoji(countryCode) {
+  if (!countryCode || countryCode.length !== 2) {
+    return 'FM'
+  }
+
+  return countryCode
+    .toUpperCase()
+    .split('')
+    .map((char) => String.fromCodePoint(127397 + char.charCodeAt(0)))
+    .join('')
+}
+
+function formatSeconds(value) {
+  const safeValue = Number.isFinite(value) ? Math.max(0, Math.floor(value)) : 0
+  const minutes = Math.floor(safeValue / 60)
+  const seconds = safeValue % 60
+  return `${minutes}:${String(seconds).padStart(2, '0')}`
+}
+
+/**
+ * 
+ * 
+ * 
+ *
+ * @param {number} percent - Głośność w procentach (0-100)
+ * @param {'linear'|'sqrt'|'square'} [curve='linear'] - Typ krzywej regulacji
+ * @returns {number} - Wartość głośności (0-1)
+ */
+function toEffectiveVolume(percent, curve = 'linear') {
+  const safePercent = Number.isFinite(percent) ? Math.min(100, Math.max(0, percent)) : 0;
+  if (safePercent === 0) return 0;
+  const normalized = safePercent / 100;
+  switch (curve) {
+    case 'square': return normalized * normalized;
+    case 'sqrt':   return Math.sqrt(normalized);
+    // Logarytmiczna krzywa audio: 0%→0, 1%≈-40dB, 50%≈-20dB, 75%≈-10dB, 100%→0dB
+    // Naturalna dla ucha — pokrywa pełen zakres dynamiki bez "głośnego" minimum
+    case 'log':    return Math.pow(10, 2 * (normalized - 1));
+    case 'linear':
+    default:       return normalized;
+  }
+}
+
+function buildFavoriteEntry(type, item, genreId) {
+  return {
+    key: `${type}:${item.id}`,
+    type,
+    genreId,
+    item,
+  }
+}
+
+function getPlaceholderArt(label, type) {
+  const safeLabel = encodeURIComponent((label || (type === 'radio' ? 'Radio' : 'Track')).slice(0, 18))
+  const palette = type === 'radio' ? '11243b/ff9f68' : '1c1d3c/ffd36e'
+  return `https://placehold.co/320x320/${palette}?text=${safeLabel}`
+}
+
+function withFallbackArt(event, label, type) {
+  const target = event.currentTarget
+  const failed = target.src
+  if (failed && !failed.startsWith('https://placehold.co')) {
+    failedImageUrls.add(failed)
+  }
+  target.onerror = null
+  target.src = getPlaceholderArt(label, type)
+}
+
+function safeArt(url, label, type) {
+  if (!url || failedImageUrls.has(url)) return getPlaceholderArt(label, type)
+  return url
+}
+
+function shuffleArray(arr) {
+  const copy = [...arr]
+  for (let i = copy.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));[copy[i], copy[j]] = [copy[j], copy[i]]
+  }
+  return copy
+}
+
+// Statyczne dane dla idle wave — kształt łuku sinusoidalnego
+const IDLE_BARS = Array.from({ length: 48 }, (_, i) => {
+  const t = i / 47
+  return Math.round(12 + Math.sin(t * Math.PI) * 58 + Math.sin(t * Math.PI * 3) * 10)
+})
+
+function App() {
+  const [appVersion, setAppVersion] = useState('')
+  const [updateInfo, setUpdateInfo] = useState(null) // null | { hasUpdate, newVersion, changelog }
+
+  useEffect(() => {
+    window.playerBridge?.getVersion?.().then(v => { if (v) setAppVersion(v) })
+    // Sprawdź aktualizacje 3s po starcie (nie blokuj ładowania UI)
+    const t = setTimeout(() => {
+      window.playerBridge?.checkUpdate?.().then(info => {
+        if (info?.hasUpdate) setUpdateInfo(info)
+      }).catch(() => {})
+    }, 3000)
+    return () => clearTimeout(t)
+  }, [])
+
+  const [splashVisible, setSplashVisible] = useState(true)
+  const [splashFading, setSplashFading] = useState(false)
+
+  useEffect(() => {
+    const t1 = setTimeout(() => setSplashFading(true), 1800)
+    const t2 = setTimeout(() => setSplashVisible(false), 2600)
+    return () => { clearTimeout(t1); clearTimeout(t2) }
+  }, [])
+
+  // Przywracanie trybu i podgatunku playera z localStorage
+  const [mode, setMode] = useState(() => localStorage.getItem('hiphop-player-mode') || 'radio')
+  // Przywracanie wybranego gatunku i widoku biblioteki z localStorage
+  const [genreId, setGenreId] = useState(() => localStorage.getItem('hiphop-player-genre') || genres[0].id)
+  const [libraryView, setLibraryView] = useState(() => localStorage.getItem('hiphop-player-libraryview') || 'all')
+    // Zapisuj wybrany gatunek do localStorage przy każdej zmianie
+    useEffect(() => {
+      localStorage.setItem('hiphop-player-genre', genreId)
+    }, [genreId])
+
+    // Zapisuj widok biblioteki do localStorage przy każdej zmianie
+    useEffect(() => {
+      localStorage.setItem('hiphop-player-libraryview', libraryView)
+    }, [libraryView])
+  // Przywracanie filtra kraju i frazy wyszukiwania stacji z localStorage
+  const [countryFilter, setCountryFilter] = useState('PL')
+  const [radioTagFilter, setRadioTagFilter] = useState('hiphop')
+  const [stationSearchTerm, setStationSearchTerm] = useState(() => localStorage.getItem('hiphop-player-stationsearch') || '')
+  const [visibleStationCount, setVisibleStationCount] = useState(40)
+  const stationListSentinelRef = useRef(null)
+  const [filters, setFilters] = useState(loadSavedFilters)
+  const [filtersOpen, setFiltersOpen] = useState(false)
+  const [curatedTracksKey, setCuratedTracksKey] = useState(0)
+  const filtersRef = useRef(filters)
+  useEffect(() => { filtersRef.current = filters }, [filters])
+  const [stations, setStations] = useState([])
+  const [countryBoostStations, setCountryBoostStations] = useState([])
+  const [radioLoading, setRadioLoading] = useState(false)
+  const [radioError, setRadioError] = useState('')
+  const [currentStation, setCurrentStation] = useState(null)
+  const [stationStreams, setStationStreams] = useState([])
+  const [stationStreamIndex, setStationStreamIndex] = useState(0)
+  const [primaryStationStreamCount, setPrimaryStationStreamCount] = useState(0)
+  const [hasFetchedAltStationStreams, setHasFetchedAltStationStreams] = useState(false)
+  const [isSwitchingStationStream, setIsSwitchingStationStream] = useState(false)
+  const [searchTerm, setSearchTerm] = useState('')
+  const [searchResults, setSearchResults] = useState([])
+  const [curatedTracks, setCuratedTracks] = useState([])
+  const [trackLoading, setTrackLoading] = useState(false)
+  const [trackError, setTrackError] = useState('')
+  const [currentTrack, setCurrentTrack] = useState(null)
+  const [isRadioPlaying, setIsRadioPlaying] = useState(false)
+  const [isRadioBuffering, setIsRadioBuffering] = useState(false)
+  const [isTrackPlaying, setIsTrackPlaying] = useState(false)
+  const [isTrackReady, setIsTrackReady] = useState(false)
+  const [resolvedTrackUrl, setResolvedTrackUrl] = useState(null)
+  const [radioNowPlaying, setRadioNowPlaying] = useState('')
+  const [radioPlayHistory, setRadioPlayHistory] = useState([])
+  const prevRadioNowPlayingRef = useRef('')
+  const [trackDuration, setTrackDuration] = useState(0)
+  const [trackTime, setTrackTime] = useState(0)
+  const trackTimeRef = useRef(0)
+  const pendingRemoteSeekRef = useRef(null)
+  const [isSeeking, setIsSeeking] = useState(false)
+  const isSeekingRef = useRef(false)
+  const [sessionModalOpen, setSessionModalOpen] = useState(false)
+  const [joinCodeInput, setJoinCodeInput] = useState('')
+  const [myNickname, setMyNickname] = useState(() => localStorage.getItem('together-nickname') || '')
+  const [sessionToast, setSessionToast] = useState('')
+  const sessionToastTimerRef = useRef(null)
+  const [codeCopied, setCodeCopied] = useState(false)
+  const codeCopiedTimerRef = useRef(null)
+  const [suggestedIds, setSuggestedIds] = useState(new Set())
+
+  // Refs do bezpośrednich aktualizacji DOM podczas przeciągania (bez re-renderu)
+  const volumeFillRef = useRef(null)
+  const volumeThumbRef = useRef(null)
+  const volumeLabelRef = useRef(null)
+  const pendingVolumeRef = useRef(null)
+  const lastVolumeBeforeMuteRef = useRef(35)
+  const seekFillRef = useRef(null)
+  const seekThumbRef = useRef(null)
+  const seekTimeDisplayRef = useRef(null)
+  const seekValueRef = useRef(null)
+
+  const [loadingMoreTracks, setLoadingMoreTracks] = useState(false)
+  const [previousTracks, setPreviousTracks] = useState([])
+  const [trackHistory, setTrackHistory] = useState(loadHistory)
+  const [historyExpanded, setHistoryExpanded] = useState(false)
+  const [suggestions, setSuggestions] = useState([])
+  const [showSuggestions, setShowSuggestions] = useState(false)
+  const activeTrackRef = useRef(null)
+  const preloadedForRef = useRef(null)
+  const [activeTrackQuery, setActiveTrackQuery] = useState('')
+  // Inicjalizacja volumePercent z localStorage lub domyślnie 35
+  const [volumePercent, setVolumePercent] = useState(() => {
+    const stored = localStorage.getItem('hiphop-player-volume')
+    const parsed = Number(stored)
+    return Number.isFinite(parsed) ? Math.min(100, Math.max(0, parsed)) : 35
+  })
+  // Inicjalizacja currentStation z localStorage jeśli istnieje
+  const [favorites, setFavorites] = useState(loadStoredFavorites)
+  // Przywracanie ostatniej stacji po starcie aplikacji
+
+  useEffect(() => {
+    const storedStation = localStorage.getItem('hiphop-player-last-station')
+    if (storedStation) {
+      try {
+        const parsed = JSON.parse(storedStation)
+        if (parsed && parsed.id) {
+          setCurrentStation(parsed)
+          // Ustaw od razu streamy i indeks, jeśli stacje są już załadowane
+          setTimeout(() => {
+            setStations((prevStations) => {
+              const plan = buildStationPlaybackCandidates(parsed, prevStations)
+              setStationStreams(plan.entries)
+              setStationStreamIndex(0)
+              setPrimaryStationStreamCount(plan.primaryCount)
+              setHasFetchedAltStationStreams(false)
+              return prevStations
+            })
+          }, 0)
+        }
+      } catch {}
+    }
+  }, [])
+
+
+  const audioRef = useRef(null)
+  const trackPlayerRef = useRef(null)
+
+  const radioAudioContextRef = useRef(null)
+  const radioAnalyserRef = useRef(null)
+  const radioSourceNodeRef = useRef(null)
+  const radioGainNodeRef = useRef(null)
+  const radioCompressorRef = useRef(null)
+
+  const effectiveVolumeRef = useRef(0)
+  const loopbackStreamRef = useRef(null)
+  const audioMotionRef = useRef(null)
+  const audioMotionContainerRef = useRef(null)
+  const audioMotionSourceRef = useRef(null)
+  const radioVizStreamDestRef = useRef(null)
+  const electricEnergyRef = useRef(0)
+  const vizBgCanvasRef = useRef(null)
+
+  // Inicjalizacja AudioMotionAnalyzer — jeden raz przy mount
+  useEffect(() => {
+    if (!audioMotionContainerRef.current) return
+
+    const audioMotion = new AudioMotionAnalyzer(audioMotionContainerRef.current, {
+      mode: 1,                // oddzielne słupki
+      channelLayout: 'single',
+      frequencyScale: 'log',
+      barSpace: 0.1,
+      fftSize: 8192,
+      smoothing: 0.75,
+      showPeaks: false,
+      showScaleX: false,
+      showScaleY: false,
+      overlay: true,
+      bgAlpha: 0,
+      connectSpeakers: false,
+    })
+
+    audioMotion.registerGradient('app', {
+      colorStops: [
+        { color: '#ff6b2b', pos: 0 },
+        { color: '#ffac50', pos: 0.5 },
+        { color: '#352c28', pos: 1 },
+      ],
+    })
+    audioMotion.gradient = 'app'
+
+    audioMotion.onCanvasDraw = instance => {
+      const bass = instance.getEnergy('bass')
+      const overall = instance.getEnergy()
+      // Bass daje kopnięcia (kick, sub) — ważniejszy dla chaosu i dynamiki
+      electricEnergyRef.current = Math.min(1, bass * 0.6 + overall * 0.4)
+    }
+
+    audioMotionRef.current = audioMotion
+
+    return () => {
+      audioMotion.destroy()
+      audioMotionRef.current = null
+    }
+  }, [])
+
+  // ─── Tło wizualizera — aurora blobs reagujące na energię ────────────────────
+  useEffect(() => {
+    const canvas = vizBgCanvasRef.current
+    if (!canvas) return
+    const ctx = canvas.getContext('2d')
+
+    const blobs = [
+      { x: 0.18, y: 0.75, vx: 0.00028, vy: -0.00019, r: [255, 107, 43] },
+      { x: 0.80, y: 0.28, vx: -0.00021, vy: 0.00031, r: [255, 58, 90] },
+      { x: 0.52, y: 0.55, vx: 0.00014, vy: 0.00022, r: [255, 176, 72] },
+    ]
+
+    let smooth = 0
+    let raf
+
+    const draw = () => {
+      const w = canvas.width
+      const h = canvas.height
+      ctx.clearRect(0, 0, w, h)
+
+      const raw = electricEnergyRef.current || 0
+      smooth += (raw - smooth) * 0.06
+
+      blobs.forEach((b) => {
+        b.x += b.vx
+        b.y += b.vy
+        if (b.x < -0.1 || b.x > 1.1) b.vx *= -1
+        if (b.y < -0.1 || b.y > 1.1) b.vy *= -1
+
+        const baseR = Math.min(w, h) * 0.52
+        const radius = baseR * (1 + smooth * 1.1)
+        const alpha = 0.09 + smooth * 0.18
+
+        const g = ctx.createRadialGradient(b.x * w, b.y * h, 0, b.x * w, b.y * h, radius)
+        g.addColorStop(0, `rgba(${b.r[0]},${b.r[1]},${b.r[2]},${alpha.toFixed(3)})`)
+        g.addColorStop(0.5, `rgba(${b.r[0]},${b.r[1]},${b.r[2]},${(alpha * 0.3).toFixed(3)})`)
+        g.addColorStop(1, `rgba(${b.r[0]},${b.r[1]},${b.r[2]},0)`)
+
+        ctx.fillStyle = g
+        ctx.fillRect(0, 0, w, h)
+      })
+
+      raf = requestAnimationFrame(draw)
+    }
+
+    const resize = () => {
+      canvas.width = canvas.offsetWidth * devicePixelRatio
+      canvas.height = canvas.offsetHeight * devicePixelRatio
+      ctx.scale(devicePixelRatio, devicePixelRatio)
+    }
+
+    resize()
+    draw()
+
+    const ro = new ResizeObserver(resize)
+    ro.observe(canvas)
+
+    return () => {
+      cancelAnimationFrame(raf)
+      ro.disconnect()
+    }
+  }, [])
+
+  // ─── Thumbar — ref zawsze aktualny, listenerzy rejestrują się raz ─────────
+  const thumbarActionsRef = useRef({})
+  useEffect(() => {
+    thumbarActionsRef.current = {
+      prev: () => mode === 'radio' ? handleStationPrev() : handleTrackPrevious(isTrackPlaying),
+      next: () => mode === 'radio' ? handleStationNext() : handleTrackNext(true),
+      togglePlay: () => handlePlayPause(),
+    }
+  })
+  useEffect(() => {
+    if (!window.playerBridge) return
+    window.playerBridge.onThumbarPrev(() => thumbarActionsRef.current.prev?.())
+    window.playerBridge.onThumbarNext(() => thumbarActionsRef.current.next?.())
+    window.playerBridge.onThumbarTogglePlay(() => thumbarActionsRef.current.togglePlay?.())
+  }, [])
+
+  // ─── Thumbar — aktualizuj ikonę play/pause ────────────────────────────────
+  useEffect(() => {
+    window.playerBridge?.setThumbarPlaying(
+      mode === 'radio' ? isRadioPlaying : isTrackPlaying
+    )
+  }, [isTrackPlaying, isRadioPlaying, mode])
+
+  // ─── Discord Rich Presence ────────────────────────────────────────────────
+  useEffect(() => {
+    if (!window.playerBridge) return
+    const timer = setTimeout(() => {
+      if (mode === 'player') {
+        if (!isTrackPlaying || !currentTrack) {
+          window.playerBridge.clearDiscordPresence()
+          return
+        }
+        window.playerBridge.updateDiscordPresence({
+          type: 2,
+          name: currentTrack.title || 'Nieznany utwór',
+          details: currentTrack.author || 'YouTube',
+          largeImageKey: currentTrack.thumbnail || 'appicon',
+          largeImageText: currentTrack.title || '',
+          smallImageKey: 'appicon',
+          smallImageText: 'byPerru',
+          startTimestamp: Date.now(),
+        })
+      } else {
+        if (!isRadioPlaying || !currentStation) {
+          window.playerBridge.clearDiscordPresence()
+          return
+        }
+        window.playerBridge.updateDiscordPresence({
+          type: 2,
+          name: radioNowPlaying ? `${currentStation.name} | ${radioNowPlaying}` : currentStation.name,
+          details: radioNowPlaying || undefined,
+          largeImageKey: 'appicon',
+          largeImageText: currentStation.name || 'Radio',
+          smallImageKey: currentStation.favicon || undefined,
+          smallImageText: currentStation.name || '',
+          startTimestamp: Date.now(),
+        })
+      }
+    }, 600)
+    return () => clearTimeout(timer)
+  }, [mode, isTrackPlaying, isRadioPlaying, currentTrack, currentStation, radioNowPlaying])
+
+  // ─── Historia odtwarzania (localStorage, 2 dni) ───────────────────────────
+  useEffect(() => {
+    if (!currentTrack?.id) return
+    setTrackHistory((prev) => {
+      const entry = { track: currentTrack, ts: Date.now() }
+      const updated = [entry, ...prev.filter((e) => e.track.id !== currentTrack.id)].slice(0, 40)
+      saveHistory(updated)
+      return updated
+    })
+  }, [currentTrack])
+
+  // ─── Podpowiedzi w wyszukiwarce ───────────────────────────────────────────
+  useEffect(() => {
+    if (searchTerm.length < 3 || !window.playerBridge?.searchYoutube) {
+      setSuggestions([])
+      return
+    }
+    const timer = setTimeout(async () => {
+      try {
+        const raw = await window.playerBridge.searchYoutube(searchTerm)
+        setSuggestions(filterPlayableTracks(raw).slice(0, 6))
+      } catch {
+        setSuggestions([])
+      }
+    }, 400)
+    return () => clearTimeout(timer)
+  }, [searchTerm])
+
+  // ─── Auto-scroll do aktywnego utworu ─────────────────────────────────────
+  useEffect(() => {
+    if (mode !== 'player') return
+    activeTrackRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+  }, [currentTrack, mode])
+
+  const activeGenre = useMemo(
+    () => genres.find((genre) => genre.id === genreId) ?? genres[0],
+    [genreId],
+  )
+
+  const radioFavorites = useMemo(
+    () => dedupeById(favorites.filter((entry) => entry.type === 'radio').map((entry) => entry.item)),
+    [favorites],
+  )
+
+  const trackFavorites = useMemo(
+    () => dedupeById(favorites.filter((entry) => entry.type === 'player').map((entry) => entry.item)),
+    [favorites],
+  )
+
+  const genreScopedStations = useMemo(
+    () => dedupeStations(dedupeById([...stations, ...countryBoostStations])),
+    [countryBoostStations, stations],
+  )
+
+  const countryOptions = useMemo(() => {
+    const options = genreScopedStations
+      .filter((station) => station.countryCode)
+      .map((station) => ({
+        code: station.countryCode,
+        label: station.country,
+      }))
+
+    return dedupeById(options.map((option) => ({ id: option.code, ...option }))).sort((left, right) =>
+      left.label.localeCompare(right.label, 'pl'),
+    )
+  }, [genreScopedStations])
+
+  const allTracks = searchResults.length > 0 ? searchResults : curatedTracks
+
+  const visibleStations = useMemo(() => {
+    const source = libraryView === 'favorites' ? radioFavorites : genreScopedStations
+
+    let filtered = source
+
+    if (countryFilter !== 'ALL') {
+      if (libraryView === 'favorites') {
+        filtered = source.filter((station) => station.countryCode === countryFilter)
+      } else {
+        const merged = dedupeStations(dedupeById([...source, ...countryBoostStations]))
+        filtered = merged.filter((station) => station.countryCode === countryFilter)
+      }
+    }
+
+    return sortStationsByFamily(filtered)
+  }, [countryBoostStations, countryFilter, genreScopedStations, libraryView, radioFavorites])
+
+  const filteredStations = useMemo(() => {
+    const term = stationSearchTerm.trim().toLowerCase()
+    const genre = RADIO_GENRES.find((g) => g.id === radioTagFilter)
+
+    let result = visibleStations
+
+    if (genre && genre.tags) {
+      result = result.filter((station) => {
+        const tags = (station.tags || '').toLowerCase()
+        return genre.tags.some((t) => tags.includes(t))
+      })
+    }
+
+    if (term) {
+      result = result.filter((station) => {
+        const name = (station.name || '').toLowerCase()
+        const family = normalizeStationFamilyName(station.name)
+        const tags = (station.tags || '').toLowerCase()
+        return name.includes(term) || family.includes(term) || tags.includes(term)
+      })
+    }
+
+    return result
+  }, [stationSearchTerm, radioTagFilter, visibleStations])
+
+  // Reset widocznej liczby stacji gdy lista się zmienia
+  useEffect(() => {
+    setVisibleStationCount(40)
+  }, [stationSearchTerm, radioTagFilter, countryFilter, libraryView])
+
+  // IntersectionObserver — dokładaj 40 stacji gdy sentinel wchodzi w viewport
+  useEffect(() => {
+    const sentinel = stationListSentinelRef.current
+    if (!sentinel) return
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting) {
+          setVisibleStationCount((n) => n + 40)
+        }
+      },
+      { threshold: 0.1 },
+    )
+    observer.observe(sentinel)
+    return () => observer.disconnect()
+  }, [filteredStations.length])
+
+  const knownRadioStations = useMemo(
+    () => dedupeStations(dedupeById([...stations, ...countryBoostStations, ...radioFavorites])),
+    [countryBoostStations, radioFavorites, stations],
+  )
+  const fallbackRadioStation = useMemo(
+    () => pickPreferredStation(knownRadioStations, null),
+    [knownRadioStations],
+  )
+
+  const visibleTracks = useMemo(
+    () => applyFilters(libraryView === 'favorites' ? trackFavorites : allTracks, filters),
+    [allTracks, libraryView, trackFavorites, filters],
+  )
+
+  const activeItem = mode === 'radio' ? currentStation : currentTrack
+  const currentRadioStreamEntry = stationStreams[stationStreamIndex] || null
+  const currentRadioStreamUrl = currentRadioStreamEntry?.url || currentStation?.url || ''
+  const effectiveVolume = useMemo(() => toEffectiveVolume(volumePercent, 'log'), [volumePercent])
+  const favoriteKey = activeItem ? `${mode}:${activeItem.id}` : ''
+  const isFavorite = favoriteKey ? favorites.some((entry) => entry.key === favoriteKey) : false
+  const currentTitle = activeItem?.title || activeItem?.name || 'Wybierz coś do odpalenia'
+  const isRadioVisualLoading = mode === 'radio' && (radioLoading || isSwitchingStationStream || isRadioBuffering)
+  const shouldShowRadioErrorStatus = mode === 'radio' && Boolean(radioError) && !isRadioVisualLoading
+  const fallbackStatusMatch = shouldShowRadioErrorStatus
+    ? String(radioError).match(/^Radio\s+(.+?)\s+nie działa, odpalamy stację podstawową\.?$/i)
+    : null
+  const fallbackStationName = fallbackStatusMatch?.[1] || ''
+  const isAlreadyOnStationStatus = /^Już jesteś na tej stacji\.?$/i.test(String(radioError || '').trim())
+  const radioVisualizerStatus = shouldShowRadioErrorStatus
+    ? radioError
+    : (!currentStation
+    ? 'Wybierz stację'
+    : (isRadioVisualLoading ? 'Ładowanie stacji...' : (!isRadioPlaying ? 'Radio zatrzymane' : '')))
+
+  const playerArt = mode === 'radio'
+    ? safeArt(currentStation?.favicon, currentStation?.name || activeGenre.label, 'radio')
+    : safeArt(currentTrack?.thumbnail, currentTrack?.title || activeGenre.label, 'track')
+
+  const playerFlag = mode === 'radio' ? countryFlagEmoji(currentStation?.countryCode) : 'YT'
+  const shouldScrollTitle = currentTitle.length > 42
+
+  useEffect(() => {
+    localStorage.setItem('hiphop-player-favorites', JSON.stringify(favorites))
+  }, [favorites])
+
+  // Zapisuj głośność do localStorage przy każdej zmianie
+  useEffect(() => {
+    localStorage.setItem('hiphop-player-volume', String(volumePercent))
+  }, [volumePercent])
+
+
+  // Zapisuj ostatnią stację do localStorage przy każdej zmianie currentStation
+  useEffect(() => {
+    if (currentStation && currentStation.id) {
+      localStorage.setItem('hiphop-player-last-station', JSON.stringify(currentStation))
+    }
+  }, [currentStation])
+
+  useEffect(() => {
+    effectiveVolumeRef.current = effectiveVolume
+
+    if (audioRef.current) {
+      // Gdy gain node jest aktywny, on kontroluje głośność — audio element musi być na 1
+      // żeby nie mnożyć głośności przez siebie (effectiveVolume * effectiveVolume = effectiveVolume²)
+      audioRef.current.volume = (radioGainNodeRef.current && effectiveVolume > 0) ? 1 : effectiveVolume
+    }
+
+    if (radioAudioContextRef.current && radioGainNodeRef.current) {
+      const now = radioAudioContextRef.current.currentTime
+      radioGainNodeRef.current.gain.cancelScheduledValues(now)
+      radioGainNodeRef.current.gain.setTargetAtTime(effectiveVolume, now, 0.05)
+    }
+  }, [effectiveVolume])
+
+  useEffect(() => {
+    let ignore = false
+
+    async function loadStations() {
+      setRadioLoading(true)
+      setRadioError('')
+
+      try {
+        const responses = await Promise.all(
+          activeGenre.radioQueries.map(async (query) => {
+            return fetchStationsFromMirrors({
+              limit: '80',
+              ...query,
+            })
+          }),
+        )
+
+        const normalized = dedupeStations(dedupeById(
+          responses
+            .flat()
+            .filter((station) => station.urlResolved || station.url)
+            .map(normalizeStation),
+        )).slice(0, 220)
+
+        if (!ignore) {
+          setStations(normalized)
+          setCurrentStation((previous) => {
+            const selected = pickPreferredStation(normalized, previous)
+            const plan = buildStationPlaybackCandidates(selected, normalized)
+
+            setStationStreams(plan.entries)
+            setStationStreamIndex(0)
+            setPrimaryStationStreamCount(plan.primaryCount)
+            setHasFetchedAltStationStreams(false)
+            return selected
+          })
+
+          if (normalized.length === 0) {
+            setRadioError('Nie znalazłem stacji w tym klimacie. Spróbuj inny gatunek.')
+          }
+        }
+      } catch {
+        if (!ignore) {
+          setRadioError('Nie udało się pobrać stacji dla tego klimatu.')
+          setStations([])
+          setCurrentStation(null)
+          setStationStreams([])
+          setStationStreamIndex(0)
+          setPrimaryStationStreamCount(0)
+          setHasFetchedAltStationStreams(false)
+        }
+      } finally {
+        if (!ignore) {
+          setRadioLoading(false)
+        }
+      }
+    }
+
+    loadStations()
+
+    return () => {
+      ignore = true
+    }
+  }, [activeGenre])
+
+  useEffect(() => {
+    let ignore = false
+
+    async function loadCountryBoostStations() {
+      if (countryFilter === 'ALL' || libraryView === 'favorites') {
+        setCountryBoostStations([])
+        return
+      }
+
+      try {
+        const response = await fetchStationsFromMirrors({
+          countrycode: countryFilter,
+          limit: '300',
+          order: 'clickcount',
+          reverse: 'true',
+          hidebroken: 'false',
+        })
+
+        const extraByName = countryFilter === 'PL'
+          ? await Promise.all([
+            fetchStationsFromMirrors({ name: 'VOX FM', countrycode: 'PL', limit: '80', hidebroken: 'false' }),
+            fetchStationsFromMirrors({ name: 'Radio VOX', countrycode: 'PL', limit: '80', hidebroken: 'false' }),
+          ])
+          : []
+
+        const boostedResponse = [...response, ...extraByName.flat()]
+
+        const normalized = dedupeStations(dedupeById(
+          boostedResponse
+            .filter((station) => station.urlResolved || station.url)
+            .map(normalizeStation),
+        )).slice(0, 260)
+
+        if (!ignore) {
+          setCountryBoostStations(normalized)
+        }
+      } catch {
+        if (!ignore) {
+          setCountryBoostStations([])
+        }
+      }
+    }
+
+    loadCountryBoostStations()
+
+    return () => {
+      ignore = true
+    }
+  }, [countryFilter, libraryView])
+
+  useEffect(() => {
+    let ignore = false
+
+    async function loadCuratedTracks() {
+      if (!window.playerBridge?.searchYoutube) {
+        setCuratedTracks([])
+        setTrackError('Wyszukiwanie YouTube działa tylko po uruchomieniu przez Electron.')
+        return
+      }
+
+      setTrackLoading(true)
+      setTrackError('')
+
+      try {
+        const q1 = curatedTracksKey === 0
+          ? 'muzyka popular official audio'
+          : buildFilteredQuery(filtersRef.current)
+        const q2 = curatedTracksKey === 0
+          ? 'music popular official video'
+          : buildFilteredQuery({ ...filtersRef.current, era: 'all' })
+        const eraOptions = curatedTracksKey === 0 ? {} : getEraDateRange(filtersRef.current.era)
+        const [r1, r2] = await Promise.all([
+          window.playerBridge.searchYoutube(q1, eraOptions),
+          window.playerBridge.searchYoutube(q2, {}),
+        ])
+        const found = dedupeById(filterPlayableTracks([...r1, ...r2]))
+
+        if (!ignore) {
+          const shuffled = spreadByAuthor(shuffleArray(found))
+          setCuratedTracks(shuffled)
+          setSearchResults([])
+          setCurrentTrack(shuffled[0] ?? null)
+          setPreviousTracks([])
+          setActiveTrackQuery(q1)
+
+          if (found.length === 0) {
+            setTrackError('Nie znalazłem pojedynczych utworów dla tego klimatu.')
+          }
+        }
+      } catch {
+        if (!ignore) {
+          setTrackError('Nie udało się pobrać wyników YouTube.')
+          setCuratedTracks([])
+          setCurrentTrack(null)
+        }
+      } finally {
+        if (!ignore) {
+          setTrackLoading(false)
+        }
+      }
+    }
+
+    loadCuratedTracks()
+
+    return () => {
+      ignore = true
+    }
+  }, [activeGenre, curatedTracksKey])
+
+
+  useEffect(() => {
+    if (mode === 'radio') {
+      setIsTrackPlaying(false)
+      setTrackTime(0)
+      return
+    }
+
+    audioRef.current?.pause()
+    setIsRadioPlaying(false)
+    setIsRadioBuffering(false)
+  }, [mode])
+
+  useEffect(() => {
+    if (!audioRef.current || !currentRadioStreamUrl) {
+      return
+    }
+
+    audioRef.current.src = currentRadioStreamUrl
+
+    if (mode === 'radio' && isRadioPlaying) {
+      audioRef.current.play().catch(() => {
+        tryNextStationStream()
+      })
+    }
+  }, [currentRadioStreamUrl, isRadioPlaying, mode])
+
+  useEffect(() => {
+    const audioElement = audioRef.current
+
+    function disconnectAudioMotion() {
+      if (audioMotionSourceRef.current && audioMotionRef.current) {
+        try { audioMotionRef.current.disconnectInput(audioMotionSourceRef.current) } catch {}
+        audioMotionSourceRef.current = null
+      }
+    }
+
+    // ── TRYB PLAYER ─────────────────────────────────────────────────────────
+    // Loopback stream dla player mode jest zarządzany przez osobny useEffect([mode])
+    if (mode !== 'radio') return
+
+    // ── RADIO ZATRZYMANE / BRAK ELEMENTU ────────────────────────────────────
+    if (!audioElement || !isRadioPlaying) {
+      disconnectAudioMotion()
+      return
+    }
+
+    // ── RADIO GRA ────────────────────────────────────────────────────────────
+    let cancelled = false
+
+    async function startAudioReactiveVisualizer() {
+      const AudioContextClass = window.AudioContext || window.webkitAudioContext
+      if (!AudioContextClass) return
+
+      if (!radioAudioContextRef.current) {
+        radioAudioContextRef.current = new AudioContextClass()
+      }
+      const context = radioAudioContextRef.current
+
+      if (context.state === 'suspended') {
+        try { await context.resume() } catch { return }
+      }
+
+      if (!radioSourceNodeRef.current) {
+        try {
+          radioSourceNodeRef.current = context.createMediaElementSource(audioElement)
+        } catch {
+          radioSourceNodeRef.current = null
+        }
+      }
+
+      if (!radioAnalyserRef.current) {
+        const analyser = context.createAnalyser()
+        analyser.fftSize = 2048
+        analyser.smoothingTimeConstant = 0.12
+        analyser.minDecibels = -110
+        analyser.maxDecibels = -18
+        radioAnalyserRef.current = analyser
+      }
+
+      if (!radioCompressorRef.current) {
+        const compressor = context.createDynamicsCompressor()
+        compressor.threshold.value = -18
+        compressor.knee.value = 12
+        compressor.ratio.value = 4
+        compressor.attack.value = 0.015
+        compressor.release.value = 0.2
+        radioCompressorRef.current = compressor
+      }
+
+      if (!radioGainNodeRef.current) {
+        const gainNode = context.createGain()
+        gainNode.gain.value = effectiveVolumeRef.current
+        radioGainNodeRef.current = gainNode
+      }
+
+      if (radioSourceNodeRef.current && radioAnalyserRef.current && radioCompressorRef.current && radioGainNodeRef.current) {
+        try {
+          radioSourceNodeRef.current.connect(radioCompressorRef.current)
+          radioCompressorRef.current.connect(radioAnalyserRef.current)
+          radioAnalyserRef.current.connect(radioGainNodeRef.current)
+          radioGainNodeRef.current.connect(context.destination)
+        } catch { /* already connected */ }
+      }
+
+      if (radioGainNodeRef.current) {
+        const now = context.currentTime
+        radioGainNodeRef.current.gain.cancelScheduledValues(now)
+        radioGainNodeRef.current.gain.setValueAtTime(effectiveVolumeRef.current, now)
+      }
+      if (audioRef.current) audioRef.current.volume = 1
+
+      // Bridge audio do audiomotion przez MediaStreamDestinationNode
+      if (cancelled) return
+      if (radioCompressorRef.current && audioMotionRef.current) {
+        if (!radioVizStreamDestRef.current) {
+          radioVizStreamDestRef.current = context.createMediaStreamDestination()
+          // Podłącz wizualizer przed gain nodem (po kompresorze) — niezależny od głośności
+          radioCompressorRef.current.connect(radioVizStreamDestRef.current)
+        }
+        disconnectAudioMotion()
+        const amCtx = audioMotionRef.current.audioCtx
+        if (amCtx.state === 'suspended') { try { await amCtx.resume() } catch {} }
+        const src = amCtx.createMediaStreamSource(radioVizStreamDestRef.current.stream)
+        audioMotionRef.current.connectInput(src)
+        audioMotionSourceRef.current = src
+      }
+    }
+
+    startAudioReactiveVisualizer()
+
+    return () => {
+      cancelled = true
+      disconnectAudioMotion()
+    }
+  }, [isRadioPlaying, mode, currentRadioStreamUrl])
+
+  // ── PLAYER MODE: loopback audio → wizualizer (podłącz gdy gra, odłącz gdy pauza) ──
+  useEffect(() => {
+    if (mode !== 'player') {
+      if (loopbackStreamRef.current) {
+        loopbackStreamRef.current.getTracks().forEach(t => t.stop())
+        loopbackStreamRef.current = null
+      }
+      if (audioMotionRef.current && audioMotionSourceRef.current) {
+        try { audioMotionRef.current.disconnectInput(audioMotionSourceRef.current) } catch {}
+        audioMotionSourceRef.current = null
+      }
+      return
+    }
+
+    if (!isTrackPlaying) {
+      if (audioMotionRef.current && audioMotionSourceRef.current) {
+        try { audioMotionRef.current.disconnectInput(audioMotionSourceRef.current) } catch {}
+        audioMotionSourceRef.current = null
+      }
+      return
+    }
+
+    if (audioMotionSourceRef.current) return
+
+    let cancelled = false
+
+    async function connectLoopback() {
+      try {
+        let stream = loopbackStreamRef.current
+        if (!stream) {
+          stream = await navigator.mediaDevices.getDisplayMedia({ audio: true, video: { width: 1, height: 1 } })
+          if (cancelled) { stream.getTracks().forEach(t => t.stop()); return }
+          stream.getVideoTracks().forEach(t => t.stop())
+          loopbackStreamRef.current = stream
+        }
+        const amCtx = audioMotionRef.current?.audioCtx
+        if (!amCtx || !audioMotionRef.current || cancelled) return
+        if (amCtx.state === 'suspended') { try { await amCtx.resume() } catch {} }
+        const src = amCtx.createMediaStreamSource(stream)
+        audioMotionRef.current.connectInput(src)
+        audioMotionSourceRef.current = src
+      } catch (e) {
+        console.warn('[loopback]', e)
+      }
+    }
+
+    connectLoopback()
+    return () => { cancelled = true }
+  }, [isTrackPlaying, mode])
+
+  useEffect(() => {
+    let disposed = false
+    let pollTimer = null
+
+    if (mode !== 'radio' || !currentRadioStreamUrl) {
+      setRadioNowPlaying('')
+      setRadioPlayHistory([])
+      prevRadioNowPlayingRef.current = ''
+      return undefined
+    }
+
+    async function pullNowPlaying() {
+      if (!window.playerBridge?.getRadioNowPlaying) {
+        return
+      }
+
+      try {
+        const title = await window.playerBridge.getRadioNowPlaying({
+          streamUrl: currentRadioStreamUrl,
+          stationId: currentStation?.id,
+        })
+
+        if (disposed) {
+          return
+        }
+
+        const nextTitle = String(title || '').trim()
+        setRadioNowPlaying(nextTitle)
+      } catch {
+        if (!disposed) {
+          setRadioNowPlaying('')
+        }
+      }
+
+      if (!disposed) {
+        pollTimer = window.setTimeout(pullNowPlaying, 30000)
+      }
+    }
+
+    setRadioPlayHistory([])
+    prevRadioNowPlayingRef.current = ''
+    setRadioNowPlaying(String(currentStation?.lastSong || '').trim())
+    pullNowPlaying()
+
+    return () => {
+      disposed = true
+
+      if (pollTimer) {
+        window.clearTimeout(pollTimer)
+      }
+    }
+  }, [currentRadioStreamUrl, currentStation?.id, currentStation?.lastSong, mode])
+
+  useEffect(() => {
+    if (!radioNowPlaying) {
+      prevRadioNowPlayingRef.current = ''
+      return
+    }
+    if (prevRadioNowPlayingRef.current && radioNowPlaying !== prevRadioNowPlayingRef.current) {
+      const old = prevRadioNowPlayingRef.current
+      const stationName = String(currentStation?.name || '').toLowerCase().trim()
+      const isStationName = stationName && old.toLowerCase().trim().includes(stationName)
+      if (!isStationName) {
+        setRadioPlayHistory([old])
+      }
+    }
+    prevRadioNowPlayingRef.current = radioNowPlaying
+  }, [radioNowPlaying, currentStation?.name])
+
+  useEffect(() => {
+    if (mode !== 'radio' || !radioError) {
+      return undefined
+    }
+
+    const timer = window.setTimeout(() => {
+      setRadioError('')
+    }, 5200)
+
+    return () => {
+      window.clearTimeout(timer)
+    }
+  }, [radioError, mode])
+
+  useEffect(() => {
+    if (mode !== 'player' || !trackError) {
+      return undefined
+    }
+
+    const timer = window.setTimeout(() => {
+      setTrackError('')
+    }, 5200)
+
+    return () => {
+      window.clearTimeout(timer)
+    }
+  }, [trackError, mode])
+
+  // Preload 20 kolejnych utworów gdy dojdziemy do ostatniego w liście
+  useEffect(() => {
+    if (mode !== 'player' || !currentTrack || loadingMoreTracks) return
+    const idx = visibleTracks.findIndex((t) => t.id === currentTrack.id)
+    if (idx !== visibleTracks.length - 1 || visibleTracks.length === 0) return
+    const key = `${currentTrack.id}-${visibleTracks.length}`
+    if (preloadedForRef.current === key) return
+    preloadedForRef.current = key
+    loadMoreTracks(20).catch(() => {})
+  }, [currentTrack?.id, visibleTracks.length, loadingMoreTracks, mode])
+
+  useEffect(() => {
+    if (mode !== 'player' || !currentTrack) {
+      setResolvedTrackUrl(null)
+      return
+    }
+    setResolvedTrackUrl(currentTrack.url)
+  }, [currentTrack, mode])
+
+  useEffect(() => {
+    if (mode !== 'player' || !currentTrack) {
+      return undefined
+    }
+
+    const interval = window.setInterval(() => {
+      const player = trackPlayerRef.current
+
+      if (!player) {
+        return
+      }
+
+      const nextTime = Number(player.currentTime ?? 0)
+      const nextDuration = Number(player.duration ?? 0)
+
+      if (Number.isFinite(nextTime) && !isSeekingRef.current) {
+        trackTimeRef.current = nextTime
+        setTrackTime(nextTime)
+      }
+
+      if (Number.isFinite(nextDuration) && nextDuration > 0) {
+        setTrackDuration(nextDuration)
+      }
+    }, 800)
+
+    return () => window.clearInterval(interval)
+  }, [currentTrack, mode])
+
+  function showSessionToast(msg) {
+    setSessionToast(msg)
+    clearTimeout(sessionToastTimerRef.current)
+    sessionToastTimerRef.current = setTimeout(() => setSessionToast(''), 2800)
+  }
+
+  function handleCopyCode() {
+    navigator.clipboard?.writeText(sessionCode)
+    setCodeCopied(true)
+    clearTimeout(codeCopiedTimerRef.current)
+    codeCopiedTimerRef.current = setTimeout(() => setCodeCopied(false), 2000)
+  }
+
+  function handleSuggest(item) {
+    suggestTrack(item)
+    setSuggestedIds(prev => new Set(prev).add(item.id))
+    showSessionToast(`Zasugerowano: ${item.title}`)
+  }
+
+  // Zwraca true jeśli akcja jest dozwolona; false + toast jeśli zablokowana
+  function checkPerm(perm) {
+    if (!inSession || isHost) return true
+    if (myPermissions[perm]) return true
+    const labels = { canPlay: 'sterować odtwarzaniem', canSkip: 'pomijać utwory', canAdd: 'wybierać utwory' }
+    showSessionToast(`Tylko host może ${labels[perm] ?? 'to zrobić'} — poproś o uprawnienia`)
+    return false
+  }
+
+  function updateMode(nextMode, remote = false) {
+    if (!remote && inSession && !isHost && nextMode !== mode) {
+      showSessionToast('Tylko host może zmieniać zakładki podczas sesji')
+      return
+    }
+    setMode(nextMode)
+    localStorage.setItem('hiphop-player-mode', nextMode)
+    setLibraryView('all')
+    setStationSearchTerm('')
+    if (!remote && inSession) notifyAction('modeChange', { mode: nextMode })
+  }
+  // Zapisuj tryb do localStorage przy każdej zmianie
+  useEffect(() => {
+    localStorage.setItem('hiphop-player-mode', mode)
+  }, [mode])
+
+  // Zapisuj filtry do localStorage przy każdej zmianie
+  useEffect(() => {
+    localStorage.setItem('hiphop-player-trackfilters', JSON.stringify(filters))
+  }, [filters])
+
+  async function handleTrackSearch(event) {
+    event.preventDefault()
+
+    if (!searchTerm.trim()) {
+      return
+    }
+
+    if (!window.playerBridge?.searchYoutube) {
+      setTrackError('Wyszukiwanie YouTube działa tylko po uruchomieniu przez Electron.')
+      return
+    }
+
+    setTrackLoading(true)
+    setTrackError('')
+
+    try {
+      const raw = await window.playerBridge.searchYoutube(searchTerm)
+      const found = filterPlayableTracks(raw)
+      setSearchResults(found)
+      setActiveTrackQuery(searchTerm)
+
+      if (found.length === 0) {
+        setTrackError('Brak krótkich pojedynczych utworów. Zmień frazę i spróbuj jeszcze raz.')
+      }
+    } catch {
+      setTrackError('Szukajka YouTube chwilowo nie odpowiedziała.')
+    } finally {
+      setTrackLoading(false)
+    }
+  }
+
+  function selectStation(station, options = {}) {
+    if (currentStation?.id && station?.id && currentStation.id === station.id) {
+      setRadioError('Już jesteś na tej stacji.')
+      return
+    }
+
+    const plan = buildStationPlaybackCandidates(station, knownRadioStations)
+
+    setCurrentStation(station)
+    setStationStreams(plan.entries)
+    setStationStreamIndex(0)
+    setPrimaryStationStreamCount(plan.primaryCount)
+    setHasFetchedAltStationStreams(false)
+    setRadioError(options.message || '')
+    setIsRadioPlaying(true)
+    setIsRadioBuffering(true)
+  }
+
+  async function loadAlternativeStationCandidates(station) {
+    if (!station?.name) {
+      return []
+    }
+
+    const alternatives = await fetchStationsFromMirrors({
+      name: station.name,
+      countrycode: station.countryCode || undefined,
+      limit: '120',
+      hidebroken: 'false',
+    })
+
+    return dedupeById(
+      alternatives
+        .filter((entry) => entry.urlResolved || entry.url)
+        .map((entry) => ({
+          id: entry.urlResolved || entry.url,
+          url: entry.urlResolved || entry.url,
+          label: entry.name || station.name,
+          isPrimary: false,
+        })),
+    )
+  }
+
+  async function tryNextStationStream() {
+    if (isSwitchingStationStream) {
+      return
+    }
+
+    setIsSwitchingStationStream(true)
+    setIsRadioBuffering(true)
+
+    try {
+      const primaryTotal = Math.max(1, primaryStationStreamCount || Math.min(3, stationStreams.length))
+      if (stationStreamIndex < primaryTotal - 1) {
+        setStationStreamIndex((previous) => previous + 1)
+        const tryingIndex = stationStreamIndex + 2
+        setRadioError(`Stream ${checkedNow}/${primaryTotal} nie działa. Próbuję ${tryingIndex}/${primaryTotal}...`)
+        return
+      }
+
+      if (stationStreamIndex === primaryTotal - 1 && stationStreams.length > primaryTotal) {
+        const nextEntry = stationStreams[primaryTotal]
+        setStationStreamIndex(primaryTotal)
+        setRadioError(`Sprawdziłem ${primaryTotal}/${primaryTotal}. Próbuję wariant ${nextEntry?.label || '128'}...`)
+        return
+      }
+
+      if (stationStreamIndex >= primaryTotal && stationStreamIndex < stationStreams.length - 1) {
+        const nextEntry = stationStreams[stationStreamIndex + 1]
+        setStationStreamIndex((previous) => previous + 1)
+        setRadioError(`Wariant ${currentRadioStreamEntry?.label || currentStation?.name || 'stacji'} nie działa. Próbuję ${nextEntry?.label || 'następny wariant'}...`)
+        return
+      }
+
+      if (!hasFetchedAltStationStreams && currentStation) {
+        const alternatives = await loadAlternativeStationCandidates(currentStation)
+        const merged = dedupeById(
+          [...stationStreams, ...alternatives],
+        )
+
+        setHasFetchedAltStationStreams(true)
+
+        if (merged.length > stationStreams.length) {
+          const nextEntry = merged[stationStreams.length]
+          setStationStreams(merged)
+          setStationStreamIndex(stationStreams.length)
+          setRadioError(`Sprawdziłem ${primaryTotal}/${primaryTotal}. Znalazłem dodatkowe źródła, próbuję ${nextEntry?.label || 'kolejny wariant'}...`)
+          return
+        }
+      }
+
+      if (fallbackRadioStation && fallbackRadioStation.id && fallbackRadioStation.id !== currentStation?.id) {
+        selectStation(
+          fallbackRadioStation,
+          { message: `Radio ${currentStation?.name || 'tej stacji'} nie działa, odpalamy stację podstawową.` },
+        )
+        return
+      }
+
+      setIsRadioPlaying(false)
+      setIsRadioBuffering(false)
+      setRadioError(`Nie znaleziono działającego źródła dla ${currentStation?.name || 'tej stacji'}. Użyj innej stacji.`)
+    } finally {
+      setIsSwitchingStationStream(false)
+    }
+  }
+
+  function selectTrack(track, autoplay = true, notify = false) {
+    setCurrentTrack(track)
+    setTrackError('')
+    setTrackTime(0)
+    setTrackDuration(track.seconds || 0)
+    setIsTrackReady(false)
+    setIsTrackPlaying(autoplay)
+    if (notify && inSession) {
+      notifyAction('trackChange', { id: track.id, title: track.title, url: track.url, author: track.author, seconds: track.seconds, thumbnail: track.thumbnail, position: 0, playing: autoplay })
+    }
+  }
+
+  function handleStationNext() {
+    if (!checkPerm('canSkip')) return
+    if (visibleStations.length === 0) return
+    const currentIndex = visibleStations.findIndex((station) => station.id === currentStation?.id)
+    const safeIndex = currentIndex >= 0 ? currentIndex : 0
+    const nextIndex = (safeIndex + 1) % visibleStations.length
+    const station = visibleStations[nextIndex]
+    selectStation(station)
+    if (inSession) notifyAction('stationChange', { id: station.id, name: station.name, url: station.url, country: station.country ?? '', countrycode: station.countrycode ?? '', favicon: station.favicon ?? '', tags: station.tags ?? '', codec: station.codec ?? '', bitrate: station.bitrate ?? 0, lastSong: station.lastSong ?? '' })
+  }
+
+  function handleStationPrev() {
+    if (!checkPerm('canSkip')) return
+    if (visibleStations.length === 0) return
+    const currentIndex = visibleStations.findIndex((station) => station.id === currentStation?.id)
+    const safeIndex = currentIndex >= 0 ? currentIndex : 0
+    const prevIndex = (safeIndex - 1 + visibleStations.length) % visibleStations.length
+    const station = visibleStations[prevIndex]
+    selectStation(station)
+    if (inSession) notifyAction('stationChange', { id: station.id, name: station.name, url: station.url, country: station.country ?? '', countrycode: station.countrycode ?? '', favicon: station.favicon ?? '', tags: station.tags ?? '', codec: station.codec ?? '', bitrate: station.bitrate ?? 0, lastSong: station.lastSong ?? '' })
+  }
+
+  function pickRandomTrack() {
+    if (!checkPerm('canAdd')) return
+    if (visibleTracks.length === 0) return
+    selectTrack(visibleTracks[Math.floor(Math.random() * visibleTracks.length)], true, true)
+  }
+
+  function handlePlayPause() {
+    if (!checkPerm('canPlay')) return
+    if (mode === 'radio') {
+      if (!audioRef.current || !currentRadioStreamUrl) return
+      if (isRadioPlaying) {
+        audioRef.current.pause()
+        setIsRadioPlaying(false)
+        setIsRadioBuffering(false)
+        if (inSession) notifyAction('playPause', { playing: false, mode: 'radio' })
+        return
+      }
+      setIsRadioBuffering(true)
+      audioRef.current.play().then(() => {
+        setIsRadioPlaying(true)
+        setIsRadioBuffering(false)
+        if (inSession) notifyAction('playPause', { playing: true, mode: 'radio' })
+      }).catch(() => {
+        setIsRadioBuffering(false)
+        tryNextStationStream()
+      })
+      return
+    }
+
+    if (!currentTrack?.url) {
+      setTrackError('Najpierw wybierz utwór z listy.')
+      return
+    }
+
+    const nextPlaying = !isTrackPlaying
+    setIsTrackPlaying(nextPlaying)
+    if (inSession) notifyAction('playPause', { playing: nextPlaying, mode: 'player' })
+  }
+
+  async function loadMoreTracks(limit = 5) {
+    if (!window.playerBridge?.searchYoutube) {
+      return []
+    }
+
+    const baseQuery = (activeTrackQuery || activeGenre.seedQuery || '').trim()
+    const querySuffixes = ['official audio', 'single', 'clean version', 'studio version', 'lyric video']
+    const randomSuffix = querySuffixes[Math.floor(Math.random() * querySuffixes.length)]
+
+    const currentIds = new Set([...allTracks, ...previousTracks].map((item) => item.id))
+    const raw = await window.playerBridge.searchYoutube(`${baseQuery} ${randomSuffix}`)
+    const fetched = filterPlayableTracks(raw)
+    const nextBatch = spreadByAuthor(fetched.filter((item) => !currentIds.has(item.id))).slice(0, limit)
+
+    if (nextBatch.length === 0) {
+      return []
+    }
+
+    if (searchResults.length > 0) {
+      setSearchResults((previous) => [...previous, ...nextBatch])
+    } else {
+      setCuratedTracks((previous) => [...previous, ...nextBatch])
+    }
+
+    return nextBatch
+  }
+
+  async function handleTrackNext(autoplay = isTrackPlaying) {
+    if (!checkPerm('canSkip')) return
+
+    // Kolejka sugestii — host (lub poza sesją) gra sugerowane w pierwszej kolejności
+    if (sessionSuggestions.length > 0 && (isHost || !inSession)) {
+      const next = sessionSuggestions[0]
+      removeSuggestion(next.key)
+      selectTrack(next, autoplay, true)
+      return
+    }
+
+    if (visibleTracks.length === 0) {
+      return
+    }
+
+    const currentIndex = visibleTracks.findIndex((item) => item.id === currentTrack?.id)
+    const safeIndex = currentIndex >= 0 ? currentIndex : 0
+
+    if (currentTrack) {
+      setPreviousTracks((previous) => dedupeById([currentTrack, ...previous]).slice(0, 5))
+    }
+
+    if (safeIndex < visibleTracks.length - 1) {
+      const nextIndex = safeIndex + 1
+      selectTrack(visibleTracks[nextIndex], autoplay, true)
+      return
+    }
+
+    setLoadingMoreTracks(true)
+    try {
+      const appended = await loadMoreTracks(20)
+
+      if (appended.length > 0) {
+        selectTrack(appended[0], autoplay, true)
+      } else {
+        setTrackError('Brak kolejnych utworów dla tej frazy. Spróbuj innej wyszukiwarki.')
+      }
+    } catch {
+      setTrackError('Nie udało się pobrać kolejnych utworów.')
+    } finally {
+      setLoadingMoreTracks(false)
+    }
+  }
+
+  function handleTrackPrevious(autoplay = isTrackPlaying) {
+    if (!checkPerm('canSkip')) return
+    if (visibleTracks.length === 0 && previousTracks.length === 0) {
+      return
+    }
+
+    const currentIndex = visibleTracks.findIndex((item) => item.id === currentTrack?.id)
+
+    if (currentIndex > 0) {
+      selectTrack(visibleTracks[currentIndex - 1], autoplay, true)
+      return
+    }
+
+    if (previousTracks.length > 0) {
+      const [prevTrack, ...rest] = previousTracks
+      setPreviousTracks(rest)
+      selectTrack(prevTrack, autoplay, true)
+    }
+  }
+
+  function toggleFavorite() {
+    if (!activeItem) {
+      return
+    }
+
+    const entry = buildFavoriteEntry(mode, activeItem, genreId)
+
+    setFavorites((previous) =>
+      previous.some((item) => item.key === entry.key)
+        ? previous.filter((item) => item.key !== entry.key)
+        : [entry, ...previous],
+    )
+  }
+
+  function handleSeekTrack(event) {
+    const nextTime = Number(event.target.value)
+    seekValueRef.current = nextTime
+    // Aktualizuj wizual bezpośrednio przez DOM — zero re-renderów podczas przeciągania
+    const dur = Math.max(trackDuration || currentTrack?.seconds || 0, 1)
+    const pct = `${Math.min(100, (nextTime / dur) * 100).toFixed(3)}%`
+    seekFillRef.current?.style.setProperty('--pct', pct)
+    seekThumbRef.current?.style.setProperty('--pct', pct)
+    if (seekTimeDisplayRef.current) seekTimeDisplayRef.current.textContent = formatSeconds(nextTime)
+  }
+
+  function handleSeekCommit() {
+    if (!checkPerm('canPlay')) { isSeekingRef.current = false; setIsSeeking(false); seekValueRef.current = null; return }
+    const nextTime = seekValueRef.current
+    isSeekingRef.current = false
+    setIsSeeking(false)
+    if (nextTime === null) return
+    seekValueRef.current = null
+    setTrackTime(nextTime)
+    const player = trackPlayerRef.current
+    if (player) {
+      if ('currentTime' in player) player.currentTime = nextTime
+      else player.seekTo?.(nextTime, 'seconds')
+    }
+    if (isHost) {
+      syncPositionNow(nextTime)
+    } else if (inSession) {
+      notifyAction('seek', { position: nextTime })
+    }
+  }
+
+  function handleVolumeChange(event) {
+    const nextValue = Number.isFinite(Number(event.target.value))
+      ? Math.min(100, Math.max(0, Math.round(Number(event.target.value)))) : 0
+    pendingVolumeRef.current = nextValue
+    // Aktualizuj wizual i audio bezpośrednio — bez re-renderu
+    const pct = `${nextValue}%`
+    volumeFillRef.current?.style.setProperty('--pct', pct)
+    volumeThumbRef.current?.style.setProperty('--pct', pct)
+    if (volumeLabelRef.current) volumeLabelRef.current.textContent = `${nextValue}%`
+    const eff = toEffectiveVolume(nextValue, 'log')
+    if (audioRef.current) audioRef.current.volume = radioGainNodeRef.current ? 1 : eff
+    if (radioGainNodeRef.current && radioAudioContextRef.current) {
+      const now = radioAudioContextRef.current.currentTime
+      radioGainNodeRef.current.gain.cancelScheduledValues(now)
+      radioGainNodeRef.current.gain.setTargetAtTime(eff, now, 0.05)
+    }
+  }
+
+  function handleVolumeCommit() {
+    if (pendingVolumeRef.current !== null) {
+      setVolumePercent(pendingVolumeRef.current)
+      pendingVolumeRef.current = null
+    }
+  }
+
+  const {
+    sessionCode,
+    isHost,
+    listenerCount,
+    listeners: sessionListeners,
+    myPermissions,
+    sessionError: togetherError,
+    sessionLoading: togetherLoading,
+    inSession,
+    suggestions: sessionSuggestions,
+    createSession,
+    joinSession,
+    leaveSession,
+    suggestTrack,
+    removeSuggestion,
+    syncPositionNow,
+    updatePermission,
+    notifyAction,
+  } = useListenTogether({
+    mode,
+    currentStation,
+    currentTrack,
+    trackTimeRef,
+    isTrackPlaying,
+    nickname: myNickname,
+    onRemoteStationChange: (stationData) => {
+      if (!stationData?.id || stationData.id === currentStation?.id) return
+      selectStation(stationData)
+    },
+    onRemoteTrackChange: (trackData) => {
+      setCurrentTrack(trackData)
+      setIsTrackReady(false)
+      setTrackTime(trackData.position ?? 0)
+    },
+    onRemoteSeek: (time) => {
+      pendingRemoteSeekRef.current = time
+      const player = trackPlayerRef.current
+      if (!player) return
+      if ('currentTime' in player) player.currentTime = time
+      else player.seekTo?.(time, 'seconds')
+      setTrackTime(time)
+    },
+    onRemotePlayPause: (playing, audioMode) => {
+      if (audioMode === 'radio') {
+        if (!playing) {
+          audioRef.current?.pause()
+          setIsRadioPlaying(false)
+          setIsRadioBuffering(false)
+        } else if (audioRef.current) {
+          setIsRadioBuffering(true)
+          audioRef.current.play().then(() => { setIsRadioPlaying(true); setIsRadioBuffering(false) }).catch(() => setIsRadioBuffering(false))
+        }
+      } else {
+        setIsTrackPlaying(playing)
+      }
+    },
+    onRemoteModeChange: (nextMode) => {
+      updateMode(nextMode, true)
+    },
+    onActionNotification: (nick, type, payload) => {
+      const verb = {
+        playPause: payload.playing
+          ? `${nick} wznowił ${payload.mode === 'radio' ? 'radio' : 'odtwarzanie'}`
+          : `${nick} wstrzymał ${payload.mode === 'radio' ? 'radio' : 'odtwarzanie'}`,
+        trackChange: `${nick} wybrał: ${payload.title ?? ''}`,
+        modeChange: `${nick} przełączył na ${payload.mode === 'radio' ? 'Radio' : 'Player'}`,
+        stationChange: `${nick} zmienił stację: ${payload.name ?? ''}`,
+      }
+      showSessionToast(verb[type] ?? `${nick} wykonał akcję`)
+    },
+  })
+
+  // Reset sugerowanych ID po zakończeniu sesji (po useListenTogether żeby inSession było dostępne)
+  useEffect(() => {
+    if (!inSession) setSuggestedIds(new Set())
+  }, [inSession])
+
+  return (
+    <>
+    {splashVisible && (
+      <div className={`splash-screen${splashFading ? ' fading' : ''}`}>
+        <div className="splash-inner">
+          <h1 className="splash-title">Music App</h1>
+          <p className="splash-sub">by MrPerru</p>
+        </div>
+      </div>
+    )}
+    <main className="app-shell">
+      <audio
+        ref={audioRef}
+        crossOrigin="anonymous"
+        onPause={() => {
+          setIsRadioPlaying(false)
+          setIsRadioBuffering(false)
+        }}
+        onWaiting={() => {
+          if (mode === 'radio') {
+            setIsRadioBuffering(true)
+          }
+        }}
+        onCanPlay={() => {
+          if (mode === 'radio') {
+            setIsRadioBuffering(false)
+          }
+        }}
+        onPlay={() => {
+          setIsRadioPlaying(true)
+          setIsRadioBuffering(false)
+        }}
+        onError={() => {
+          setIsRadioBuffering(false)
+          if (mode === 'radio' && isRadioPlaying) {
+            tryNextStationStream()
+          }
+        }}
+      />
+
+      <ReactPlayer
+        ref={trackPlayerRef}
+        src={resolvedTrackUrl}
+        playing={mode === 'player' && isTrackPlaying && !!resolvedTrackUrl}
+        controls={false}
+        width="1px"
+        height="1px"
+        volume={effectiveVolume}
+        muted={volumePercent === 0}
+        playsInline
+        style={{ position: 'absolute', opacity: 0, pointerEvents: 'none' }}
+        config={{
+          youtube: {
+            playerVars: {
+              controls: 0,
+              rel: 0,
+              modestbranding: 1,
+              playsinline: 1,
+            },
+          },
+        }}
+        onReady={() => {
+          setIsTrackReady(true)
+          setTrackError('')
+          if (pendingRemoteSeekRef.current !== null) {
+            const t = pendingRemoteSeekRef.current
+            pendingRemoteSeekRef.current = null
+            const player = trackPlayerRef.current
+            if (player) {
+              if ('currentTime' in player) player.currentTime = t
+              else player.seekTo?.(t, 'seconds')
+            }
+            setTrackTime(t)
+          }
+        }}
+        onPlay={() => setIsTrackPlaying(true)}
+        onPause={() => { if (isTrackReady) setIsTrackPlaying(false) }}
+        onDurationChange={(duration) => setTrackDuration(Number(duration) || 0)}
+        onEnded={() => {
+          handleTrackNext(true)
+        }}
+        onError={() => {
+          setTrackError('Ten utwór nie daje się odtworzyć. Wybierz inny z listy.')
+          setIsTrackPlaying(false)
+        }}
+      />
+
+      <header className="topbar">
+        <div className="mode-notch">
+          <div className="segmented-control notch">
+            <button className={mode === 'radio' ? 'active' : ''} onClick={() => updateMode('radio')}>
+              Radio
+            </button>
+            <button className={mode === 'player' ? 'active' : ''} onClick={() => updateMode('player')}>
+              Player
+            </button>
+          </div>
+        </div>
+
+        <div className="topbar-main">
+          <p className="eyebrow">Jeden player, dwa tryby,powered by MrPerru </p>
+          <h1>{mode === 'radio' ? 'Radio' : 'Player'}</h1>
+        </div>
+
+        <div className="topbar-metrics">
+          <span>{mode === 'radio' ? `${stations.length} stacji` : `${allTracks.length} utworów`}</span>
+          <span>{favorites.length} ulubionych</span>
+          <span>{mode === 'radio' ? 'Radio online' : 'Audio z YouTube'}</span>
+          <button
+            className={`together-btn${inSession ? ' active' : ''}`}
+            onClick={() => setSessionModalOpen(v => !v)}
+            title="Słuchaj razem"
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/></svg>
+            {inSession && <span className="together-count">{listenerCount}</span>}
+          </button>
+        </div>
+      </header>
+
+
+      <section className="content-grid">
+        <article className="stage-card">
+          <div className="stage-header">
+            <div className="stage-main">
+              <div className="cover-badge">
+                <img
+                  src={playerArt}
+                  alt=""
+                  onError={(event) => withFallbackArt(event, mode === 'radio' ? currentStation?.name : currentTrack?.title, mode)}
+                />
+                <span className="flag-badge">{playerFlag}</span>
+              </div>
+
+              <div>
+                <p className="stage-label">Teraz leci</p>
+                {shouldScrollTitle ? (
+                  <div className="title-marquee">
+                    <div className="title-track">
+                      <span>{currentTitle}</span>
+                      <span>{currentTitle}</span>
+                    </div>
+                  </div>
+                ) : (
+                  <p className="title-single-text">{currentTitle}</p>
+                )}
+                {mode === 'radio' && currentStation && (
+                  <div className="radio-track-timeline">
+                    <p className="stage-nowplaying">
+                      {radioNowPlaying ? `Teraz gra: ${radioNowPlaying}` : 'Teraz gra: brak metadanych od stacji'}
+                    </p>
+                    {radioPlayHistory.length > 0 && (
+                      <p className="radio-track-prev">
+                        <span className="radio-track-prev-label">Wcześniej grało: </span>
+                        {radioPlayHistory[0]}
+                      </p>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <button className={isFavorite ? 'accent active' : 'accent'} onClick={toggleFavorite}>
+              {isFavorite ? 'W ulubionych' : 'Dodaj do ulubionych'}
+            </button>
+          </div>
+
+          <ElectricBorder
+            colorBase="#a5a5a5b9"
+            colorPeak="#ff6600"
+            speed={(mode === 'radio' ? isRadioPlaying : isTrackPlaying) ? 0.15 : 0.08}
+            speedMax={(mode === 'radio' ? isRadioPlaying : isTrackPlaying) ? 2.5 : 0.04}
+            chaos={0.055}
+            chaosMax={0.075}
+            energyRef={electricEnergyRef}
+            borderRadius={20}
+            style={{ flex: 1, minHeight: 0, marginTop: 10 }}
+          >
+          <div className={`stage-visual ${mode}`} style={{ marginTop: 0 }}>
+            <canvas ref={vizBgCanvasRef} className="viz-bg-canvas" />
+            {(() => {
+              const marqueeText = mode === 'radio'
+                ? `${currentStation?.name || 'Radio'} • ${currentStation?.country || 'Online'} • ${currentStation?.tags || activeGenre.label}`
+                : `${currentTrack?.title || 'Brak wybranego utworu'} • ${currentTrack?.author || 'YouTube'} • ${activeGenre.label}`
+              const scroll = marqueeText.length > 42
+              return (
+                <div className="stage-marquee">
+                  <div className={`marquee-track${scroll ? ' scrolling' : ''}`}>
+                    <span>{scroll ? marqueeText + '   ·   ' : marqueeText}</span>
+                    {scroll && <span>{marqueeText + '   ·   '}</span>}
+                  </div>
+                </div>
+              )
+            })()}
+
+            <div className="radio-stage-body">
+                <div ref={audioMotionContainerRef} className="audio-motion-viz" />
+                {mode === 'player' && (
+                  <div className={`player-idle-wave${isTrackPlaying ? ' hidden' : ''}`}>
+                    {IDLE_BARS.map((h, i) => (
+                      <div
+                        key={i}
+                        className="idle-bar"
+                        style={{ height: `${h}%`, animationDelay: `${(i / 47 * 1.5).toFixed(2)}s` }}
+                      />
+                    ))}
+                  </div>
+                )}
+                {mode === 'radio' && (
+                  <div className={`player-idle-wave${isRadioPlaying ? ' hidden' : ''}`}>
+                    {IDLE_BARS.map((h, i) => (
+                      <div
+                        key={i}
+                        className="idle-bar"
+                        style={{ height: `${h}%`, animationDelay: `${(i / 47 * 1.5).toFixed(2)}s` }}
+                      />
+                    ))}
+                  </div>
+                )}
+                {mode === 'radio' && radioVisualizerStatus && (
+                  <p className={isAlreadyOnStationStatus ? 'radio-viz-hint visible success' : 'radio-viz-hint visible'}>
+                    {fallbackStationName ? (
+                      <>
+                        <span className="radio-viz-hint-line">
+                          Radio <span className="radio-viz-hint-station">{fallbackStationName}</span> nie działa
+                        </span>
+                        <span className="radio-viz-hint-line secondary">Odpalamy stację podstawową</span>
+                      </>
+                    ) : radioVisualizerStatus}
+                  </p>
+                )}
+              </div>
+            </div>
+          </ElectricBorder>
+
+          <div className="info-strip">
+            {mode === 'radio' ? (
+              <>
+                <span>{countryFlagEmoji(currentStation?.countryCode)} {currentStation?.country || 'Online'}</span>
+                <span>{(currentStation?.codec || 'STREAM').toUpperCase()} · {currentStation?.bitrate ? `${currentStation.bitrate} kbps` : 'Auto'}</span>
+                {currentStation?.language ? <span>{currentStation.language}</span> : null}
+                {currentStation?.votes > 0 ? <span>♥ {currentStation.votes > 999 ? `${(currentStation.votes / 1000).toFixed(1)}k` : currentStation.votes}</span> : null}
+                {currentStation?.tags ? <span>{currentStation.tags.split(',')[0].trim()}</span> : null}
+              </>
+            ) : (
+              <>
+                {currentTrack ? (
+                  <span>#{visibleTracks.findIndex((t) => t.id === currentTrack.id) + 1} / {visibleTracks.length}</span>
+                ) : null}
+                <span>{currentTrack?.duration || '—'}</span>
+                <span>{currentTrack?.author || 'YouTube'}</span>
+                {activeGenre.label !== 'Wszystkie' ? <span>{activeGenre.label}</span> : null}
+                <span>{isTrackReady ? '● Gotowy' : '○ Ładowanie'}</span>
+              </>
+            )}
+          </div>
+        </article>
+
+        <aside className="library-card">
+          <div className="library-toolbar">
+            <div className="segmented-control small">
+              <button className={libraryView === 'all' ? 'active' : ''} onClick={() => setLibraryView('all')}>
+                Wszystkie
+              </button>
+              <button className={libraryView === 'favorites' ? 'active' : ''} onClick={() => setLibraryView('favorites')}>
+                ♥ Ulubione
+              </button>
+              {inSession && mode === 'player' && (
+                <button className={`${libraryView === 'suggested' ? 'active' : ''} suggested-tab`} onClick={() => setLibraryView('suggested')}>
+                  Sugerowane
+                  {sessionSuggestions.length > 0 && <span className="suggested-badge">{sessionSuggestions.length}</span>}
+                </button>
+              )}
+            </div>
+
+            <span className="count-pill">
+              {mode === 'radio'
+                ? filteredStations.length
+                : libraryView === 'suggested'
+                  ? sessionSuggestions.length
+                  : visibleTracks.length} pozycji
+            </span>
+          </div>
+
+          {mode === 'player' ? (
+            <>
+              <div className="filters-panel">
+                <button
+                  className={`filters-toggle ${filtersOpen ? 'open' : ''}`}
+                  onClick={() => setFiltersOpen((v) => !v)}
+                >
+                  <span>Filtry</span>
+                  <span className="filters-badge">
+                    {(() => {
+                      let active = 0
+                      if (filters.types.length < 4) active++
+                      if (filters.duration !== 'all') active++
+                      if (filters.era !== 'all') active++
+                      if (filters.genres.length > 0) active++
+                      if (filters.languages.length > 0) active++
+                      return active > 0 ? `${active} aktywne` : 'Wszystkie'
+                    })()}
+                  </span>
+                  <span className="filters-chevron">{filtersOpen ? '▲' : '▼'}</span>
+                </button>
+
+                {filtersOpen && (
+                  <div className="filters-body">
+                    <div className="filters-section">
+                      <p className="filters-label">Gatunek</p>
+                      <div className="filters-chips">
+                        {FILTER_GENRES.map((g) => (
+                          <button
+                            key={g.id}
+                            className={`filter-chip ${filters.genres.includes(g.id) ? 'active' : ''}`}
+                            onClick={() => setFilters((f) => ({
+                              ...f,
+                              genres: f.genres.includes(g.id)
+                                ? f.genres.filter((x) => x !== g.id)
+                                : [...f.genres, g.id],
+                            }))}
+                          >{g.label}</button>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="filters-section">
+                      <p className="filters-label">Język</p>
+                      <div className="filters-chips">
+                        {FILTER_LANGUAGES.map((l) => (
+                          <button
+                            key={l.id}
+                            className={`filter-chip ${filters.languages.includes(l.id) ? 'active' : ''}`}
+                            onClick={() => setFilters((f) => ({
+                              ...f,
+                              languages: f.languages.includes(l.id)
+                                ? f.languages.filter((x) => x !== l.id)
+                                : [...f.languages, l.id],
+                            }))}
+                          >{l.label}</button>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="filters-section">
+                      <p className="filters-label">Typ materiału</p>
+                      <div className="filters-chips">
+                        {FILTER_TYPES.map((t) => (
+                          <button
+                            key={t.id}
+                            className={`filter-chip type-chip ${filters.types.includes(t.id) ? 'active' : ''}`}
+                            onClick={() => setFilters((f) => ({
+                              ...f,
+                              types: f.types.includes(t.id)
+                                ? f.types.filter((x) => x !== t.id)
+                                : [...f.types, t.id],
+                            }))}
+                          >{t.label}</button>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="filters-row2">
+                      <div className="filters-section">
+                        <p className="filters-label">Długość</p>
+                        <div className="filters-chips">
+                          {FILTER_DURATIONS.map((d) => (
+                            <button
+                              key={d.id}
+                              className={`filter-chip ${filters.duration === d.id ? 'active' : ''}`}
+                              onClick={() => setFilters((f) => ({ ...f, duration: d.id }))}
+                            >{d.label}</button>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div className="filters-section">
+                        <p className="filters-label">Era</p>
+                        <div className="filters-chips">
+                          {FILTER_ERAS.map((e) => (
+                            <button
+                              key={e.id}
+                              className={`filter-chip ${filters.era === e.id ? 'active' : ''}`}
+                              onClick={() => setFilters((f) => ({ ...f, era: e.id }))}
+                            >{e.label}</button>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="filters-actions">
+                      <button
+                        className="filters-apply"
+                        onClick={() => {
+                          setSearchResults([])
+                          setSearchTerm('')
+                          setCuratedTracksKey((k) => k + 1)
+                          setFiltersOpen(false)
+                        }}
+                      >Zastosuj i wyszukaj</button>
+                      <button
+                        className="filters-reset"
+                        onClick={() => setFilters(DEFAULT_FILTERS)}
+                      >Resetuj</button>
+                    </div>
+                  </div>
+                )}
+              </div>
+              <form className="search-panel" onSubmit={(e) => { setShowSuggestions(false); handleTrackSearch(e) }}>
+                <label htmlFor="search">Szukaj pojedynczych utworów</label>
+                <div className="search-row" style={{ position: 'relative' }}>
+                  <input
+                    id="search"
+                    value={searchTerm}
+                    onChange={(event) => { setSearchTerm(event.target.value); setShowSuggestions(true) }}
+                    onFocus={() => setShowSuggestions(true)}
+                    onBlur={() => setTimeout(() => setShowSuggestions(false), 150)}
+                    placeholder="np. Pezet Dom nad wodą, Quebonafide, J Cole"
+                    autoComplete="off"
+                  />
+                  <button type="submit" className="primary">Szukaj</button>
+                  {showSuggestions && suggestions.length > 0 && (
+                    <div className="search-suggestions">
+                      {suggestions.map((s) => (
+                        <button
+                          key={s.id}
+                          type="button"
+                          className="suggestion-item"
+                          onMouseDown={() => {
+                            setSearchTerm(s.title)
+                            setShowSuggestions(false)
+                          }}
+                        >
+                          <span className="suggestion-title">{s.title}</span>
+                          <span className="suggestion-author">{s.author}</span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </form>
+            </>
+          ) : (
+            <div className="radio-filters">
+              <div className="country-filter">
+                <label htmlFor="country-filter">Kraj stacji</label>
+                <select
+                  id="country-filter"
+                  value={countryFilter}
+                  onChange={(event) => setCountryFilter(event.target.value)}
+                >
+                  <option value="ALL">Wszystkie kraje</option>
+                  {countryOptions.map((option) => (
+                    <option key={option.code} value={option.code}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="radio-genre-filter">
+                <label>Gatunek</label>
+                <div className="radio-genre-chips">
+                  {RADIO_GENRES.map((g) => (
+                    <button
+                      key={g.id}
+                      className={radioTagFilter === g.id ? 'filter-chip active' : 'filter-chip'}
+                      onClick={() => setRadioTagFilter(g.id)}
+                    >
+                      {g.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+
+          <div className="library-header">
+            <div>
+              <p className="stage-label">Lista źródeł</p>
+              <h3>{mode === 'radio' ? 'Stacje' : 'Utwory'}</h3>
+            </div>
+            {mode === 'radio' ? (
+              <div className="station-search">
+                <input
+                  type="text"
+                  value={stationSearchTerm}
+                  onChange={(event) => setStationSearchTerm(event.target.value)}
+                  placeholder="Szukaj stacji..."
+                />
+              </div>
+            ) : null}
+          </div>
+
+          {trackError && mode === 'player' ? <p className="status-copy error">{trackError}</p> : null}
+
+          <div className="library-list">
+            {(mode === 'radio' ? radioLoading : trackLoading) && (mode === 'radio' ? filteredStations : visibleTracks).length === 0
+              ? Array.from({ length: 8 }, (_, i) => (
+                  <div key={i} className="library-item skeleton" style={{ animationDelay: `${i * 0.06}s`, opacity: 0, animation: `fadeIn 0.3s ease ${i * 0.06}s forwards` }}>
+                    <div className="skeleton-art" />
+                    <div className="skeleton-copy">
+                      <div className="skeleton-line wide" style={{ animationDelay: `${i * 0.06}s` }} />
+                      <div className="skeleton-line narrow" style={{ animationDelay: `${i * 0.06 + 0.1}s` }} />
+                    </div>
+                  </div>
+                ))
+              : null}
+            {libraryView === 'suggested' && mode === 'player' ? (
+              sessionSuggestions.length === 0 ? (
+                <div className="empty-state">Brak sugestii — goście mogą sugerować utwory przyciskiem przy każdym utworze.</div>
+              ) : sessionSuggestions.map((item) => (
+                <div key={item.key} className="library-item suggestion-item">
+                  <div className="item-art with-badge">
+                    <img
+                      src={safeArt(item.thumbnail, item.title, 'track')}
+                      alt=""
+                      onError={(event) => withFallbackArt(event, item.title, 'track')}
+                    />
+                    <span className="flag-badge small">YT</span>
+                  </div>
+                  <div className="item-copy">
+                    <strong>{item.title}</strong>
+                    <span>{item.author}</span>
+                  </div>
+                  {isHost && (
+                    <div className="suggestion-actions">
+                      <button
+                        className="suggestion-play-btn"
+                        title="Odtwórz i usuń sugestię"
+                        onClick={() => { selectTrack(item); removeSuggestion(item.key) }}
+                      >▶</button>
+                      <button
+                        className="suggestion-remove-btn"
+                        title="Usuń sugestię"
+                        onClick={() => removeSuggestion(item.key)}
+                      >✕</button>
+                    </div>
+                  )}
+                </div>
+              ))
+            ) : (mode === 'radio' ? filteredStations.slice(0, visibleStationCount) : visibleTracks).map((item) => {
+              const selected = mode === 'radio' ? currentStation?.id === item.id : currentTrack?.id === item.id
+              const flag = mode === 'radio' ? countryFlagEmoji(item.countryCode) : 'YT'
+              const art = mode === 'radio'
+                ? safeArt(item.favicon, item.name, 'radio')
+                : safeArt(item.thumbnail, item.title, 'track')
+              const canSuggest = inSession && mode === 'player'
+
+              return (
+                <div
+                  key={item.id}
+                  ref={selected && mode === 'player' ? activeTrackRef : null}
+                  className={`library-item${selected ? ' active' : ''}${canSuggest ? ' with-suggest' : ''}`}
+                  onClick={() => {
+                    if (mode === 'radio') {
+                      if (!checkPerm('canAdd')) return
+                      selectStation(item)
+                      if (inSession) notifyAction('stationChange', { id: item.id, name: item.name, url: item.url, country: item.country, countrycode: item.countrycode, favicon: item.favicon, tags: item.tags, codec: item.codec, bitrate: item.bitrate, lastSong: item.lastSong ?? '' })
+                      return
+                    }
+                    if (!checkPerm('canAdd')) return
+                    selectTrack(item, true, true)
+                  }}
+                  style={{ cursor: 'pointer' }}
+                >
+                  <div className="item-art with-badge">
+                    <img
+                      src={art}
+                      alt=""
+                      onError={(event) => withFallbackArt(event, mode === 'radio' ? item.name : item.title, mode === 'radio' ? 'radio' : 'track')}
+                    />
+                    <span className="flag-badge small">{flag}</span>
+                  </div>
+                  <div className="item-copy">
+                    <strong>{mode === 'radio' ? item.name : item.title}</strong>
+                    <span>
+                      {mode === 'radio'
+                        ? [item.country, item.codec, item.votes ? `${item.votes} głosów` : ''].filter(Boolean).join(' • ')
+                        : [item.author, item.duration].filter(Boolean).join(' • ')}
+                    </span>
+                  </div>
+                  {canSuggest && (
+                    <button
+                      className={`suggest-btn${suggestedIds.has(item.id) ? ' done' : ''}`}
+                      title={suggestedIds.has(item.id) ? 'Już zasugerowałeś' : 'Zasugeruj hostowi'}
+                      onClick={(e) => { e.stopPropagation(); if (!suggestedIds.has(item.id)) handleSuggest(item) }}
+                    >{suggestedIds.has(item.id) ? '✓' : '+'}</button>
+                  )}
+                </div>
+              )
+            })}
+
+            {mode === 'radio' && filteredStations.length > visibleStationCount && (
+              <div ref={stationListSentinelRef} style={{ height: 1 }} />
+            )}
+
+            {libraryView !== 'suggested' && (mode === 'radio' ? filteredStations : visibleTracks).length === 0 ? (
+              <div className="empty-state">
+                {libraryView === 'favorites'
+                  ? 'Brak ulubionych w tym trybie.'
+                  : mode === 'radio'
+                    ? stationSearchTerm.trim()
+                      ? 'Brak stacji dla wpisanej frazy.'
+                      : 'Brak stacji dla wybranego kraju.'
+                    : 'Brak utworów dla tej frazy.'}
+              </div>
+            ) : null}
+
+            {mode === 'player' && libraryView === 'all' && trackHistory.length > 0 ? (
+              <div className="previous-section">
+                <button
+                  className="history-toggle"
+                  onClick={() => setHistoryExpanded((v) => !v)}
+                >
+                  <span>Historia odtwarzania ({trackHistory.length})</span>
+                  <span className="history-chevron">{historyExpanded ? '▲' : '▼'}</span>
+                </button>
+                {historyExpanded && trackHistory.map((entry) => (
+                  <button
+                    key={`hist-${entry.track.id}-${entry.ts}`}
+                    className="library-item previous"
+                    onClick={() => { if (!checkPerm('canAdd')) return; selectTrack(entry.track, true, true) }}
+                  >
+                    <div className="item-art with-badge">
+                      <img
+                        src={safeArt(entry.track.thumbnail, entry.track.title, 'track')}
+                        alt=""
+                        onError={(event) => withFallbackArt(event, entry.track.title, 'track')}
+                      />
+                      <span className="flag-badge small">YT</span>
+                    </div>
+                    <div className="item-copy">
+                      <strong>{entry.track.title}</strong>
+                      <span>{[entry.track.author, entry.track.duration].filter(Boolean).join(' • ')}</span>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            ) : null}
+          </div>
+        </aside>
+      </section>
+
+      <footer className="bottom-player">
+        <div className="bottom-nowplaying">
+          <img
+            src={playerArt}
+            alt=""
+            onError={(event) => withFallbackArt(event, mode === 'radio' ? currentStation?.name : currentTrack?.title, mode)}
+          />
+          <div className="bottom-nowcopy">
+            <p className="bottom-label">Teraz odtwarzasz</p>
+            {shouldScrollTitle ? (
+              <div className="title-marquee compact">
+                <div className="title-track">
+                  <span>{currentTitle}</span>
+                  <span>{currentTitle}</span>
+                </div>
+              </div>
+            ) : (
+              <p className="title-single-text compact">{currentTitle}</p>
+            )}
+          </div>
+        </div>
+
+        <div className="bottom-center">
+          <div className="bottom-controls">
+            {mode === 'player' ? (
+              <button className="player-button ghost" onClick={() => handleTrackPrevious(isTrackPlaying)}>
+                Poprzednie
+              </button>
+            ) : null}
+
+            <button className="player-button ghost" onClick={handlePlayPause}>
+              {mode === 'radio'
+                ? isRadioPlaying
+                  ? 'Pause'
+                  : 'Play'
+                : isTrackPlaying
+                  ? 'Pause'
+                  : 'Play'}
+            </button>
+
+            {mode === 'radio' ? (
+              <button className="player-button primary" onClick={handleStationNext} disabled={inSession && !isHost && !myPermissions.canSkip}>Nastepne</button>
+            ) : (
+              <>
+                <button className="player-button primary" onClick={() => handleTrackNext(isTrackPlaying)}>
+                  {loadingMoreTracks ? 'Ladowanie...' : 'Dalej'}
+                </button>
+                <button className="player-button ghost" onClick={pickRandomTrack}>Losuj</button>
+              </>
+            )}
+          </div>
+
+          {mode === 'radio' ? (
+            <div className="live-progress" aria-label="Radio live">
+              <div className="live-progress-track">
+                <div className="live-progress-fill"></div>
+                <span className="live-progress-dot"></span>
+              </div>
+              <span className="live-pill">LIVE</span>
+            </div>
+          ) : (() => {
+            const dur = Math.max(trackDuration || currentTrack?.seconds || 0, 1)
+            const pct = Math.min(100, (Math.min(trackTime, dur) / dur) * 100).toFixed(3)
+            return (
+              <div className="bottom-track">
+                <span ref={seekTimeDisplayRef}>{formatSeconds(trackTime)}</span>
+                <div className={`track-slider-wrap${isSeeking ? ' seeking' : ''}`}>
+                  <div ref={seekFillRef} className="track-slider-fill" style={{ '--pct': `${pct}%` }} />
+                  <div ref={seekThumbRef} className="track-slider-thumb" style={{ '--pct': `${pct}%` }} />
+                  <input
+                    className="track-slider-input"
+                    type="range"
+                    min="0"
+                    max={dur}
+                    step="1"
+                    value={Math.min(trackTime, dur)}
+                    disabled={inSession && !isHost && !myPermissions.canPlay}
+                    onChange={handleSeekTrack}
+                    onMouseDown={() => { isSeekingRef.current = true; setIsSeeking(true) }}
+                    onMouseUp={handleSeekCommit}
+                    onTouchStart={() => { isSeekingRef.current = true; setIsSeeking(true) }}
+                    onTouchEnd={handleSeekCommit}
+                  />
+                </div>
+                <span>{formatSeconds(dur)}</span>
+              </div>
+            )
+          })()}
+        </div>
+
+        <div className="volume-control">
+          <button
+            className="volume-icon-btn"
+            onClick={() => setVolumePercent((v) => {
+              if (v === 0) return lastVolumeBeforeMuteRef.current
+              lastVolumeBeforeMuteRef.current = v
+              return 0
+            })}
+            aria-label={volumePercent === 0 ? 'Włącz dźwięk' : 'Wycisz'}
+            title={volumePercent === 0 ? 'Włącz dźwięk' : 'Wycisz'}
+          >
+            {volumePercent === 0 ? (
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M16.5 12A4.5 4.5 0 0 0 14 7.97v2.21l2.45 2.45c.03-.2.05-.41.05-.63zm2.5 0c0 .94-.2 1.82-.54 2.64l1.51 1.51A8.796 8.796 0 0 0 21 12c0-4.28-2.99-7.86-7-8.77v2.06c2.89.86 5 3.54 5 6.71zM4.27 3 3 4.27 7.73 9H3v6h4l5 5v-6.73l4.25 4.25c-.67.52-1.42.93-2.25 1.18v2.06A8.99 8.99 0 0 0 17.73 19L19 20.27 20.27 19 5.27 4 4.27 3zM12 4 9.91 6.09 12 8.18V4z"/></svg>
+            ) : volumePercent < 40 ? (
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M18.5 12A4.5 4.5 0 0 0 16 7.97v8.05c1.48-.73 2.5-2.25 2.5-4.02zM5 9v6h4l5 5V4L9 9H5z"/></svg>
+            ) : (
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3A4.5 4.5 0 0 0 14 7.97v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/></svg>
+            )}
+          </button>
+          <div className="volume-slider-wrap">
+            <div ref={volumeFillRef} className="volume-slider-fill" style={{ '--pct': `${volumePercent}%` }} />
+            <div ref={volumeThumbRef} className="volume-slider-thumb" style={{ '--pct': `${volumePercent}%` }} />
+            <input
+              className="volume-slider-input"
+              type="range"
+              min="0"
+              max="100"
+              step="1"
+              value={volumePercent}
+              onChange={handleVolumeChange}
+              onMouseUp={handleVolumeCommit}
+              onTouchEnd={handleVolumeCommit}
+            />
+          </div>
+          <span ref={volumeLabelRef} className="volume-label">{volumePercent}%</span>
+        </div>
+
+      </footer>
+
+      {sessionToast && (
+        <div className="session-toast">{sessionToast}</div>
+      )}
+
+      {sessionModalOpen && (
+        <div className="together-overlay" onClick={e => { if (e.target === e.currentTarget) setSessionModalOpen(false) }}>
+          <div className="together-modal">
+            <button className="together-modal-close" onClick={() => setSessionModalOpen(false)}>✕</button>
+            <h2>Słuchaj razem</h2>
+
+            {!inSession ? (
+              <>
+                <div className="together-nickname-row">
+                  <label className="together-nickname-label">Twój nick</label>
+                  <input
+                    className="together-nickname-input"
+                    placeholder="Wpisz swój nick..."
+                    value={myNickname}
+                    onChange={e => {
+                      setMyNickname(e.target.value)
+                      localStorage.setItem('together-nickname', e.target.value)
+                    }}
+                    maxLength={20}
+                  />
+                </div>
+
+                <button
+                  className="together-modal-create"
+                  onClick={createSession}
+                  disabled={togetherLoading}
+                >
+                  {togetherLoading ? 'Tworzenie...' : 'Utwórz sesję'}
+                </button>
+
+                <div className="together-divider">lub dołącz</div>
+
+                <div className="together-join-row">
+                  <input
+                    className="together-code-input"
+                    placeholder="Wpisz kod (np. XK7F2)"
+                    value={joinCodeInput}
+                    onChange={e => setJoinCodeInput(e.target.value.toUpperCase())}
+                    onKeyDown={e => e.key === 'Enter' && joinSession(joinCodeInput)}
+                    maxLength={6}
+                  />
+                  <button
+                    className="together-join-btn"
+                    onClick={() => joinSession(joinCodeInput)}
+                    disabled={togetherLoading || joinCodeInput.length < 4}
+                  >
+                    {togetherLoading ? 'Dołączanie...' : 'Dołącz'}
+                  </button>
+                </div>
+
+                {togetherError && <p className="together-error">{togetherError}</p>}
+              </>
+            ) : (
+              <>
+                <div className="together-session-info">
+                  {isHost ? (
+                    <>
+                      <p className="together-label">Twój kod sesji</p>
+                      <div className="together-code-display">
+                        {sessionCode}
+                      </div>
+                      <button
+                        className={`together-copy-btn${codeCopied ? ' copied' : ''}`}
+                        onClick={handleCopyCode}
+                        title={codeCopied ? 'Skopiowano!' : 'Kopiuj kod'}
+                      >
+                        {codeCopied
+                          ? <><svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg> Skopiowano!</>
+                          : <><svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg> Kopiuj</>
+                        }
+                      </button>
+                      <p className="together-listeners">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/></svg>
+                        {listenerCount} {listenerCount === 1 ? 'osoba słucha' : 'osoby słuchają'}
+                      </p>
+
+                      {sessionListeners.length > 0 && (
+                        <div className="together-listeners-list">
+                          <p className="together-perm-header">Uprawnienia słuchaczy</p>
+                          {sessionListeners.map(l => (
+                            <div key={l.key} className="together-listener-row">
+                              <span className="together-listener-nick">{l.nickname}</span>
+                              <div className="together-perm-toggles">
+                                {[
+                                  { key: 'canPlay', label: '▶ graj' },
+                                  { key: 'canSkip', label: '⏭ skip' },
+                                  { key: 'canAdd', label: '＋ dodaj' },
+                                ].map(({ key, label }) => (
+                                  <button
+                                    key={key}
+                                    className={`together-perm-btn ${l[key] ? 'active' : ''}`}
+                                    onClick={() => updatePermission(l.key, key, !l[key])}
+                                  >
+                                    {label}
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </>
+                  ) : (
+                    <>
+                      <p className="together-label">Połączono z sesją</p>
+                      <div className="together-code-display">{sessionCode}</div>
+                      <p className="together-listeners">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/></svg>
+                        {listenerCount} {listenerCount === 1 ? 'osoba słucha' : 'osoby słuchają'}
+                      </p>
+                      <div className="together-my-perms">
+                        <p className="together-perm-header">Twoje uprawnienia</p>
+                        <div className="together-perm-status-row">
+                          <span className={`together-perm-status ${myPermissions.canPlay ? 'on' : 'off'}`}>▶ Graj</span>
+                          <span className={`together-perm-status ${myPermissions.canSkip ? 'on' : 'off'}`}>⏭ Skip</span>
+                          <span className={`together-perm-status ${myPermissions.canAdd ? 'on' : 'off'}`}>＋ Dodaj</span>
+                        </div>
+                      </div>
+                    </>
+                  )}
+                </div>
+                <button className="together-leave-btn" onClick={leaveSession}>
+                  {isHost ? 'Zakończ sesję' : 'Opuść sesję'}
+                </button>
+              </>
+            )}
+          </div>
+        </div>
+      )}
+    </main>
+
+    {updateInfo?.hasUpdate && (
+      <UpdateModal
+        updateInfo={updateInfo}
+        onDismiss={() => setUpdateInfo(null)}
+      />
+    )}
+
+    {appVersion && (
+      <span className="app-version-badge">v{appVersion}</span>
+    )}
+    </>
+  )
+}
+
+export default App

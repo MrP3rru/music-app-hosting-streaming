@@ -1,0 +1,74 @@
+{
+  "name": "music-app",
+  "private": true,
+  "version": "1.6.5",
+  "main": "electron/main.cjs",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "dev:desktop": "concurrently -k \"npm:dev\" \"npm:electron\"",
+    "electron": "wait-on tcp:5173 && electron electron/main.cjs",
+    "build:icon": "node scripts/generate-installer-icon.mjs",
+    "build": "vite build",
+    "build:desktop": "npm run build:icon && npm run build && node copy-icon.cjs && electron-builder --win nsis",
+    "build:desktop:portable": "npm run build:icon && npm run build && node copy-icon.cjs && electron-builder --win portable",
+    "lint": "eslint .",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@distube/ytdl-core": "^4.16.12",
+    "audiomotion-analyzer": "^4.5.4",
+    "concurrently": "^9.2.1",
+    "discord-rpc": "^4.0.1",
+    "firebase": "^12.10.0",
+    "react": "^19.2.4",
+    "react-dom": "^19.2.4",
+    "react-player": "^3.4.0",
+    "wait-on": "^9.0.4",
+    "yt-search": "^2.13.1"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.39.4",
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^6.0.0",
+    "electron": "^41.0.0",
+    "electron-builder": "^26.8.1",
+    "eslint": "^9.39.4",
+    "eslint-plugin-react-hooks": "^7.0.1",
+    "eslint-plugin-react-refresh": "^0.5.2",
+    "globals": "^17.4.0",
+    "png-to-ico": "^3.0.1",
+    "vite": "^8.0.0"
+  },
+  "build": {
+    "appId": "com.mateu.musicapp",
+    "productName": "Music App",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "dist/**/*",
+      "electron/**/*",
+      "package.json",
+      "node_modules/**/*"
+    ],
+    "win": {
+      "icon": "public/branding/appicon.ico",
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true
+    }
+  }
+}
