@@ -1,16 +1,80 @@
 {
   "version": "1.6.7",
-  "changelog": "Pierwsza wersja z systemem automatycznych aktualizacji",
+  "changelog": "Poprawki badge wersji i historia wersji",
   "history": [
     {
       "version": "1.6.7",
-      "date": "2026-03-18",
+      "date": "2026-04-18",
       "changes": [
-        "System automatycznych aktualizacji",
-        "Badge wersji w prawym dolnym rogu",
-        "Historia wersji w wyskakującym okienku",
+        "System automatycznych aktualizacji przez GitHub",
+        "Badge wersji w prawym dolnym rogu z historią zmian",
         "Naprawiono synchronizację stacji radiowej w sesjach",
-        "Skrypt push.bat do wysyłania zmian na GitHub."
+        "Skrypt push.bat do szybkiego wysyłania zmian na GitHub"
+      ]
+    },
+    {
+      "version": "1.6.0",
+      "date": "2026-04-17",
+      "changes": [
+        "Tryb słuchania razem (Listen Together) — sesje w czasie rzeczywistym",
+        "Host może zapraszać gości i kontrolować odtwarzanie",
+        "Synchronizacja stacji, utworów i pauzy między uczestnikami",
+        "Powiadomienia o dołączeniu i opuszczeniu sesji"
+      ]
+    },
+    {
+      "version": "1.5.0",
+      "date": "2026-04-16",
+      "changes": [
+        "Wizualizator audio z wieloma presetami (bars, wave, mirror...)",
+        "Animowana obwódka ElectricBorder reagująca na muzykę",
+        "Możliwość zmiany presetów wizualizatora w trakcie odtwarzania"
+      ]
+    },
+    {
+      "version": "1.4.0",
+      "date": "2026-04-15",
+      "changes": [
+        "Dodano ulubione — zapisywanie stacji radiowych i utworów",
+        "Widok biblioteki z zakładkami: wszystkie / ulubione",
+        "Miniatury ulubionych generowane dynamicznie z kolorami gatunku"
+      ]
+    },
+    {
+      "version": "1.3.0",
+      "date": "2026-04-14",
+      "changes": [
+        "Dodano player YouTube — wyszukiwanie i odtwarzanie teledysków",
+        "Przełączanie między trybem radia a trybem YouTube",
+        "Historia odtwarzanych utworów YouTube"
+      ]
+    },
+    {
+      "version": "1.2.0",
+      "date": "2026-04-13",
+      "changes": [
+        "Filtrowanie stacji radiowych po gatunku muzycznym",
+        "Obsługa gatunków: Hip-Hop PL, Rap USA, Trap, Disco Polo, Reggae, Jazz i inne",
+        "Wyświetlanie aktualnie granego utworu ze stacji (metadane ICY)"
+      ]
+    },
+    {
+      "version": "1.1.0",
+      "date": "2026-04-12",
+      "changes": [
+        "Splash screen przy starcie aplikacji",
+        "Poprawki stylów — ciemny motyw, nowe kolory akcentów",
+        "Kontrola głośności z animowanym suwakiem",
+        "Buforowanie listy stacji radiowych"
+      ]
+    },
+    {
+      "version": "1.0.0",
+      "date": "2026-04-11",
+      "changes": [
+        "Pierwsza wersja aplikacji",
+        "Odtwarzacz radia internetowego z wyszukiwarką stacji",
+        "Aplikacja desktopowa oparta na Electron + React"
       ]
     }
   ]
