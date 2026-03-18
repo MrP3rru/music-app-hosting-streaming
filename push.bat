@@ -11,7 +11,7 @@ if "%MSG%"=="" set MSG=aktualizacja
 
 git add .
 git commit -m "%MSG%"
-git push
+git push --set-upstream origin main
 
 echo.
 if errorlevel 1 (
