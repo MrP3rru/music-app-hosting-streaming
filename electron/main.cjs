@@ -306,11 +306,6 @@ function makeThumbIcons() {
 }
 
 const isDev = !app.isPackaged
-const radioApiBases = [
-  'https://de1.api.radio-browser.info',
-  'https://fr1.api.radio-browser.info',
-  'https://nl1.api.radio-browser.info',
-]
 
 app.commandLine.appendSwitch('disk-cache-dir', path.join(os.tmpdir(), 'hiphop-player-cache'))
 
@@ -506,42 +501,7 @@ async function readNowPlayingFromIcyStream(streamUrl, options = {}) {
   }
 }
 
-async function readNowPlayingFromRadioBrowser(stationId) {
-  const safeId = String(stationId || '').trim()
 
-  if (!safeId) {
-    return ''
-  }
-
-  for (const base of radioApiBases) {
-    try {
-      const endpoint = `${base}/json/stations/byuuid/${encodeURIComponent(safeId)}`
-      const response = await fetch(endpoint, {
-        method: 'GET',
-        redirect: 'follow',
-        headers: {
-          'User-Agent': 'HipHop-Desktop-Player/1.0',
-        },
-      })
-
-      if (!response.ok) {
-        continue
-      }
-
-      const payload = await response.json()
-      const station = Array.isArray(payload) ? payload[0] : null
-      const song = String(station?.lastsong || '').replace(/\s+/g, ' ').trim()
-
-      if (song) {
-        return song
-      }
-    } catch {
-      // Try next mirror.
-    }
-  }
-
-  return ''
-}
 
 // ─── Discord Rich Presence ──────────────────────────────────────────────────
 ipcMain.handle('discord:update-presence', (_event, data) => {
@@ -755,17 +715,8 @@ ipcMain.handle('updater:restart', () => {
 
 ipcMain.handle('radio:now-playing', async (_event, payload) => {
   const targetUrl = String(payload?.streamUrl || '').trim()
-  const stationId = String(payload?.stationId || '').trim()
 
-  const fromApi = await readNowPlayingFromRadioBrowser(stationId)
-
-  if (fromApi) {
-    return fromApi
-  }
-
-  if (!/^https?:\/\//i.test(targetUrl)) {
-    return ''
-  }
+  if (!/^https?:\/\//i.test(targetUrl)) return ''
 
   return readNowPlayingFromIcyStream(targetUrl)
 })

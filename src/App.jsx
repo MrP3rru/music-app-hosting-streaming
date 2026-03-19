@@ -755,6 +755,7 @@ function App() {
   const [isTrackReady, setIsTrackReady] = useState(false)
   const [resolvedTrackUrl, setResolvedTrackUrl] = useState(null)
   const [radioNowPlaying, setRadioNowPlaying] = useState('')
+  const [radioNowPlayingAt, setRadioNowPlayingAt] = useState(null)
   const [radioPlayHistory, setRadioPlayHistory] = useState([])
   const prevRadioNowPlayingRef = useRef('')
   const [trackDuration, setTrackDuration] = useState(0)
@@ -1160,6 +1161,30 @@ function App() {
   const activeItem = mode === 'radio' ? currentStation : currentTrack
   const currentRadioStreamEntry = stationStreams[stationStreamIndex] || null
   const currentRadioStreamUrl = currentRadioStreamEntry?.url || currentStation?.url || ''
+
+  // ─── Ping do stacji radiowej ──────────────────────────────────────────────
+  const [pingMs, setPingMs] = useState(null)
+  useEffect(() => {
+    if (mode !== 'radio' || !currentRadioStreamUrl) { setPingMs(null); return }
+    let cancelled = false
+    async function doPing() {
+      const url = currentRadioStreamUrl
+      const t0 = performance.now()
+      try {
+        const ctrl = new AbortController()
+        const timeout = setTimeout(() => ctrl.abort(), 5000)
+        await fetch(url, { method: 'HEAD', signal: ctrl.signal, cache: 'no-store' })
+        clearTimeout(timeout)
+        if (!cancelled) setPingMs(Math.round(performance.now() - t0))
+      } catch {
+        if (!cancelled) setPingMs(-1)
+      }
+    }
+    doPing()
+    const interval = setInterval(doPing, 10000)
+    return () => { cancelled = true; clearInterval(interval) }
+  }, [mode, currentRadioStreamUrl])
+
   const effectiveVolume = useMemo(() => toEffectiveVolume(volumePercent, 'log'), [volumePercent])
   const favoriteKey = activeItem ? `${mode}:${activeItem.id}` : ''
   const isFavorite = favoriteKey ? favorites.some((entry) => entry.key === favoriteKey) : false
@@ -1631,10 +1656,14 @@ function App() {
         }
 
         const nextTitle = String(title || '').trim()
+        if (nextTitle !== prevRadioNowPlayingRef.current) {
+          setRadioNowPlayingAt(nextTitle ? new Date() : null)
+        }
         setRadioNowPlaying(nextTitle)
       } catch {
         if (!disposed) {
           setRadioNowPlaying('')
+          setRadioNowPlayingAt(null)
         }
       }
 
@@ -1646,6 +1675,7 @@ function App() {
     setRadioPlayHistory([])
     prevRadioNowPlayingRef.current = ''
     setRadioNowPlaying('')
+    setRadioNowPlayingAt(null)
     pullNowPlaying()
 
     return () => {
@@ -2371,7 +2401,16 @@ function App() {
                 {mode === 'radio' && currentStation && (
                   <div className="radio-track-timeline">
                     <p className="stage-nowplaying">
-                      {radioNowPlaying ? `Teraz gra: ${radioNowPlaying}` : 'Teraz gra: brak metadanych od stacji'}
+                      {radioNowPlaying ? (
+                        <>
+                          Teraz gra: {radioNowPlaying}
+                          {radioNowPlayingAt && (
+                            <span className="nowplaying-time">
+                              ({radioNowPlayingAt.toLocaleTimeString('pl-PL', { hour: '2-digit', minute: '2-digit' })})
+                            </span>
+                          )}
+                        </>
+                      ) : 'Teraz gra: brak metadanych od stacji'}
                     </p>
                     {radioPlayHistory.length > 0 && (
                       <p className="radio-track-prev">
@@ -2973,12 +3012,12 @@ function App() {
           </div>
 
           {mode === 'radio' ? (
-            <div className="live-progress" aria-label="Radio live">
+            <div className={`live-progress${isRadioPlaying ? ' playing' : ' paused'}`} aria-label="Radio live">
               <div className="live-progress-track">
                 <div className="live-progress-fill"></div>
                 <span className="live-progress-dot"></span>
               </div>
-              <span className="live-pill">LIVE</span>
+              <span className="live-pill">{isRadioPlaying ? 'LIVE' : 'STOP'}</span>
             </div>
           ) : (() => {
             const dur = Math.max(trackDuration || currentTrack?.seconds || 0, 1)
@@ -3200,6 +3239,20 @@ function App() {
         v{appVersion}
       </button>
     )}
+
+    {mode === 'radio' && pingMs !== null && (
+      <div className={`ping-badge-inline ${isRadioVisualLoading ? 'ping-loading' : !isRadioPlaying ? 'ping-paused' : pingMs < 0 ? 'ping-off' : pingMs < 100 ? 'ping-good' : pingMs < 300 ? 'ping-ok' : 'ping-bad'}`}>
+        <span className="ping-dot" />
+        {isRadioVisualLoading ? (
+          <span className="ping-dots"><span /><span /><span /></span>
+        ) : !isRadioPlaying ? (
+          <span className="ping-label">⏾ OFF</span>
+        ) : (
+          <span className="ping-label">{pingMs < 0 ? '×' : `${pingMs} ms`}</span>
+        )}
+      </div>
+    )}
+
     </>
   )
 }

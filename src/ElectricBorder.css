@@ -48,10 +48,10 @@
 
 .eb-glow-1 {
   border: none;
-  outline: 1.5px solid rgba(255, 115, 1, 0.85);
+  outline: 1.5px solid rgba(184, 184, 184, 0.85);
   outline-offset: 0px;
   border-radius: inherit;
-  filter: blur(2px);}
+  filter: blur(1.4px);}
 
 .eb-glow-2 {
   display: none;

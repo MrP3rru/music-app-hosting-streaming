@@ -1,7 +1,14 @@
 {
-  "version": "1.6.15",
+  "version": "1.6.16",
   "changelog": "Poprawki badge wersji i historia wersji",
   "history": [
+    {
+      "version": "1.6.16",
+      "date": "2026-03-19",
+      "changes": [
+        "Dodano badge z pingiem stacji radiowej, poprawiono bedy ze stacjami radiowymi, poprawiono wygląd i styl UI, FIX błędów ze zmianą stacji radiowej."
+      ]
+    },
     {
       "version": "1.6.15",
       "date": "2026-03-19",
