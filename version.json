@@ -1,7 +1,14 @@
 {
-  "version": "1.6.19",
+  "version": "1.6.20",
   "changelog": "Poprawki badge wersji i historia wersji",
   "history": [
+    {
+      "version": "1.6.20",
+      "date": "2026-03-20",
+      "changes": [
+        "Nowe funkcje:Chat: klikalne linki w wiadomościach + podgląd miniaturki YouTube,Player: wklejenie linku YouTube/Shorts do wyszukiwarki ładuje konkretne wideo — działa też dla live streamów Fix Chat nie pokazuje już elementów kolejki ani szkieletów ładowania,Przełączenie na zakładkę Chat nie powoduje już skoku layoutu (płynne zwijanie filtrów),Elementy kolejki mają teraz taki sam rozmiar jak zwykłe elementy biblioteki,Naprawiono układ chatu (flex-direction: column) — wiadomości wypełniają całą przestrzeń poprawnie,Odznaka nieprzeczytanych wiadomości nie resetuje się już fałszywie przy przełączaniu Radio↔Player,Dodano Chat i uprawnienia dla moderatorów,Dodano komendy na chat."
+      ]
+    },
     {
       "version": "1.6.19",
       "date": "2026-03-20",
