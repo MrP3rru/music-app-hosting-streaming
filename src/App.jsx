@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import ReactPlayer from 'react-player'
 import AudioMotionAnalyzer from 'audiomotion-analyzer'
 import ElectricBorder from './ElectricBorder'
@@ -6,6 +7,11 @@ import { useListenTogether } from './useListenTogether'
 import { soundJoin, soundLeave, soundPermission, soundSessionEnd, soundSwitchRadio, soundSwitchPlayer, soundStartup, soundStop, soundCreateSession, soundChatMsg, setUiVolume } from './sounds'
 import UpdateModal from './UpdateModal'
 import VersionPopup from './VersionPopup'
+import { ref, onValue } from 'firebase/database'
+import { db } from './firebase'
+import { GameLobby } from './GameLobby'
+import { MonopolyGame } from './MonopolyGame'
+import { LyricsOverlay } from './LyricsOverlay'
 import './App.css'
 
 const genres = [
@@ -639,6 +645,13 @@ function extractYoutubeId(url) {
   } catch { return null }
 }
 
+function extractYoutubePlaylistId(url) {
+  try {
+    const m = url.match(/[?&]list=([a-zA-Z0-9_-]+)/)
+    return m ? m[1] : null
+  } catch { return null }
+}
+
 function renderChatText(text) {
   if (!text) return null
   const parts = text.split(/(https?:\/\/[^\s]+)/g)
@@ -730,6 +743,18 @@ const CHAT_COMMANDS = [
 ]
 
 function App() {
+  const ZOOM_LEVELS = Array.from({ length: 31 }, (_, i) => Math.round((0.70 + i * 0.02) * 100) / 100)
+  const ZOOM_LABELS = ZOOM_LEVELS.map(f => `${Math.round(f * 100)}%`)
+  const ZOOM_NAMES  = ZOOM_LEVELS.map((f, i) => {
+    const pct = Math.round(f * 100)
+    const w   = Math.round(1460 * f)
+    const h   = Math.round(940  * f)
+    return i === 16 ? `102% — Normalne (${w} × ${h})` : `${pct}% — ${w} × ${h}`
+  })
+  const [zoomIdx, setZoomIdx] = useState(16)
+  const [pendingZoom, setPendingZoom] = useState(null) // wybrany ale nie zapisany
+  const [showSizePanel, setShowSizePanel] = useState(false)
+
   const [appVersion, setAppVersion] = useState('')
   const [versionHistory, setVersionHistory] = useState([])
   const [versionPopupOpen, setVersionPopupOpen] = useState(false)
@@ -793,6 +818,8 @@ function App() {
   const [stationSearchTerm, setStationSearchTerm] = useState(() => localStorage.getItem('hiphop-player-stationsearch') || '')
   const [visibleStationCount, setVisibleStationCount] = useState(40)
   const stationListSentinelRef = useRef(null)
+  const [visibleTrackCount, setVisibleTrackCount] = useState(40)
+  const trackListSentinelRef = useRef(null)
   const [filters, setFilters] = useState(loadSavedFilters)
   const [filtersOpen, setFiltersOpen] = useState(false)
   const [curatedTracksKey, setCuratedTracksKey] = useState(0)
@@ -837,6 +864,18 @@ function App() {
   const [codeCopied, setCodeCopied] = useState(false)
   const codeCopiedTimerRef = useRef(null)
   const [suggestedIds, setSuggestedIds] = useState(new Set())
+  const [similarItems, setSimilarItems] = useState([])
+  const [similarLoading, setSimilarLoading] = useState(false)
+  const [refreshSimilarTrigger, setRefreshSimilarTrigger] = useState(0)
+  const lastSimilarQueueLengthRef = useRef(0)
+  const [gameLobbyOpen, setGameLobbyOpen] = useState(false)
+  const [gameState, setGameState] = useState('waiting') // 'waiting' | 'playing'
+  const [lyricsVisible, setLyricsVisible] = useState(false)
+  const [lyricsOffset,  setLyricsOffset]  = useState(0)
+  const [monopolyOpen, setMonopolyOpen] = useState(false)
+  const [monopolyPlayers, setMonopolyPlayers] = useState([])
+  const [monopolyDuration, setMonopolyDuration] = useState(7200)
+  const monopolyAutoOpenedRef = useRef(false)
 
   // Refs do bezpośrednich aktualizacji DOM podczas przeciągania (bez re-renderu)
   const volumeFillRef = useRef(null)
@@ -855,6 +894,8 @@ function App() {
   const [historyExpanded, setHistoryExpanded] = useState(false)
   const [suggestions, setSuggestions] = useState([])
   const [showSuggestions, setShowSuggestions] = useState(false)
+  const [localQueue, setLocalQueue] = useState([])
+  const localQueueRef = useRef([])
   const activeTrackRef = useRef(null)
   const preloadedForRef = useRef(null)
   const [activeTrackQuery, setActiveTrackQuery] = useState('')
@@ -930,6 +971,7 @@ function App() {
       overlay: true,
       bgAlpha: 0,
       connectSpeakers: false,
+      maxFreq: 16000,
     })
 
     audioMotion.registerGradient('app', {
@@ -972,8 +1014,8 @@ function App() {
     let raf
 
     const draw = () => {
-      const w = canvas.width
-      const h = canvas.height
+      const w = canvas.offsetWidth
+      const h = canvas.offsetHeight
       ctx.clearRect(0, 0, w, h)
 
       const raw = electricEnergyRef.current || 0
@@ -1002,9 +1044,10 @@ function App() {
     }
 
     const resize = () => {
-      canvas.width = canvas.offsetWidth * devicePixelRatio
-      canvas.height = canvas.offsetHeight * devicePixelRatio
-      ctx.scale(devicePixelRatio, devicePixelRatio)
+      const dpr = devicePixelRatio
+      canvas.width = canvas.offsetWidth * dpr
+      canvas.height = canvas.offsetHeight * dpr
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
     }
 
     resize()
@@ -1033,6 +1076,28 @@ function App() {
     window.playerBridge.onThumbarPrev(() => thumbarActionsRef.current.prev?.())
     window.playerBridge.onThumbarNext(() => thumbarActionsRef.current.next?.())
     window.playerBridge.onThumbarTogglePlay(() => thumbarActionsRef.current.togglePlay?.())
+    // Tryb tła — wyłącz ciężkie animacje CSS gdy okno nie jest aktywne
+    window.playerBridge.onAppBackground?.((isBackground) => {
+      document.documentElement.classList.toggle('app-background', isBackground)
+    })
+  }, [])
+
+  // ─── Zoom — sync z main + blokada Ctrl+/-/0 ─────────────────────────────
+  useEffect(() => {
+    window.playerBridge?.onZoomIdx?.((idx) => {
+      setZoomIdx(idx)
+      setPendingZoom(null)
+    })
+    function blockZoomKeys(e) {
+      if (!e.ctrlKey) return
+      if (['Equal','Minus','Digit0','NumpadAdd','NumpadSubtract','Numpad0'].includes(e.code) ||
+          ['+','-','0','='].includes(e.key)) {
+        e.preventDefault()
+        e.stopPropagation()
+      }
+    }
+    window.addEventListener('keydown', blockZoomKeys, { capture: true })
+    return () => window.removeEventListener('keydown', blockZoomKeys, { capture: true })
   }, [])
 
   // ─── Thumbar — aktualizuj ikonę play/pause ────────────────────────────────
@@ -1222,6 +1287,21 @@ function App() {
     () => applyFilters(libraryView === 'favorites' ? trackFavorites : allTracks, filters),
     [allTracks, libraryView, trackFavorites, filters],
   )
+
+  // Reset licznika gdy zmienia się lista / filtry
+  useEffect(() => { setVisibleTrackCount(40) }, [allTracks, filters, libraryView])
+
+  // IntersectionObserver — dokładaj 40 tracków gdy sentinel wchodzi w viewport
+  useEffect(() => {
+    const sentinel = trackListSentinelRef.current
+    if (!sentinel) return
+    const observer = new IntersectionObserver(
+      (entries) => { if (entries[0].isIntersecting) setVisibleTrackCount((n) => n + 40) },
+      { threshold: 0.1 },
+    )
+    observer.observe(sentinel)
+    return () => observer.disconnect()
+  }, [visibleTracks.length])
 
   const activeItem = mode === 'radio' ? currentStation : currentTrack
   const currentRadioStreamEntry = stationStreams[stationStreamIndex] || null
@@ -1858,7 +1938,7 @@ function App() {
   }
 
   function handleSuggest(item) {
-    suggestTrack(item)
+    addToQueue(item)
     setSuggestedIds(prev => new Set(prev).add(item.id))
     showSessionToast(`Zasugerowano: ${item.title}`)
   }
@@ -1878,6 +1958,7 @@ function App() {
       return
     }
     setMode(nextMode)
+    if (nextMode === 'radio') setLyricsVisible(false)
     localStorage.setItem('hiphop-player-mode', nextMode)
     setLibraryView('all')
     setStationSearchTerm('')
@@ -1905,6 +1986,27 @@ function App() {
 
     setTrackLoading(true)
     setTrackError('')
+
+    // Wykryj link do playlisty YouTube — załaduj wszystkie utwory
+    const plId = extractYoutubePlaylistId(searchTerm.trim())
+    if (plId && window.playerBridge.getPlaylist) {
+      try {
+        const tracks = await window.playerBridge.getPlaylist(plId)
+        if (tracks && tracks.length > 0) {
+          const filtered = filterPlayableTracks(tracks)
+          setSearchResults(filtered)
+          setActiveTrackQuery(`Playlista (${filtered.length} utworów)`)
+          selectTrack(filtered[0], true, false)
+        } else {
+          setTrackError('Nie znaleziono utworów w tej playliście (może być prywatna).')
+        }
+      } catch {
+        setTrackError('Nie udało się załadować playlisty.')
+      } finally {
+        setTrackLoading(false)
+      }
+      return
+    }
 
     // Wykryj link YouTube — załaduj konkretne wideo (działa też dla live)
     const ytId = extractYoutubeId(searchTerm.trim())
@@ -2132,9 +2234,15 @@ function App() {
     if (!checkPerm('canSkip')) return
 
     // Kolejka sugestii — host (lub poza sesją) gra sugerowane w pierwszej kolejności
-    if (sessionSuggestions.length > 0 && (isHost || !inSession)) {
-      const next = sessionSuggestions[0]
-      removeSuggestion(next.key)
+    const currentQueue = inSession ? sessionSuggestions : localQueueRef.current
+    if (currentQueue.length > 0 && (isHost || !inSession)) {
+      const next = currentQueue[0]
+      if (inSession) {
+        removeSuggestion(next.key)
+      } else {
+        localQueueRef.current = localQueueRef.current.slice(1)
+        setLocalQueue(localQueueRef.current)
+      }
       selectTrack(next, autoplay, true)
       return
     }
@@ -2296,12 +2404,13 @@ function App() {
   } = useListenTogether({
     mode,
     currentStation,
+    isRadioPlaying,
     currentTrack,
     trackTimeRef,
     isTrackPlaying,
     nickname: myNickname,
     onRemoteStationChange: (stationData) => {
-      if (!stationData?.id || stationData.id === currentStation?.id) return
+      if (!stationData?.id) return
       selectStation(stationData)
     },
     onRemoteTrackChange: (trackData) => {
@@ -2357,9 +2466,93 @@ function App() {
     if (!inSession) {
       setSuggestedIds(new Set())
       setChatUnread(0)
-      setLibraryView((v) => (v === 'chat' || v === 'suggested') ? 'all' : v)
+      setLibraryView((v) => (v === 'chat') ? 'all' : v)
     }
   }, [inSession])
+
+  // Kolejka: w sesji używamy Firebase (sessionSuggestions), poza sesją — lokalną
+  const activeQueue = inSession ? sessionSuggestions : localQueue
+  localQueueRef.current = localQueue
+
+  function addToQueue(item) {
+    if (inSession) {
+      suggestTrack(item)
+    } else {
+      const entry = { ...item, key: `local-${Date.now()}-${Math.random()}` }
+      localQueueRef.current = [...localQueueRef.current, entry]
+      setLocalQueue(localQueueRef.current)
+    }
+  }
+
+  function removeFromQueue(key) {
+    if (inSession) {
+      removeSuggestion(key)
+    } else {
+      localQueueRef.current = localQueueRef.current.filter((i) => i.key !== key)
+      setLocalQueue(localQueueRef.current)
+    }
+  }
+
+  function shiftQueue() {
+    if (inSession) {
+      if (sessionSuggestions.length > 0) removeSuggestion(sessionSuggestions[0].key)
+    } else {
+      localQueueRef.current = localQueueRef.current.slice(1)
+      setLocalQueue(localQueueRef.current)
+    }
+  }
+
+  // Monopoly: auto-otwórz dla klienta gdy host zacznie grę
+  const monopolyEndedRef = useRef(false)
+  useEffect(() => {
+    if (!sessionCode) {
+      monopolyAutoOpenedRef.current = false
+      monopolyEndedRef.current = false
+      return
+    }
+    monopolyEndedRef.current = false
+    const gRef = ref(db, `sessions/${sessionCode}/monopoly`)
+    const unsub = onValue(gRef, (snap) => {
+      const data = snap.val()
+      // Auto-open for color_pick AND playing — once per session
+      const shouldOpen = (data?.state === 'color_pick' || data?.state === 'playing') && !monopolyEndedRef.current
+      if (shouldOpen && !monopolyAutoOpenedRef.current) {
+        monopolyAutoOpenedRef.current = true
+        const players = data.playerOrder || []
+        setMonopolyPlayers(players)
+        setGameState(data.state === 'playing' ? 'playing' : 'waiting')
+        setMonopolyOpen(true)
+      }
+      // If already open and state transitions to playing, update local gameState
+      if (data?.state === 'playing' && monopolyAutoOpenedRef.current) {
+        setGameState('playing')
+      }
+      if (data?.state === 'ended' && !monopolyEndedRef.current) {
+        monopolyEndedRef.current = true  // prevent any further auto-open
+        // Auto-close after 6s, then remove the Firebase node (host only handled inside game)
+        setTimeout(() => {
+          setMonopolyOpen(false)
+          setGameState('waiting')
+          monopolyAutoOpenedRef.current = false
+        }, 6000)
+      }
+      if (!data) {
+        monopolyAutoOpenedRef.current = false
+        monopolyEndedRef.current = false
+        setGameState('waiting')
+      }
+    })
+    return () => unsub()
+  }, [sessionCode]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Podobne: odśwież gdy kolejka urośnie o 3 elementy
+  useEffect(() => {
+    if (activeQueue.length === 0) return
+    if (activeQueue.length - lastSimilarQueueLengthRef.current >= 3) {
+      lastSimilarQueueLengthRef.current = activeQueue.length
+      setRefreshSimilarTrigger((n) => n + 1)
+    }
+  }, [activeQueue.length])
 
   // System messages dla dołączenia/wyjścia słuchaczy (tylko host wysyła)
   const prevListenersRef = useRef([])
@@ -2425,6 +2618,62 @@ function App() {
       setTimeout(() => chatEndRef.current?.scrollIntoView({ behavior: 'instant' }), 50)
     }
   }, [libraryView]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Zakładka Podobne — ładuj rekomendacje lokalnie
+  // Odświeża się tylko przy: kliknięciu zakładki LUB gdy kolejka urośnie o 3 (refreshSimilarTrigger)
+  useEffect(() => {
+    if (libraryView !== 'similar') return
+    let cancelled = false
+    setSimilarLoading(true)
+    async function load() {
+      try {
+        if (mode === 'player') {
+          const queue = localQueueRef.current
+          const track = currentTrack
+          // Bazuj na kolejce jeśli ma elementy, inaczej na aktualnym utworze
+          const sourceItems = queue.length > 0 ? queue : (track ? [track] : [])
+          if (sourceItems.length === 0) { if (!cancelled) setSimilarLoading(false); return }
+          const queueIds = new Set(queue.map((i) => i.id))
+          const allAuthors = [...new Set(sourceItems.map((i) => i.author).filter(Boolean))].slice(0, 3)
+          const queries = [
+            ...allAuthors.map((a) => `${a} best songs`),
+            allAuthors[0] ? `artists like ${allAuthors[0]}` : null,
+            track?.title ? `${track.title} similar` : null,
+          ].filter(Boolean).slice(0, 3)
+          const allResults = await Promise.all(
+            queries.map((q) => window.playerBridge.searchYoutube(q).catch(() => []))
+          )
+          const seen = new Set([...(track ? [track.id] : []), ...queueIds])
+          const merged = []
+          for (const batch of allResults) {
+            for (const t of (Array.isArray(batch) ? batch : [])) {
+              if (!seen.has(t.id)) { seen.add(t.id); merged.push(t) }
+            }
+          }
+          if (!cancelled) setSimilarItems(merged.slice(0, 30))
+        } else if (mode === 'radio' && currentStation) {
+          const tags = (currentStation.tags || '').split(',').map((t) => t.trim().toLowerCase()).filter(Boolean)
+          if (tags.length === 0) {
+            if (!cancelled) setSimilarItems([])
+          } else {
+            const allKnown = knownRadioStations.length > 0 ? knownRadioStations : stations
+            const similar = allKnown
+              .filter((s) => {
+                if (s.id === currentStation.id) return false
+                const sTags = (s.tags || '').split(',').map((t) => t.trim().toLowerCase())
+                return tags.some((tag) => sTags.includes(tag))
+              })
+              .slice(0, 40)
+            if (!cancelled) setSimilarItems(similar)
+          }
+        }
+      } finally {
+        if (!cancelled) setSimilarLoading(false)
+      }
+    }
+    load()
+    return () => { cancelled = true }
+  }, [libraryView, refreshSimilarTrigger]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Pokaż modal gdy sesja zakończona z błędem
   useEffect(() => {
@@ -2575,7 +2824,7 @@ function App() {
         return
       }
       case '/queue':
-        showSessionToast(`Kolejka: ${sessionSuggestions.length} ${sessionSuggestions.length === 1 ? 'utwór' : 'utworów'}`)
+        showSessionToast(`Kolejka: ${activeQueue.length} ${activeQueue.length === 1 ? 'utwór' : 'utworów'}`)
         return
       case '/sys':
         setShowSystemMsgs(v => {
@@ -2681,6 +2930,22 @@ function App() {
       />
 
       <header className="topbar">
+        {/* Custom titlebar buttons */}
+        <div className="win-controls">
+          <button className={`win-btn win-settings${showSizePanel ? ' active' : ''}`} onClick={() => setShowSizePanel(v => !v)} title="Rozmiar okna">
+            <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round">
+              <circle cx="6" cy="6" r="2"/>
+              <path d="M6 1v1.5M6 9.5V11M1 6h1.5M9.5 6H11M2.5 2.5l1 1M8.5 8.5l1 1M9.5 2.5l-1 1M3.5 8.5l-1 1"/>
+            </svg>
+          </button>
+          <div className="win-controls-sep"/>
+          <button className="win-btn win-min" onClick={() => window.playerBridge?.minimizeWindow()} title="Minimalizuj">
+            <svg width="10" height="1" viewBox="0 0 10 1"><rect width="10" height="1.5" rx="0.75" fill="currentColor"/></svg>
+          </button>
+          <button className="win-btn win-close" onClick={() => window.playerBridge?.closeWindow()} title="Zamknij">
+            <svg width="10" height="10" viewBox="0 0 10 10"><line x1="1" y1="1" x2="9" y2="9" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/><line x1="9" y1="1" x2="1" y2="9" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
+          </button>
+        </div>
         <div className="mode-notch">
           <div className="segmented-control notch">
             <button className={mode === 'radio' ? 'active' : ''} onClick={() => updateMode('radio')}>
@@ -2709,6 +2974,20 @@ function App() {
             <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/></svg>
             {inSession && <span className="together-count">{listenerCount}</span>}
           </button>
+          {mode === 'player' && (
+            <button
+              className={`together-btn${lyricsVisible ? ' active' : ''}`}
+              onClick={() => setLyricsVisible(v => !v)}
+              title="Tekst piosenki"
+            >🎤</button>
+          )}
+          {inSession && (
+            <button
+              className={`together-btn game-btn${gameState === 'playing' ? ' active' : ''}`}
+              onClick={() => gameState === 'playing' ? setMonopolyOpen(true) : setGameLobbyOpen(v => !v)}
+              title="Monopoly"
+            >🎲</button>
+          )}
         </div>
       </header>
 
@@ -2832,6 +3111,21 @@ function App() {
                     ) : radioVisualizerStatus}
                   </p>
                 )}
+                <LyricsOverlay
+                  visible={lyricsVisible && mode === 'player'}
+                  trackTitle={currentTrack?.title}
+                  trackArtist={currentTrack?.author}
+                  trackTime={trackTime}
+                  trackDuration={trackDuration}
+                  isPlaying={isTrackPlaying}
+                  onSeek={(t) => {
+                    setTrackTime(t)
+                    const player = trackPlayerRef.current
+                    if (!player) return
+                    if ('currentTime' in player) player.currentTime = t
+                    else if (player.seekTo) player.seekTo(t, 'seconds')
+                  }}
+                />
               </div>
             </div>
           </ElectricBorder>
@@ -2868,10 +3162,13 @@ function App() {
               <button className={libraryView === 'favorites' ? 'active' : ''} onClick={() => setLibraryView('favorites')}>
                 ♥ Ulubione
               </button>
-              {inSession && mode === 'player' && (
+              <button className={`${libraryView === 'similar' ? 'active' : ''} similar-tab`} onClick={() => setLibraryView('similar')}>
+                Podobne
+              </button>
+              {mode === 'player' && (
                 <button className={`${libraryView === 'suggested' ? 'active' : ''} suggested-tab`} onClick={() => setLibraryView('suggested')}>
                   Kolejka
-                  {sessionSuggestions.length > 0 && <span className="suggested-badge">{sessionSuggestions.length}</span>}
+                  {activeQueue.length > 0 && <span className="suggested-badge">{activeQueue.length}</span>}
                 </button>
               )}
               {inSession && (
@@ -2883,17 +3180,19 @@ function App() {
             </div>
 
             <span className="count-pill">
-              {mode === 'radio'
-                ? (radioGardenMode ? rgResults.length : filteredStations.length)
-                : libraryView === 'suggested'
-                  ? sessionSuggestions.length
-                  : libraryView === 'chat'
-                    ? chatMessages.length
-                    : visibleTracks.length} pozycji
+              {libraryView === 'similar'
+                ? similarItems.length
+                : mode === 'radio'
+                  ? (radioGardenMode ? rgResults.length : filteredStations.length)
+                  : libraryView === 'suggested'
+                    ? activeQueue.length
+                    : libraryView === 'chat'
+                      ? chatMessages.length
+                      : visibleTracks.length} pozycji
             </span>
           </div>
 
-          <div className={`library-extras${libraryView === 'chat' ? ' library-extras--hidden' : ''}`}>
+          <div className={`library-extras${(libraryView === 'chat' || libraryView === 'similar') ? ' library-extras--hidden' : ''}`}>
           {mode === 'player' ? (
             <>
               <div className="filters-panel">
@@ -3162,7 +3461,7 @@ function App() {
                       )
                     })
             )}
-            {libraryView !== 'chat' && !(mode === 'radio' && radioGardenMode) && (mode === 'radio' ? radioLoading : trackLoading) && (mode === 'radio' ? filteredStations : visibleTracks).length === 0
+            {libraryView !== 'chat' && libraryView !== 'similar' && !(mode === 'radio' && radioGardenMode) && (mode === 'radio' ? radioLoading : trackLoading) && (mode === 'radio' ? filteredStations : visibleTracks).length === 0
               ? Array.from({ length: 8 }, (_, i) => (
                   <div key={i} className="library-item skeleton" style={{ animationDelay: `${i * 0.06}s`, opacity: 0, animation: `fadeIn 0.3s ease ${i * 0.06}s forwards` }}>
                     <div className="skeleton-art" />
@@ -3173,10 +3472,46 @@ function App() {
                   </div>
                 ))
               : null}
-            {libraryView === 'suggested' && mode === 'player' ? (
-              sessionSuggestions.length === 0 ? (
-                <div className="empty-state">Kolejka jest pusta — goście mogą dodawać utwory przyciskiem przy każdym utworze.</div>
-              ) : sessionSuggestions.map((item) => (
+            {libraryView === 'similar' ? (
+              similarLoading ? (
+                Array.from({ length: 8 }).map((_, i) => (
+                  <div key={i} className="library-item skeleton" style={{ animationDelay: `${i * 0.06}s`, opacity: 0, animation: `fadeIn 0.3s ease ${i * 0.06}s forwards` }}>
+                    <div className="skeleton-art" />
+                    <div className="skeleton-copy">
+                      <div className="skeleton-line wide" style={{ animationDelay: `${i * 0.06}s` }} />
+                      <div className="skeleton-line narrow" style={{ animationDelay: `${i * 0.06 + 0.1}s` }} />
+                    </div>
+                  </div>
+                ))
+              ) : similarItems.length === 0 ? (
+                <div className="empty-state">
+                  {mode === 'player' && !currentTrack ? 'Włącz jakiś utwór, żeby zobaczyć podobne.' : mode === 'radio' && !currentStation ? 'Włącz stację, żeby zobaczyć podobne.' : 'Brak podobnych wyników.'}
+                </div>
+              ) : similarItems.map((item) => (
+                <div
+                  key={item.id}
+                  className={`library-item${(mode === 'player' ? currentTrack?.id : currentStation?.id) === item.id ? ' active' : ''}`}
+                  onClick={() => mode === 'player' ? selectTrack(item, true, inSession) : selectStation(item)}
+                >
+                  <div className="item-art with-badge">
+                    <img
+                      src={mode === 'player' ? safeArt(item.thumbnail, item.title, 'track') : safeArt(item.favicon, item.name, 'radio')}
+                      alt=""
+                      onError={(e) => withFallbackArt(e, mode === 'player' ? item.title : item.name, mode === 'player' ? 'track' : 'radio')}
+                    />
+                    <span className="flag-badge small">{mode === 'player' ? 'YT' : countryFlagEmoji(item.countryCode)}</span>
+                  </div>
+                  <div className="item-copy">
+                    <strong>{mode === 'player' ? item.title : item.name}</strong>
+                    <span>{mode === 'player' ? item.author : item.tags?.split(',').slice(0, 2).join(', ')}</span>
+                  </div>
+                  {mode === 'player' && <span className="item-duration">{item.duration}</span>}
+                </div>
+              ))
+            ) : libraryView === 'suggested' && mode === 'player' ? (
+              activeQueue.length === 0 ? (
+                <div className="empty-state">Kolejka jest pusta — dodaj utwory przyciskiem + przy każdym utworze.</div>
+              ) : activeQueue.map((item) => (
                 <div key={item.key} className="library-item suggestion-item">
                   <div className="item-art with-badge">
                     <img
@@ -3190,20 +3525,18 @@ function App() {
                     <strong>{item.title}</strong>
                     <span>{item.author}</span>
                   </div>
-                  {isHost && (
-                    <div className="suggestion-actions">
-                      <button
-                        className="suggestion-play-btn"
-                        title="Odtwórz i usuń sugestię"
-                        onClick={() => { selectTrack(item); removeSuggestion(item.key) }}
-                      >▶</button>
-                      <button
-                        className="suggestion-remove-btn"
-                        title="Usuń sugestię"
-                        onClick={() => removeSuggestion(item.key)}
-                      >✕</button>
-                    </div>
-                  )}
+                  <div className="suggestion-actions">
+                    <button
+                      className="suggestion-play-btn"
+                      title="Odtwórz teraz"
+                      onClick={() => { selectTrack(item); removeFromQueue(item.key) }}
+                    >▶</button>
+                    <button
+                      className="suggestion-remove-btn"
+                      title="Usuń z kolejki"
+                      onClick={() => removeFromQueue(item.key)}
+                    >✕</button>
+                  </div>
                 </div>
               ))
             ) : libraryView === 'chat' ? (
@@ -3450,13 +3783,13 @@ function App() {
                   )
                 })()}
               </div>
-            ) : (mode === 'radio' && radioGardenMode) ? null : (mode === 'radio' ? filteredStations.slice(0, visibleStationCount) : visibleTracks).map((item) => {
+            ) : (mode === 'radio' && radioGardenMode) ? null : (mode === 'radio' ? filteredStations.slice(0, visibleStationCount) : visibleTracks.slice(0, visibleTrackCount)).map((item) => {
               const selected = mode === 'radio' ? currentStation?.id === item.id : currentTrack?.id === item.id
               const flag = mode === 'radio' ? countryFlagEmoji(item.countryCode) : 'YT'
               const art = mode === 'radio'
                 ? safeArt(item.favicon, item.name, 'radio')
                 : safeArt(item.thumbnail, item.title, 'track')
-              const canSuggest = inSession && mode === 'player'
+              const canSuggest = mode === 'player'
 
               return (
                 <div
@@ -3505,8 +3838,11 @@ function App() {
             {mode === 'radio' && filteredStations.length > visibleStationCount && (
               <div ref={stationListSentinelRef} style={{ height: 1 }} />
             )}
+            {mode === 'player' && visibleTracks.length > visibleTrackCount && (
+              <div ref={trackListSentinelRef} style={{ height: 1 }} />
+            )}
 
-            {libraryView !== 'chat' && !(mode === 'radio' && radioGardenMode) && libraryView !== 'suggested' && (mode === 'radio' ? filteredStations : visibleTracks).length === 0 ? (
+            {libraryView !== 'chat' && libraryView !== 'similar' && !(mode === 'radio' && radioGardenMode) && libraryView !== 'suggested' && (mode === 'radio' ? filteredStations : visibleTracks).length === 0 ? (
               <div className="empty-state">
                 {libraryView === 'favorites'
                   ? 'Brak ulubionych w tym trybie.'
@@ -3869,6 +4205,58 @@ function App() {
           <span className="ping-label">{pingMs < 0 ? '×' : `${pingMs >= 1000 ? '999+' : pingMs}ms`}</span>
         )}
       </div>
+    )}
+
+    <MonopolyGame
+      open={monopolyOpen}
+      onClose={() => setMonopolyOpen(false)}
+      sessionCode={sessionCode}
+      myNickname={myNickname}
+      isHost={isHost}
+      initialPlayers={monopolyPlayers}
+      gameDurationSeconds={monopolyDuration}
+      nowPlayingName={mode === 'radio' ? currentStation?.name : currentTrack?.title}
+      nowPlayingMode={mode}
+    />
+
+    <GameLobby
+      open={gameLobbyOpen}
+      onClose={() => setGameLobbyOpen(false)}
+      sessionCode={sessionCode}
+      myNickname={myNickname}
+      isHost={isHost}
+      gameState={gameState}
+      onStartGame={(players, duration) => {
+        setGameState('playing')
+        setMonopolyPlayers(players)
+        setMonopolyDuration(duration ?? 7200)
+        setMonopolyOpen(true)
+      }}
+    />
+
+    {showSizePanel && createPortal(
+      <div className="size-panel">
+        <div className="size-panel-title">Rozmiar okna</div>
+        <div className="size-panel-list">
+          {ZOOM_NAMES.map((name, i) => (
+            <button
+              key={i}
+              className={`size-option${i === (pendingZoom ?? zoomIdx) ? ' selected' : ''}`}
+              onClick={() => setPendingZoom(i === zoomIdx ? null : i)}
+            >{name}{i === zoomIdx ? ' ✓' : ''}</button>
+          ))}
+        </div>
+        {pendingZoom !== null && pendingZoom !== zoomIdx && (
+          <button className="size-apply-btn" onClick={async () => {
+            await window.playerBridge?.setZoom?.(pendingZoom)
+            setShowSizePanel(false)
+            setPendingZoom(null)
+          }}>
+            Zastosuj
+          </button>
+        )}
+      </div>,
+      document.body
     )}
 
     </>

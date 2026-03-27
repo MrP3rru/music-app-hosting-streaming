@@ -6,7 +6,7 @@ function generateCode() {
   return Math.random().toString(36).substr(2, 6).toUpperCase()
 }
 
-function stationToPayload(station) {
+function stationToPayload(station, playing = true) {
   if (!station) return null
   return {
     id: station.id ?? '',
@@ -19,6 +19,7 @@ function stationToPayload(station) {
     codec: station.codec ?? '',
     bitrate: station.bitrate ?? 0,
     lastSong: station.lastSong ?? '',
+    playing,
   }
 }
 
@@ -43,6 +44,7 @@ const DEFAULT_PERMISSIONS = { canPlay: false, canSkip: false, canAdd: false }
 export function useListenTogether({
   mode,
   currentStation,
+  isRadioPlaying,
   currentTrack,
   trackTimeRef,
   isTrackPlaying,
@@ -262,17 +264,36 @@ if (!isHostRef.current) lastSyncedStationIdRef.current = payload.id
           onRemoteModeChangeRef.current?.(data.mode, true)
         }
 
-        if (data.mode === 'radio' && data.radio && data.radio.id !== lastSyncedStationIdRef.current) {
-          lastSyncedStationIdRef.current = data.radio.id
-          onRemoteStationChangeRef.current?.(data.radio)
+        if (data.mode === 'radio' && data.radio) {
+          const isInitialRadio = !initialSyncDoneRef.current
+          if (data.radio.id !== lastSyncedStationIdRef.current) {
+            lastSyncedStationIdRef.current = data.radio.id
+            onRemoteStationChangeRef.current?.(data.radio)
+          } else if (isInitialRadio) {
+            // Ta sama stacja ale gość właśnie dołączył — wymuś sync play/pause
+            onRemotePlayPauseRef.current?.(data.radio.playing ?? true, 'radio')
+          }
+          // Sync play/pause radia na bieżąco
+          if (!isInitialRadio && data.radio.playing !== lastSyncedPlayingRef.current) {
+            lastSyncedPlayingRef.current = data.radio.playing
+            onRemotePlayPauseRef.current?.(data.radio.playing ?? true, 'radio')
+          }
         }
 
         if (data.mode === 'player' && data.player) {
+          const isInitial = !initialSyncDoneRef.current
+
+          // Oblicz aktualną pozycję uwzględniając czas od ostatniego update hosta
+          const elapsed = isInitial && data.player.playing && data.player.updatedAt
+            ? (Date.now() - data.player.updatedAt) / 1000
+            : 0
+          const livePosition = Math.max(0, (data.player.position ?? 0) + elapsed)
+
           // Tylko gdy utwór się zmienił
           if (data.player.id && data.player.id !== lastSyncedTrackIdRef.current) {
             lastSyncedTrackIdRef.current = data.player.id
             lastSyncedPlayingRef.current = data.player.playing
-            onRemoteTrackChangeRef.current?.(data.player)
+            onRemoteTrackChangeRef.current?.({ ...data.player, position: isInitial ? livePosition : (data.player.position ?? 0) })
           }
 
           // Play/pause sync
@@ -282,12 +303,11 @@ if (!isHostRef.current) lastSyncedStationIdRef.current = payload.id
           }
 
           // Seek
-          const isInitial = !initialSyncDoneRef.current
           const seekedAt = data.player.seekedAt ?? 0
           const isExplicitSeek = seekedAt > lastReceivedSeekAtRef.current
           if (isInitial || isExplicitSeek) {
             lastReceivedSeekAtRef.current = seekedAt
-            onRemoteSeekRef.current?.(data.player.position ?? 0)
+            onRemoteSeekRef.current?.(isInitial ? livePosition : (data.player.position ?? 0))
           }
         }
 
@@ -433,8 +453,15 @@ if (!isHostRef.current) lastSyncedStationIdRef.current = payload.id
     if (mode !== 'radio' || !currentStation) return
     if (currentStation.id === lastSyncedStationIdRef.current) return
     lastSyncedStationIdRef.current = currentStation.id
-    set(ref(db, `sessions/${sessionCodeRef.current}/radio`), stationToPayload(currentStation))
-  }, [mode, currentStation])
+    set(ref(db, `sessions/${sessionCodeRef.current}/radio`), stationToPayload(currentStation, isRadioPlaying))
+  }, [mode, currentStation, isRadioPlaying])
+
+  // Host: synchronizuj play/pause radia
+  useEffect(() => {
+    if (!isHostRef.current || !sessionCodeRef.current) return
+    if (mode !== 'radio') return
+    set(ref(db, `sessions/${sessionCodeRef.current}/radio/playing`), isRadioPlaying)
+  }, [mode, isRadioPlaying])
 
   // Host: synchronizuj utwór
   useEffect(() => {

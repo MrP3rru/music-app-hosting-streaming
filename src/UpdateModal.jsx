@@ -70,7 +70,7 @@ export default function UpdateModal({ updateInfo, onDismiss }) {
             <button className="update-btn-install" onClick={handleInstall}>
               Zainstaluj
             </button>
-            <button className="update-btn-skip" onClick={onDismiss}>
+            <button className="update-btn-skip" onClick={onDismiss} disabled>
               Pomiń
             </button>
           </div>

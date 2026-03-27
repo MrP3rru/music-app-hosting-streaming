@@ -1,7 +1,19 @@
 {
-  "version": "1.7.1",
-  "changelog": "Dodano Chat: klikalne linki w wiadomościach + podgląd miniaturki YouTube. (i wiele innych funkcji i poprawek.)",
+  "version": "1.8.0",
+  "changelog": "Zmiana rozmiaru okna, poprawki wizualizatora i wirtualna lista playlisty.",
   "history": [
+    {
+      "version": "1.8.0",
+      "date": "2026-03-27",
+      "changes": [
+        "Nowa funkcja: zmiana rozmiaru okna — przycisk ⚙ w pasku tytułu otwiera panel z 31 rozmiarami (70%–130%, co 2%), domyślnie 102% Normalne",
+        "Rozmiar okna zapisuje się i przywracany jest po restarcie aplikacji",
+        "Tło wizualizatora (aurora blobs) nie przesuwa się już przy zmianie rozmiaru okna",
+        "Wizualizator audio wypełnia teraz całą szerokość bez przerwy po prawej stronie",
+        "Playlista YouTube z >40 utworami nie powoduje już lagów — lista ładuje się partiami po 40 podczas przewijania",
+        "Przycisk Pomiń w oknie aktualizacji jest teraz wyłączony (wymagana instalacja)"
+      ]
+    },
     {
       "version": "1.7.1",
       "date": "2026-03-20",

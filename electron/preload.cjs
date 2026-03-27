@@ -3,6 +3,7 @@ const { contextBridge, ipcRenderer } = require('electron')
 contextBridge.exposeInMainWorld('playerBridge', {
   searchYoutube: (query, options) => ipcRenderer.invoke('youtube:search', query, options),
   getVideoById: (videoId) => ipcRenderer.invoke('youtube:video-by-id', videoId),
+  getPlaylist: (playlistId) => ipcRenderer.invoke('youtube:playlist', playlistId),
   getRadioNowPlaying: (payload) => ipcRenderer.invoke('radio:now-playing', payload),
   updateDiscordPresence: (data) => ipcRenderer.invoke('discord:update-presence', data),
   clearDiscordPresence: () => ipcRenderer.invoke('discord:clear-presence'),
@@ -19,4 +20,12 @@ contextBridge.exposeInMainWorld('playerBridge', {
   // Radio Garden
   radioGardenSearch: (query) => ipcRenderer.invoke('radiogarden:search', query),
   radioGardenStream: (channelId) => ipcRenderer.invoke('radiogarden:stream', channelId),
+  // Tło / focus
+  onAppBackground: (cb) => ipcRenderer.on('app:background', (_e, isBackground) => cb(isBackground)),
+  // Custom titlebar
+  minimizeWindow: () => ipcRenderer.send('window:minimize'),
+  closeWindow:    () => ipcRenderer.send('window:close'),
+  // Zoom okna (natychmiastowy, bez restartu)
+  setZoom:     (idx) => ipcRenderer.invoke('zoom:set', idx),
+  onZoomIdx:   (cb)  => ipcRenderer.on('zoom:idx', (_e, idx) => cb(idx)),
 })

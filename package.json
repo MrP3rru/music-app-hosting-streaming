@@ -17,10 +17,12 @@
   },
   "dependencies": {
     "@distube/ytdl-core": "^4.16.12",
+    "@pixi/react": "^8.0.5",
     "audiomotion-analyzer": "^4.5.4",
     "concurrently": "^9.2.1",
     "discord-rpc": "^4.0.1",
     "firebase": "^12.10.0",
+    "pixi.js": "^8.17.1",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
     "react-player": "^3.4.0",

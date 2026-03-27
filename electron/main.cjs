@@ -1,5 +1,5 @@
 
-const { app, BrowserWindow, ipcMain, shell, session, desktopCapturer, nativeImage } = require('electron')
+const { app, BrowserWindow, ipcMain, shell, session, desktopCapturer, nativeImage, nativeTheme } = require('electron')
 
 // ─── Auto-updater config ─────────────────────────────────────────────────────
 // Po założeniu repo na GitHub wpisz tutaj swoje dane:
@@ -26,6 +26,21 @@ const os = require('node:os')
 const path = require('node:path')
 const zlib = require('node:zlib')
 const yts = require('yt-search')
+
+// ─── Ustawienia aplikacji (zoom itp.) ────────────────────────────────────────
+// Kroki co 2% od 70% do 130% — "Normalne" to 1.0 (index 15)
+const ZOOM_LEVELS = Array.from({ length: 31 }, (_, i) => Math.round((0.70 + i * 0.02) * 100) / 100)
+const BASE_W = 1460, BASE_H = 940
+
+function getSettingsPath() {
+  return path.join(app.getPath('userData'), 'app-settings.json')
+}
+function readSettings() {
+  try { return JSON.parse(fs.readFileSync(getSettingsPath(), 'utf8')) } catch { return {} }
+}
+function writeSettings(data) {
+  try { fs.writeFileSync(getSettingsPath(), JSON.stringify(data), 'utf8') } catch {}
+}
 
 // ─── YouTube Data API v3 (opcjonalny klucz) ─────────────────────────────────
 // Wygeneruj klucz: console.cloud.google.com → YouTube Data API v3 → Credentials
@@ -76,17 +91,21 @@ async function searchYoutube(phrase, limit = 20, options = {}) {
       return await searchYoutubeWithAPI(phrase, limit, options)
     } catch {}
   }
-  const result = await yts.search(phrase)
-  return result.videos.slice(0, limit).map((video) => ({
-    id: video.videoId,
-    title: video.title,
-    author: video.author?.name || 'YouTube',
-    duration: video.timestamp || 'live',
-    seconds: video.seconds || 0,
-    thumbnail: video.thumbnail,
-    views: video.views || 0,
-    url: video.url,
-  }))
+  try {
+    const result = await yts.search(phrase)
+    return (result.videos || []).slice(0, limit).map((video) => ({
+      id: video.videoId,
+      title: video.title,
+      author: video.author?.name || 'YouTube',
+      duration: video.timestamp || 'live',
+      seconds: video.seconds || 0,
+      thumbnail: video.thumbnail,
+      views: video.views || 0,
+      url: video.url,
+    }))
+  } catch {
+    return []
+  }
 }
 const child_process = require('child_process')
 
@@ -327,15 +346,17 @@ function resolveAppIconPath() {
 }
 
 function createWindow() {
+  let zoomIdx = Math.max(0, Math.min(ZOOM_LEVELS.length - 1, readSettings().zoomIdx ?? 16))
+
   const win = new BrowserWindow({
-    width: 1460,
-    height: 940,
-    minWidth: 1200,
-    minHeight: 760,
+    width:  Math.round(BASE_W * ZOOM_LEVELS[zoomIdx]),
+    height: Math.round(BASE_H * ZOOM_LEVELS[zoomIdx]),
     resizable: false,
     backgroundColor: '#0b1018',
     icon: resolveAppIconPath(),
+    title: 'Music App',
     autoHideMenuBar: true,
+    frame: false,
     webPreferences: {
       preload: path.join(__dirname, 'preload.cjs'),
       contextIsolation: true,
@@ -352,39 +373,51 @@ function createWindow() {
   // ─── Thumbnail toolbar (Windows) ───────────────────────────────────────
   const icons = makeThumbIcons()
   let isPlaying = false
-
   function setThumbbar() {
     win.setThumbarButtons([
-      {
-        icon: icons.prev,
-        tooltip: 'Poprzedni',
-        click() { win.webContents.send('thumbar:prev') },
-      },
-      {
-        icon: isPlaying ? icons.pause : icons.play,
-        tooltip: isPlaying ? 'Pauza' : 'Odtwórz',
-        click() { win.webContents.send('thumbar:toggle-play') },
-      },
-      {
-        icon: icons.next,
-        tooltip: 'Następny',
-        click() { win.webContents.send('thumbar:next') },
-      },
+      { icon: icons.prev,  tooltip: 'Poprzedni', click() { win.webContents.send('thumbar:prev') } },
+      { icon: isPlaying ? icons.pause : icons.play, tooltip: isPlaying ? 'Pauza' : 'Odtwórz', click() { win.webContents.send('thumbar:toggle-play') } },
+      { icon: icons.next,  tooltip: 'Następny',  click() { win.webContents.send('thumbar:next') } },
     ])
   }
-
   win.once('ready-to-show', setThumbbar)
 
-  ipcMain.on('thumbar:set-playing', (_e, playing) => {
-    isPlaying = playing
-    setThumbbar()
-  })
-
-  if (isDev) {
-    win.loadURL('http://localhost:5173')
-    return
+  // ─── Zoom — setZoomFactor skaluje stronę razem z layoutem (media queries ok)
+  function applyZoom(idx) {
+    zoomIdx = Math.max(0, Math.min(ZOOM_LEVELS.length - 1, idx))
+    const f = ZOOM_LEVELS[zoomIdx]
+    win.webContents.setZoomFactor(f)
+    win.setResizable(true)
+    win.setSize(Math.round(BASE_W * f), Math.round(BASE_H * f))
+    win.setResizable(false)
+    win.center()
+    writeSettings({ ...readSettings(), zoomIdx })
+    win.webContents.send('zoom:idx', zoomIdx)
   }
 
+  win.webContents.on('did-finish-load', () => applyZoom(zoomIdx))
+  // Blokuj wbudowany zoom Chromium
+  win.webContents.on('zoom-changed', () => win.webContents.setZoomFactor(ZOOM_LEVELS[zoomIdx]))
+  win.webContents.on('before-input-event', (e, input) => {
+    if (!input.control || input.type !== 'keyDown') return
+    if (['Equal', 'Minus', 'Digit0', 'NumpadAdd', 'NumpadSubtract', 'Numpad0'].includes(input.code)) {
+      e.preventDefault()
+    }
+  })
+
+  // ─── Kontrolki okna (custom titlebar) ──────────────────────────────────
+  ipcMain.on('window:minimize', () => win.minimize())
+  ipcMain.on('window:close',    () => win.close())
+  ipcMain.on('thumbar:set-playing', (_e, p) => { isPlaying = p; setThumbbar() })
+
+  // ─── Zoom IPC ─────────────────────────────────────────────────────────
+  ipcMain.handle('zoom:set', (_e, idx) => { applyZoom(idx); return zoomIdx })
+
+  // ─── Wydajność w tle ────────────────────────────────────────────────────
+  win.on('blur',  () => { win.webContents.setBackgroundThrottling(true);  win.webContents.send('app:background', true)  })
+  win.on('focus', () => { win.webContents.setBackgroundThrottling(false); win.webContents.send('app:background', false) })
+
+  if (isDev) { win.loadURL('http://localhost:5173'); return }
   win.loadFile(path.join(DIST_DIR, 'index.html'))
 }
 
@@ -586,7 +619,53 @@ ipcMain.handle('youtube:video-by-id', async (_event, videoId) => {
 })
 
 
+ipcMain.handle('youtube:playlist', async (_event, playlistId) => {
+  const id = String(playlistId || '').trim()
+  if (!id || !YOUTUBE_API_KEY) return []
+  const tracks = []
+  let pageToken = ''
+  try {
+    do {
+      const params = new URLSearchParams({ part: 'snippet', playlistId: id, maxResults: '50', key: YOUTUBE_API_KEY })
+      if (pageToken) params.set('pageToken', pageToken)
+      const res = await fetch(`https://www.googleapis.com/youtube/v3/playlistItems?${params}`)
+      if (!res.ok) break
+      const data = await res.json()
+      const videoIds = data.items.map((i) => i.snippet.resourceId.videoId).filter(Boolean).join(',')
+      if (videoIds) {
+        const detailParams = new URLSearchParams({ part: 'snippet,contentDetails', id: videoIds, key: YOUTUBE_API_KEY })
+        const detailRes = await fetch(`https://www.googleapis.com/youtube/v3/videos?${detailParams}`)
+        const detailData = await detailRes.json()
+        for (const v of detailData.items || []) {
+          const iso = v.contentDetails.duration || 'PT0S'
+          const m = iso.match(/PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?/)
+          const seconds = (Number(m?.[1] || 0) * 3600) + (Number(m?.[2] || 0) * 60) + Number(m?.[3] || 0)
+          const mm = Math.floor(seconds / 60)
+          const ss = String(seconds % 60).padStart(2, '0')
+          tracks.push({
+            id: v.id,
+            title: v.snippet.title,
+            author: v.snippet.channelTitle,
+            duration: seconds > 0 ? `${mm}:${ss}` : '🔴 LIVE',
+            seconds,
+            thumbnail: v.snippet.thumbnails?.medium?.url || v.snippet.thumbnails?.default?.url || '',
+            url: `https://www.youtube.com/watch?v=${v.id}`,
+          })
+        }
+      }
+      pageToken = data.nextPageToken || ''
+    } while (pageToken && tracks.length < 200)
+  } catch {}
+  return tracks
+})
+
 app.whenReady().then(() => {
+  // ── Nazwa i ikonka w Menadżerze zadań ──────────────────────────────────
+  app.setName('Music App')
+  app.setAppUserModelId('com.mateu.musicapp')
+  // ── Ciemny pasek tytułu ────────────────────────────────────────────────
+  nativeTheme.themeSource = 'dark'
+
   initDiscordRPC()
   createWindow()
 
