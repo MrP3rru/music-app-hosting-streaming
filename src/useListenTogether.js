@@ -34,7 +34,7 @@ function trackToPayload(track, position, playing) {
     thumbnail: track.thumbnail ?? '',
     position: position ?? 0,
     playing: playing ?? false,
-    updatedAt: Date.now(),
+    updatedAt: serverTimestamp(),
     seekedAt: 0,
   }
 }
@@ -82,6 +82,7 @@ export function useListenTogether({
   const initialSyncDoneRef = useRef(false)
   const lastReceivedSeekAtRef = useRef(0)
   const lastAppliedActionAtRef = useRef(0)
+  const serverTimeOffsetRef = useRef(0)
 
   // Callback refs — onValue listener zamraża callbacki z momentu setupu sesji (stale closure).
   // Trzymamy zawsze aktualne referencje żeby handler zawsze wywoływał najświeższe wersje.
@@ -101,6 +102,13 @@ export function useListenTogether({
 
   // Keep nicknameRef in sync
   useEffect(() => { nicknameRef.current = nickname }, [nickname])
+
+  // Kalibracja zegarka względem serwera Firebase — eliminuje skew między urządzeniami
+  useEffect(() => {
+    return onValue(ref(db, '.info/serverTimeOffset'), (snap) => {
+      serverTimeOffsetRef.current = snap.val() ?? 0
+    })
+  }, [])
 
   const stopListening = useCallback(() => {
     if (unsubRef.current) { unsubRef.current(); unsubRef.current = null }
@@ -205,6 +213,9 @@ export function useListenTogether({
 
       // lastAction — broadcast od dowolnego uczestnika (host lub gość z uprawnieniami)
       const myId = isHostRef.current ? 'host' : (myListenerKeyRef.current ?? 'unknown')
+      // Flaga: jeśli w tej snapshocie przetworzono trackChange via lastAction,
+      // fallback data.player nie może nadpisać go starymi danymi z Firebase
+      let trackChangedViaAction = false
       if (data.lastAction && data.lastAction.at > lastAppliedActionAtRef.current) {
         lastAppliedActionAtRef.current = data.lastAction.at
         const { type, payload, nick } = data.lastAction
@@ -219,6 +230,7 @@ export function useListenTogether({
             if (!isHostRef.current) {
               lastSyncedTrackIdRef.current = payload.id
               lastSyncedPlayingRef.current = payload.playing
+              trackChangedViaAction = true
             }
             onRemoteTrackChangeRef.current?.(payload)
           }
@@ -283,14 +295,16 @@ if (!isHostRef.current) lastSyncedStationIdRef.current = payload.id
         if (data.mode === 'player' && data.player) {
           const isInitial = !initialSyncDoneRef.current
 
-          // Oblicz aktualną pozycję uwzględniając czas od ostatniego update hosta
+          // Oblicz aktualną pozycję — używamy skalibrowanego czasu serwera by wyeliminować skew zegarków
+          const serverNow = Date.now() + serverTimeOffsetRef.current
           const elapsed = isInitial && data.player.playing && data.player.updatedAt
-            ? (Date.now() - data.player.updatedAt) / 1000
+            ? Math.max(0, (serverNow - data.player.updatedAt) / 1000)
             : 0
           const livePosition = Math.max(0, (data.player.position ?? 0) + elapsed)
 
-          // Tylko gdy utwór się zmienił
-          if (data.player.id && data.player.id !== lastSyncedTrackIdRef.current) {
+          // Tylko gdy utwór się zmienił — i NIE jeśli już obsłużyliśmy trackChange via lastAction
+          // (wtedy data.player w Firebase jest jeszcze stare, czekamy na kolejny snapshot)
+          if (!trackChangedViaAction && data.player.id && data.player.id !== lastSyncedTrackIdRef.current) {
             lastSyncedTrackIdRef.current = data.player.id
             lastSyncedPlayingRef.current = data.player.playing
             onRemoteTrackChangeRef.current?.({ ...data.player, position: isInitial ? livePosition : (data.player.position ?? 0) })
@@ -302,12 +316,15 @@ if (!isHostRef.current) lastSyncedStationIdRef.current = payload.id
             onRemotePlayPauseRef.current?.(data.player.playing, 'player')
           }
 
-          // Seek
-          const seekedAt = data.player.seekedAt ?? 0
-          const isExplicitSeek = seekedAt > lastReceivedSeekAtRef.current
-          if (isInitial || isExplicitSeek) {
-            lastReceivedSeekAtRef.current = seekedAt
-            onRemoteSeekRef.current?.(isInitial ? livePosition : (data.player.position ?? 0))
+          // Seek — blokuj jeśli w tej snapshocie zmienił się utwór via lastAction
+          // (data.player zawiera jeszcze stare seekedAt/position — nie wolno ich aplikować)
+          if (!trackChangedViaAction) {
+            const seekedAt = data.player.seekedAt ?? 0
+            const isExplicitSeek = seekedAt > lastReceivedSeekAtRef.current
+            if (isInitial || isExplicitSeek) {
+              lastReceivedSeekAtRef.current = seekedAt
+              onRemoteSeekRef.current?.(isInitial ? livePosition : (data.player.position ?? 0))
+            }
           }
         }
 
@@ -418,10 +435,11 @@ if (!isHostRef.current) lastSyncedStationIdRef.current = payload.id
   const syncPositionNow = useCallback((position) => {
     const code = sessionCodeRef.current
     if (!code || !isHostRef.current) return
-    const now = Date.now()
-    set(ref(db, `sessions/${code}/player/position`), position)
-    set(ref(db, `sessions/${code}/player/seekedAt`), now)
-    set(ref(db, `sessions/${code}/player/updatedAt`), now)
+    update(ref(db, `sessions/${code}/player`), {
+      position,
+      seekedAt: Date.now(),
+      updatedAt: serverTimestamp(),
+    })
   }, [])
 
   // Gość: zasugeruj utwór
@@ -479,8 +497,10 @@ if (!isHostRef.current) lastSyncedStationIdRef.current = payload.id
     if (mode !== 'player' || !currentTrack) return
     if (isTrackPlaying === lastSyncedPlayingRef.current) return
     lastSyncedPlayingRef.current = isTrackPlaying
-    set(ref(db, `sessions/${sessionCodeRef.current}/player/playing`), isTrackPlaying)
-    set(ref(db, `sessions/${sessionCodeRef.current}/player/updatedAt`), Date.now())
+    update(ref(db, `sessions/${sessionCodeRef.current}/player`), {
+      playing: isTrackPlaying,
+      updatedAt: serverTimestamp(),
+    })
   }, [isTrackPlaying, mode, currentTrack])
 
   // Host: synchronizuj pozycję co 3s
@@ -488,8 +508,10 @@ if (!isHostRef.current) lastSyncedStationIdRef.current = payload.id
     if (!isHostRef.current || !sessionCodeRef.current || mode !== 'player') return
     positionIntervalRef.current = setInterval(() => {
       if (!sessionCodeRef.current) return
-      set(ref(db, `sessions/${sessionCodeRef.current}/player/position`), trackTimeRef?.current ?? 0)
-      set(ref(db, `sessions/${sessionCodeRef.current}/player/updatedAt`), Date.now())
+      update(ref(db, `sessions/${sessionCodeRef.current}/player`), {
+        position: trackTimeRef?.current ?? 0,
+        updatedAt: serverTimestamp(),
+      })
     }, 3000)
     return () => { if (positionIntervalRef.current) clearInterval(positionIntervalRef.current) }
   }, [mode, trackTimeRef])

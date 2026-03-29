@@ -26,6 +26,7 @@ const os = require('node:os')
 const path = require('node:path')
 const zlib = require('node:zlib')
 const yts = require('yt-search')
+const ytdl = require('@distube/ytdl-core')
 
 // ─── Ustawienia aplikacji (zoom itp.) ────────────────────────────────────────
 // Kroki co 2% od 70% do 130% — "Normalne" to 1.0 (index 15)
@@ -408,6 +409,37 @@ function createWindow() {
   // ─── Kontrolki okna (custom titlebar) ──────────────────────────────────
   ipcMain.on('window:minimize', () => win.minimize())
   ipcMain.on('window:close',    () => win.close())
+
+  // ─── Logowanie do YouTube (dla treści 18+) ───────────────────────────
+  ipcMain.handle('youtube:login', () => {
+    return new Promise((resolve) => {
+      const loginWin = new BrowserWindow({
+        width: 520,
+        height: 680,
+        parent: win,
+        modal: true,
+        title: 'Zaloguj się do YouTube',
+        webPreferences: {
+          nodeIntegration: false,
+          contextIsolation: true,
+          session: session.defaultSession,
+        },
+      })
+      loginWin.setMenuBarVisibility(false)
+      loginWin.loadURL('https://accounts.google.com/ServiceLogin?service=youtube&hl=pl')
+      loginWin.on('closed', () => resolve(true))
+      loginWin.webContents.on('did-navigate', (_, url) => {
+        if (url.startsWith('https://www.youtube.com') || url.startsWith('https://myaccount.google.com')) {
+          loginWin.close()
+        }
+      })
+    })
+  })
+
+  ipcMain.handle('youtube:check-login', async () => {
+    const cookies = await session.defaultSession.cookies.get({ domain: '.youtube.com', name: 'SAPISID' })
+    return cookies.length > 0
+  })
   ipcMain.on('thumbar:set-playing', (_e, p) => { isPlaying = p; setThumbbar() })
 
   // ─── Zoom IPC ─────────────────────────────────────────────────────────
@@ -619,44 +651,313 @@ ipcMain.handle('youtube:video-by-id', async (_event, videoId) => {
 })
 
 
+async function fetchWithTimeout(url, timeoutMs = 10000, opts = {}) {
+  const ctrl = new AbortController()
+  const timer = setTimeout(() => ctrl.abort(), timeoutMs)
+  try {
+    const res = await fetch(url, { signal: ctrl.signal, ...opts })
+    return res
+  } finally {
+    clearTimeout(timer)
+  }
+}
+
+async function fetchPlaylistViaInnertube(playlistId) {
+  try {
+    const cookies = await session.defaultSession.cookies.get({ domain: '.youtube.com' })
+    const sapisidCookie = cookies.find(c => c.name === '__Secure-3PAPISID') || cookies.find(c => c.name === 'SAPISID')
+    if (!sapisidCookie) return []
+    const cookieStr = cookies.map(c => `${c.name}=${c.value}`).join('; ')
+    const authHeader = computeSapisidHash(sapisidCookie.value)
+    const tracks = []
+    let continuation = null
+
+    do {
+      const body = continuation
+        ? { continuation, context: { client: { clientName: 'WEB', clientVersion: '2.20231121', hl: 'pl', gl: 'PL' } } }
+        : { browseId: 'VL' + playlistId, context: { client: { clientName: 'WEB', clientVersion: '2.20231121', hl: 'pl', gl: 'PL' } } }
+
+      const res = await fetchWithTimeout(
+        'https://www.youtube.com/youtubei/v1/browse?key=AIzaSyAO_FJ2SlqU8Q4STEHLGCilw_Y9_11qcW8',
+        12000,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Cookie': cookieStr,
+            'Authorization': authHeader,
+            'X-Youtube-Client-Name': '1',
+            'X-Youtube-Client-Version': '2.20231121',
+            'X-Goog-AuthUser': '0',
+            'Origin': 'https://www.youtube.com',
+            'Referer': 'https://www.youtube.com/',
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+          },
+          body: JSON.stringify(body),
+        }
+      )
+      if (!res.ok) break
+      const data = await res.json()
+
+      // Extract items and continuation token from response
+      const sectionContents = data?.contents?.twoColumnBrowseResultsRenderer?.tabs?.[0]?.tabRenderer?.content?.sectionListRenderer?.contents || []
+      const pvlr =
+        sectionContents?.[0]?.itemSectionRenderer?.contents?.[0]?.playlistVideoListRenderer ||
+        sectionContents?.[0]?.playlistVideoListRenderer
+      const contents =
+        pvlr?.contents ||
+        sectionContents?.[0]?.musicImmersiveListRenderer?.contents ||
+        data?.onResponseReceivedActions?.[0]?.appendContinuationItemsAction?.continuationItems ||
+        []
+
+      // Token może być w playlistVideoListRenderer.continuations lub w continuationItemRenderer
+      continuation =
+        pvlr?.continuations?.[0]?.nextContinuationData?.continuation ||
+        null
+
+      for (const item of contents) {
+        if (item.continuationItemRenderer) {
+          if (!continuation) {
+            continuation =
+              item.continuationItemRenderer?.continuationEndpoint?.continuationCommand?.token ||
+              item.continuationItemRenderer?.continuationEndpoint?.commandExecutorCommand?.commands
+                ?.find(c => c.continuationCommand)?.continuationCommand?.token ||
+              null
+          }
+          continue
+        }
+
+        const v = item?.playlistVideoRenderer
+        if (!v) continue
+        const videoId = v.videoId
+        if (!videoId) continue
+        const title = v.title?.runs?.[0]?.text || 'Utwór'
+        const author = v.shortBylineText?.runs?.[0]?.text || ''
+        const thumbnail = v.thumbnail?.thumbnails?.slice(-1)?.[0]?.url || ''
+        const lengthSec = parseInt(v.lengthSeconds || '0', 10)
+        const mm = Math.floor(lengthSec / 60)
+        const ss = String(lengthSec % 60).padStart(2, '0')
+        tracks.push({
+          id: videoId,
+          title,
+          author,
+          duration: lengthSec > 0 ? `${mm}:${ss}` : '🔴 LIVE',
+          seconds: lengthSec,
+          thumbnail,
+          url: `https://www.youtube.com/watch?v=${videoId}`,
+        })
+      }
+    } while (continuation && tracks.length < 300)
+
+    return tracks
+  } catch (e) {
+    console.log('[innertube playlist] error:', e.message)
+    return []
+  }
+}
+
 ipcMain.handle('youtube:playlist', async (_event, playlistId) => {
   const id = String(playlistId || '').trim()
-  if (!id || !YOUTUBE_API_KEY) return []
+  if (!id || !YOUTUBE_API_KEY) return { error: 'no_key', tracks: [] }
   const tracks = []
   let pageToken = ''
+  let lastError = null
   try {
     do {
       const params = new URLSearchParams({ part: 'snippet', playlistId: id, maxResults: '50', key: YOUTUBE_API_KEY })
       if (pageToken) params.set('pageToken', pageToken)
-      const res = await fetch(`https://www.googleapis.com/youtube/v3/playlistItems?${params}`)
-      if (!res.ok) break
+
+      let res
+      for (let attempt = 0; attempt < 3; attempt++) {
+        try {
+          res = await fetchWithTimeout(`https://www.googleapis.com/youtube/v3/playlistItems?${params}`)
+          break
+        } catch (e) {
+          lastError = e
+          if (attempt < 2) await new Promise(r => setTimeout(r, 800 * (attempt + 1)))
+        }
+      }
+      if (!res) break
+
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}))
+        const reason = errData?.error?.errors?.[0]?.reason || ''
+        if (reason === 'quotaExceeded') lastError = 'quota'
+        else if (res.status === 404 || reason === 'playlistNotFound') lastError = 'not_found'
+        else if (res.status === 403) lastError = 'private'
+        else lastError = `http_${res.status}`
+        // fallback to innertube for private/auth playlists
+        if (lastError === 'private' || lastError === 'not_found') {
+          const innertubeTracks = await fetchPlaylistViaInnertube(id)
+          if (innertubeTracks.length > 0) return { tracks: innertubeTracks, error: null }
+        }
+        break
+      }
+
       const data = await res.json()
-      const videoIds = data.items.map((i) => i.snippet.resourceId.videoId).filter(Boolean).join(',')
+      const videoIds = (data.items || []).map((i) => i.snippet?.resourceId?.videoId).filter(Boolean).join(',')
       if (videoIds) {
         const detailParams = new URLSearchParams({ part: 'snippet,contentDetails', id: videoIds, key: YOUTUBE_API_KEY })
-        const detailRes = await fetch(`https://www.googleapis.com/youtube/v3/videos?${detailParams}`)
-        const detailData = await detailRes.json()
-        for (const v of detailData.items || []) {
-          const iso = v.contentDetails.duration || 'PT0S'
-          const m = iso.match(/PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?/)
-          const seconds = (Number(m?.[1] || 0) * 3600) + (Number(m?.[2] || 0) * 60) + Number(m?.[3] || 0)
-          const mm = Math.floor(seconds / 60)
-          const ss = String(seconds % 60).padStart(2, '0')
-          tracks.push({
-            id: v.id,
-            title: v.snippet.title,
-            author: v.snippet.channelTitle,
-            duration: seconds > 0 ? `${mm}:${ss}` : '🔴 LIVE',
-            seconds,
-            thumbnail: v.snippet.thumbnails?.medium?.url || v.snippet.thumbnails?.default?.url || '',
-            url: `https://www.youtube.com/watch?v=${v.id}`,
-          })
+        let detailRes
+        for (let attempt = 0; attempt < 3; attempt++) {
+          try {
+            detailRes = await fetchWithTimeout(`https://www.googleapis.com/youtube/v3/videos?${detailParams}`)
+            break
+          } catch (e) {
+            if (attempt < 2) await new Promise(r => setTimeout(r, 800 * (attempt + 1)))
+          }
+        }
+        if (detailRes?.ok) {
+          const detailData = await detailRes.json()
+          for (const v of detailData.items || []) {
+            const iso = v.contentDetails?.duration || 'PT0S'
+            const m = iso.match(/PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?/)
+            const seconds = (Number(m?.[1] || 0) * 3600) + (Number(m?.[2] || 0) * 60) + Number(m?.[3] || 0)
+            const mm = Math.floor(seconds / 60)
+            const ss = String(seconds % 60).padStart(2, '0')
+            tracks.push({
+              id: v.id,
+              title: v.snippet.title,
+              author: v.snippet.channelTitle,
+              duration: seconds > 0 ? `${mm}:${ss}` : '🔴 LIVE',
+              seconds,
+              thumbnail: v.snippet.thumbnails?.medium?.url || v.snippet.thumbnails?.default?.url || '',
+              url: `https://www.youtube.com/watch?v=${v.id}`,
+            })
+          }
         }
       }
       pageToken = data.nextPageToken || ''
-    } while (pageToken && tracks.length < 200)
-  } catch {}
-  return tracks
+    } while (pageToken && tracks.length < 500)
+  } catch (e) {
+    lastError = e?.message || 'unknown'
+  }
+  return { tracks, error: lastError }
+})
+
+// Helper to compute SAPISIDHASH for YouTube authentication
+function computeSapisidHash(sapisid) {
+  const crypto = require('crypto')
+  const ts = Math.floor(Date.now() / 1000)
+  const hash = crypto.createHash('sha1').update(`${ts} ${sapisid} https://www.youtube.com`).digest('hex')
+  return `SAPISIDHASH ${ts}_${hash}`
+}
+
+// Get logged-in user's YouTube playlists via innertube API
+ipcMain.handle('youtube:playlist-innertube', async (_event, playlistId) => {
+  const tracks = await fetchPlaylistViaInnertube(String(playlistId || '').trim())
+  return { tracks }
+})
+
+ipcMain.handle('youtube:my-playlists', async () => {
+  const cookies = await session.defaultSession.cookies.get({ domain: '.youtube.com' })
+  const sapisidCookie = cookies.find(c => c.name === '__Secure-3PAPISID') || cookies.find(c => c.name === 'SAPISID')
+  if (!sapisidCookie) return { error: 'not_logged_in', playlists: [] }
+
+  console.log('[myyt] using cookie:', sapisidCookie.name)
+  const cookieStr = cookies.map(c => `${c.name}=${c.value}`).join('; ')
+  const authHeader = computeSapisidHash(sapisidCookie.value)
+
+  try {
+    const res = await fetchWithTimeout(
+      'https://www.youtube.com/youtubei/v1/browse?key=AIzaSyAO_FJ2SlqU8Q4STEHLGCilw_Y9_11qcW8',
+      12000,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Cookie': cookieStr,
+          'Authorization': authHeader,
+          'X-Youtube-Client-Name': '1',
+          'X-Youtube-Client-Version': '2.20231121',
+          'X-Goog-AuthUser': '0',
+          'Origin': 'https://www.youtube.com',
+          'Referer': 'https://www.youtube.com/',
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        },
+        body: JSON.stringify({
+          browseId: 'FEplaylist_aggregation',
+          context: {
+            client: {
+              clientName: 'WEB',
+              clientVersion: '2.20231121',
+              hl: 'pl',
+              gl: 'PL',
+            }
+          }
+        })
+      }
+    )
+    if (!res.ok) {
+      console.log('[myyt] HTTP error:', res.status)
+      return { error: `http_${res.status}`, playlists: [] }
+    }
+    const data = await res.json()
+    console.log('[myyt] top-level keys:', Object.keys(data || {}))
+
+    // Parse playlists from the deeply nested innertube response
+    const playlists = []
+
+    function extractPlaylistRenderer(r) {
+      if (!r) return
+      const browseId = r?.navigationEndpoint?.browseEndpoint?.browseId || ''
+      const playlistId = browseId.startsWith('VL') ? browseId.slice(2) : browseId
+      if (!playlistId) return
+      const title = r?.title?.runs?.[0]?.text || r?.title?.simpleText || 'Playlista'
+      const thumbnail = r?.thumbnail?.thumbnails?.slice(-1)?.[0]?.url || ''
+      const countText = r?.videoCountText?.runs?.map(x => x.text).join('') || r?.videoCountText?.simpleText || ''
+      playlists.push({ id: playlistId, title, thumbnail, countText })
+    }
+
+    // Walk entire JSON tree looking for gridPlaylistRenderer or lockupViewModel (newer YT)
+    function walk(obj) {
+      if (!obj || typeof obj !== 'object') return
+      if (obj.gridPlaylistRenderer) { extractPlaylistRenderer(obj.gridPlaylistRenderer); return }
+      if (obj.lockupViewModel) {
+        const lv = obj.lockupViewModel
+        const playlistId = lv?.contentId || ''
+        if (playlistId) {
+          const title = lv?.metadata?.lockupMetadataViewModel?.title?.content || 'Playlista'
+          const thumbnail = lv?.contentImage?.collectionThumbnailViewModel?.primaryThumbnail?.thumbnailViewModel?.image?.sources?.[0]?.url || ''
+          const countBadge = lv?.contentImage?.collectionThumbnailViewModel?.primaryThumbnail?.thumbnailViewModel?.overlays?.find(o => o?.thumbnailOverlayBadgeViewModel)?.thumbnailOverlayBadgeViewModel?.thumbnailBadges?.[0]?.thumbnailBadgeViewModel?.text || ''
+          playlists.push({ id: playlistId, title, thumbnail, countText: countBadge })
+        }
+        return
+      }
+      for (const key of Object.keys(obj)) walk(obj[key])
+    }
+    walk(data)
+    console.log('[myyt] found playlists:', playlists.length)
+
+    return { playlists }
+  } catch (e) {
+    return { error: e.message, playlists: [] }
+  }
+})
+
+ipcMain.handle('youtube:logout', async () => {
+  await session.defaultSession.clearStorageData({
+    storages: ['cookies'],
+    origin: 'https://www.youtube.com',
+  })
+  await session.defaultSession.clearStorageData({
+    storages: ['cookies'],
+    origin: 'https://accounts.google.com',
+  })
+  return true
+})
+
+// Direct audio URL — używane przez crossfade (fadeout player bez ReactPlayer)
+ipcMain.handle('youtube:get-audio-url', async (_event, videoUrl) => {
+  try {
+    const info = await ytdl.getInfo(videoUrl)
+    const format = ytdl.chooseFormat(info.formats, { quality: 'highestaudio', filter: 'audioonly' })
+    if (!format?.url) return null
+    return { url: format.url }
+  } catch (e) {
+    console.error('[ytdl] getAudioUrl error:', e.message)
+    return null
+  }
 })
 
 app.whenReady().then(() => {

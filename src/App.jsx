@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState, startTransition, memo, useCallback } from 'react'
 import { createPortal } from 'react-dom'
 import ReactPlayer from 'react-player'
 import AudioMotionAnalyzer from 'audiomotion-analyzer'
@@ -7,7 +7,7 @@ import { useListenTogether } from './useListenTogether'
 import { soundJoin, soundLeave, soundPermission, soundSessionEnd, soundSwitchRadio, soundSwitchPlayer, soundStartup, soundStop, soundCreateSession, soundChatMsg, setUiVolume } from './sounds'
 import UpdateModal from './UpdateModal'
 import VersionPopup from './VersionPopup'
-import { ref, onValue } from 'firebase/database'
+import { ref, onValue, push, set, remove, onDisconnect, serverTimestamp } from 'firebase/database'
 import { db } from './firebase'
 import { GameLobby } from './GameLobby'
 import { MonopolyGame } from './MonopolyGame'
@@ -607,6 +607,19 @@ function countryFlagEmoji(countryCode) {
     .join('')
 }
 
+function weatherIcon(code) {
+  if (code === 0) return '☀️'
+  if (code <= 2) return '🌤️'
+  if (code === 3) return '☁️'
+  if (code <= 48) return '🌫️'
+  if (code <= 55) return '🌦️'
+  if (code <= 65) return '🌧️'
+  if (code <= 77) return '❄️'
+  if (code <= 82) return '🌦️'
+  if (code <= 86) return '❄️'
+  return '⛈️'
+}
+
 function formatSeconds(value) {
   const safeValue = Number.isFinite(value) ? Math.max(0, Math.floor(value)) : 0
   const minutes = Math.floor(safeValue / 60)
@@ -742,6 +755,45 @@ const CHAT_COMMANDS = [
   { cmd: '/help',   desc: 'Lista komend',                   argHint: '',                role: 'all' },
 ]
 
+const LibraryItem = memo(function LibraryItem({ item, selected, mode, activeTrackRef, onSelect, onSuggest, isSuggested, canSuggest, art, flag }) {
+  return (
+    <div
+      ref={selected ? activeTrackRef : null}
+      className={`library-item${selected ? ' active' : ''}${canSuggest ? ' with-suggest' : ''}`}
+      onClick={() => onSelect(item)}
+      style={{ cursor: 'pointer' }}
+    >
+      <div className="item-art with-badge">
+        <img
+          src={art}
+          alt=""
+          loading="lazy"
+          onError={(e) => {
+            e.target.onerror = null
+            e.target.style.display = 'none'
+          }}
+        />
+        <span className="flag-badge small">{flag}</span>
+      </div>
+      <div className="item-copy">
+        <strong>{mode === 'radio' ? item.name : item.title}</strong>
+        <span>
+          {mode === 'radio'
+            ? [item.country, item.codec, item.votes ? `${item.votes} głosów` : ''].filter(Boolean).join(' • ')
+            : [item.author, item.duration].filter(Boolean).join(' • ')}
+        </span>
+      </div>
+      {canSuggest && (
+        <button
+          className={`suggest-btn${isSuggested ? ' done' : ''}`}
+          title={isSuggested ? 'Już zasugerowałeś' : 'Zasugeruj hostowi'}
+          onClick={(e) => onSuggest(e, item)}
+        >{isSuggested ? '✓' : '+'}</button>
+      )}
+    </div>
+  )
+})
+
 function App() {
   const ZOOM_LEVELS = Array.from({ length: 31 }, (_, i) => Math.round((0.70 + i * 0.02) * 100) / 100)
   const ZOOM_LABELS = ZOOM_LEVELS.map(f => `${Math.round(f * 100)}%`)
@@ -795,6 +847,10 @@ function App() {
   // Przywracanie wybranego gatunku i widoku biblioteki z localStorage
   const [genreId, setGenreId] = useState(() => localStorage.getItem('hiphop-player-genre') || genres[0].id)
   const [libraryView, setLibraryView] = useState(() => localStorage.getItem('hiphop-player-libraryview') || 'all')
+  const [ytLoggedIn, setYtLoggedIn] = useState(false)
+  const [myPlaylists, setMyPlaylists] = useState([])
+  const [myPlaylistsLoading, setMyPlaylistsLoading] = useState(false)
+  const [loadingPlaylistId, setLoadingPlaylistId] = useState(null)
   const [chatInput, setChatInput] = useState('')
   const [chatUnread, setChatUnread] = useState(0)
   const chatEndRef = useRef(null)
@@ -818,8 +874,7 @@ function App() {
   const [stationSearchTerm, setStationSearchTerm] = useState(() => localStorage.getItem('hiphop-player-stationsearch') || '')
   const [visibleStationCount, setVisibleStationCount] = useState(40)
   const stationListSentinelRef = useRef(null)
-  const [visibleTrackCount, setVisibleTrackCount] = useState(40)
-  const trackListSentinelRef = useRef(null)
+  const libraryListRef = useRef(null)
   const [filters, setFilters] = useState(loadSavedFilters)
   const [filtersOpen, setFiltersOpen] = useState(false)
   const [curatedTracksKey, setCuratedTracksKey] = useState(0)
@@ -838,13 +893,15 @@ function App() {
   const [searchResults, setSearchResults] = useState([])
   const [curatedTracks, setCuratedTracks] = useState([])
   const [trackLoading, setTrackLoading] = useState(false)
+  const [trackPage, setTrackPage] = useState(0)
+  const PAGE_SIZE = 50
   const [trackError, setTrackError] = useState('')
   const [currentTrack, setCurrentTrack] = useState(null)
   const [isRadioPlaying, setIsRadioPlaying] = useState(false)
   const [isRadioBuffering, setIsRadioBuffering] = useState(false)
   const [isTrackPlaying, setIsTrackPlaying] = useState(false)
   const [isTrackReady, setIsTrackReady] = useState(false)
-  const [resolvedTrackUrl, setResolvedTrackUrl] = useState(null)
+
   const [sessionEndedMsg, setSessionEndedMsg] = useState(null)
   const [radioNowPlaying, setRadioNowPlaying] = useState('')
   const [radioNowPlayingAt, setRadioNowPlayingAt] = useState(null)
@@ -886,7 +943,9 @@ function App() {
   const seekFillRef = useRef(null)
   const seekThumbRef = useRef(null)
   const seekTimeDisplayRef = useRef(null)
+  const seekBufferRef = useRef(null)
   const seekValueRef = useRef(null)
+  const playerRef = useRef(null)
 
   const [loadingMoreTracks, setLoadingMoreTracks] = useState(false)
   const [previousTracks, setPreviousTracks] = useState([])
@@ -907,6 +966,62 @@ function App() {
   })
   // Inicjalizacja currentStation z localStorage jeśli istnieje
   const [favorites, setFavorites] = useState(loadStoredFavorites)
+  const [clockTime, setClockTime] = useState(() => new Date())
+  useEffect(() => {
+    const t = setInterval(() => setClockTime(new Date()), 1000)
+    return () => clearInterval(t)
+  }, [])
+
+  const [weather, setWeather] = useState(null)
+  useEffect(() => {
+    const LAT = 52.2297, LON = 21.0122 // Warszawa
+    async function fetchWeather() {
+      try {
+        const res = await fetch(
+          `https://api.open-meteo.com/v1/forecast?latitude=${LAT}&longitude=${LON}` +
+          `&current=temperature_2m,weather_code` +
+          `&daily=weather_code,temperature_2m_max,temperature_2m_min` +
+          `&timezone=Europe%2FWarsaw&forecast_days=5`
+        )
+        const data = await res.json()
+        setWeather({
+          temp: Math.round(data.current.temperature_2m),
+          code: data.current.weather_code,
+          forecast: data.daily.time.slice(1, 5).map((date, i) => ({
+            date,
+            code: data.daily.weather_code[i + 1],
+            max: Math.round(data.daily.temperature_2m_max[i + 1]),
+            min: Math.round(data.daily.temperature_2m_min[i + 1]),
+          })),
+        })
+      } catch {}
+    }
+    fetchWeather()
+    const t = setInterval(fetchWeather, 10 * 60 * 1000)
+    return () => clearInterval(t)
+  }, [])
+
+  const [onlineCount, setOnlineCount] = useState(0)
+  useEffect(() => {
+    const connectedRef = ref(db, '.info/connected')
+    let myPresenceRef = null
+    const unsubConnected = onValue(connectedRef, (snap) => {
+      if (snap.val() === true) {
+        myPresenceRef = push(ref(db, 'presence'))
+        onDisconnect(myPresenceRef).remove()
+        set(myPresenceRef, { ts: serverTimestamp() })
+      }
+    })
+    const unsubCount = onValue(ref(db, 'presence'), (snap) => {
+      const val = snap.val()
+      setOnlineCount(val ? Object.keys(val).length : 0)
+    })
+    return () => {
+      unsubConnected()
+      unsubCount()
+      if (myPresenceRef) remove(myPresenceRef)
+    }
+  }, [])
   // Przywracanie ostatniej stacji po starcie aplikacji
 
   useEffect(() => {
@@ -934,7 +1049,6 @@ function App() {
 
 
   const audioRef = useRef(null)
-  const trackPlayerRef = useRef(null)
 
   const radioAudioContextRef = useRef(null)
   const radioAnalyserRef = useRef(null)
@@ -953,6 +1067,7 @@ function App() {
   const sessionReconnectCountRef = useRef(0)
   const electricEnergyRef = useRef(0)
   const vizBgCanvasRef = useRef(null)
+  const bgCanvasRef = useRef(null)
 
   // Inicjalizacja AudioMotionAnalyzer — jeden raz przy mount
   useEffect(() => {
@@ -1062,6 +1177,98 @@ function App() {
     }
   }, [])
 
+  // ─── Tło aplikacji — orby reagujące na energię muzyki ───────────────────────
+  useEffect(() => {
+    const canvas = bgCanvasRef.current
+    if (!canvas) return
+    const ctx = canvas.getContext('2d')
+
+    // 16 małych orbów rozsianych po całym ekranie
+    // hue: odcień startowy (°), hs: prędkość dryftu odcienia, sz: rozmiar bazowy
+    const blobs = [
+      { x: 0.10, y: 0.08, vx:  0.00030, vy:  0.00020, hue: 20,  hs:  0.008, sz: 0.22 },
+      { x: 0.50, y: 0.05, vx: -0.00025, vy:  0.00015, hue: 35,  hs: -0.006, sz: 0.17 },
+      { x: 0.90, y: 0.12, vx: -0.00028, vy:  0.00022, hue: 25,  hs:  0.010, sz: 0.19 },
+      { x: 0.20, y: 0.30, vx:  0.00022, vy: -0.00018, hue: 15,  hs: -0.007, sz: 0.24 },
+      { x: 0.65, y: 0.28, vx: -0.00020, vy:  0.00025, hue: 30,  hs:  0.009, sz: 0.18 },
+      { x: 0.85, y: 0.40, vx:  0.00018, vy: -0.00015, hue: 22,  hs: -0.008, sz: 0.20 },
+      { x: 0.05, y: 0.52, vx:  0.00026, vy:  0.00012, hue: 28,  hs:  0.007, sz: 0.21 },
+      { x: 0.38, y: 0.50, vx: -0.00015, vy: -0.00020, hue: 18,  hs: -0.009, sz: 0.26 },
+      { x: 0.72, y: 0.55, vx:  0.00020, vy:  0.00018, hue: 32,  hs:  0.006, sz: 0.19 },
+      { x: 0.95, y: 0.62, vx: -0.00024, vy: -0.00016, hue: 14,  hs: -0.007, sz: 0.16 },
+      { x: 0.15, y: 0.72, vx:  0.00019, vy: -0.00022, hue: 26,  hs:  0.010, sz: 0.21 },
+      { x: 0.48, y: 0.78, vx: -0.00022, vy:  0.00017, hue: 20,  hs: -0.008, sz: 0.23 },
+      { x: 0.78, y: 0.75, vx:  0.00025, vy: -0.00019, hue: 33,  hs:  0.008, sz: 0.18 },
+      { x: 0.30, y: 0.92, vx:  0.00021, vy: -0.00024, hue: 17,  hs: -0.006, sz: 0.20 },
+      { x: 0.62, y: 0.95, vx: -0.00018, vy: -0.00020, hue: 24,  hs:  0.009, sz: 0.17 },
+      { x: 0.92, y: 0.88, vx: -0.00020, vy: -0.00015, hue: 28,  hs: -0.007, sz: 0.19 },
+    ]
+
+    let smooth = 0
+    let beat = 0
+    let raf
+
+    const draw = () => {
+      if (document.visibilityState === 'hidden') { raf = requestAnimationFrame(draw); return }
+      const w = canvas.offsetWidth
+      const h = canvas.offsetHeight
+      ctx.clearRect(0, 0, w, h)
+
+      const raw = electricEnergyRef.current || 0
+      // Asymetryczny lerp: szybki atak, wolny decay
+      smooth += (raw - smooth) * (raw > smooth ? 0.10 : 0.04)
+      // Beat: bardzo szybki atak — uderza na każdym bicie, potem opada
+      beat += (raw - beat) * (raw > beat ? 0.45 : 0.07)
+
+      // screen: orby dodają swoje kolory jak światło — nakładki rozjaśniają
+      // Przezroczystość i blur kart — rośnie gdy gra muzyka (frosted-glass, tło przebija)
+      document.documentElement.style.setProperty('--card-alpha', (0.76 - smooth * 0.42).toFixed(3))
+      document.documentElement.style.setProperty('--card-blur', `${(22 + smooth * 20).toFixed(1)}px`)
+      document.documentElement.style.setProperty('--item-bg-alpha', (1.0 - smooth * 0.58).toFixed(3))
+
+      ctx.globalCompositeOperation = 'screen'
+
+      blobs.forEach((b) => {
+        // Ruch przyspiesza z energią
+        const speedMul = 1 + smooth * 3.5
+        b.x += b.vx * speedMul; b.y += b.vy * speedMul
+        if (b.x < -0.12 || b.x > 1.12) b.vx *= -1
+        if (b.y < -0.12 || b.y > 1.12) b.vy *= -1
+
+        // Powolny dryft odcienia + energia przesuwa z pomarańczowego → fioletowy/różowy
+        b.hue = ((b.hue + b.hs + 360) % 360)
+        const hue    = ((b.hue - smooth * 90 + 360) % 360)
+        // Rozmiar: płynny wzrost z smooth + pulsowanie na bitach
+        const radius = Math.min(w, h) * (b.sz + smooth * 0.18 + beat * 0.14)
+        // Jasność: mocniejsza i bardziej pulsująca
+        const alpha  = 0.06 + smooth * 0.38 + beat * 0.28
+
+        const g = ctx.createRadialGradient(b.x * w, b.y * h, 0, b.x * w, b.y * h, radius)
+        g.addColorStop(0,    `hsla(${hue},92%,62%,${Math.min(alpha, 0.95).toFixed(3)})`)
+        g.addColorStop(0.40, `hsla(${hue},85%,52%,${(alpha * 0.22).toFixed(3)})`)
+        g.addColorStop(1,    `hsla(${hue},80%,40%,0)`)
+        ctx.fillStyle = g
+        ctx.fillRect(0, 0, w, h)
+      })
+
+      ctx.globalCompositeOperation = 'source-over'
+      raf = requestAnimationFrame(draw)
+    }
+
+    const resize = () => {
+      const dpr = Math.min(devicePixelRatio, 2)
+      canvas.width  = canvas.offsetWidth  * dpr
+      canvas.height = canvas.offsetHeight * dpr
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
+    }
+
+    resize()
+    draw()
+    const ro = new ResizeObserver(resize)
+    ro.observe(canvas)
+    return () => { cancelAnimationFrame(raf); ro.disconnect() }
+  }, [])
+
   // ─── Thumbar — ref zawsze aktualny, listenerzy rejestrują się raz ─────────
   const thumbarActionsRef = useRef({})
   useEffect(() => {
@@ -1098,6 +1305,14 @@ function App() {
     }
     window.addEventListener('keydown', blockZoomKeys, { capture: true })
     return () => window.removeEventListener('keydown', blockZoomKeys, { capture: true })
+  }, [])
+
+  useEffect(() => {
+    async function checkYt() {
+      const loggedIn = await window.playerBridge?.youtubeCheckLogin?.()
+      setYtLoggedIn(!!loggedIn)
+    }
+    checkYt()
   }, [])
 
   // ─── Thumbar — aktualizuj ikonę play/pause ────────────────────────────────
@@ -1287,21 +1502,42 @@ function App() {
     () => applyFilters(libraryView === 'favorites' ? trackFavorites : allTracks, filters),
     [allTracks, libraryView, trackFavorites, filters],
   )
-
-  // Reset licznika gdy zmienia się lista / filtry
-  useEffect(() => { setVisibleTrackCount(40) }, [allTracks, filters, libraryView])
-
-  // IntersectionObserver — dokładaj 40 tracków gdy sentinel wchodzi w viewport
+  // Przewiń na górę i resetuj stronę gdy zmienia się zawartość
   useEffect(() => {
-    const sentinel = trackListSentinelRef.current
-    if (!sentinel) return
-    const observer = new IntersectionObserver(
-      (entries) => { if (entries[0].isIntersecting) setVisibleTrackCount((n) => n + 40) },
-      { threshold: 0.1 },
-    )
-    observer.observe(sentinel)
-    return () => observer.disconnect()
-  }, [visibleTracks.length])
+    if (libraryListRef.current) libraryListRef.current.scrollTop = 0
+    setTrackPage(0)
+  }, [allTracks, filters, libraryView])
+
+  // Szybsze i płynne scrollowanie listy
+  useEffect(() => {
+    const el = libraryListRef.current
+    if (!el) return
+    let target = el.scrollTop
+    let raf = null
+    const onWheel = (e) => {
+      e.preventDefault()
+      target = Math.max(0, Math.min(el.scrollHeight - el.clientHeight, target + e.deltaY * 1.5))
+      if (raf) return
+      const step = () => {
+        const diff = target - el.scrollTop
+        if (Math.abs(diff) < 1) { el.scrollTop = target; raf = null; return }
+        el.scrollTop += diff * 0.18
+        raf = requestAnimationFrame(step)
+      }
+      raf = requestAnimationFrame(step)
+    }
+    el.addEventListener('wheel', onWheel, { passive: false })
+    return () => { el.removeEventListener('wheel', onWheel); if (raf) cancelAnimationFrame(raf) }
+  }, [])
+
+  // Auto-przesuń stronę gdy aktywny utwór jest poza widocznym zakresem
+  useEffect(() => {
+    if (!currentTrack || mode !== 'player') return
+    const idx = visibleTracks.findIndex(t => t.id === currentTrack.id)
+    if (idx < 0) return
+    const page = Math.floor(idx / PAGE_SIZE)
+    setTrackPage(p => p === page ? p : page)
+  }, [currentTrack?.id])
 
   const activeItem = mode === 'radio' ? currentStation : currentTrack
   const currentRadioStreamEntry = stationStreams[stationStreamIndex] || null
@@ -1888,41 +2124,22 @@ function App() {
     loadMoreTracks(20).catch(() => {})
   }, [currentTrack?.id, visibleTracks.length, loadingMoreTracks, mode])
 
+  // Interwał czasu — śledź pozycję odtwarzania
   useEffect(() => {
-    if (mode !== 'player' || !currentTrack) {
-      setResolvedTrackUrl(null)
-      return
-    }
-    setResolvedTrackUrl(currentTrack.url)
-  }, [currentTrack, mode])
-
-  useEffect(() => {
-    if (mode !== 'player' || !currentTrack) {
-      return undefined
-    }
-
+    if (mode !== 'player') return undefined
     const interval = window.setInterval(() => {
-      const player = trackPlayerRef.current
-
-      if (!player) {
-        return
-      }
-
+      const player = playerRef.current
+      if (!player) return
       const nextTime = Number(player.currentTime ?? 0)
       const nextDuration = Number(player.duration ?? 0)
-
       if (Number.isFinite(nextTime) && !isSeekingRef.current) {
         trackTimeRef.current = nextTime
         setTrackTime(nextTime)
       }
-
-      if (Number.isFinite(nextDuration) && nextDuration > 0) {
-        setTrackDuration(nextDuration)
-      }
+      if (Number.isFinite(nextDuration) && nextDuration > 0) setTrackDuration(nextDuration)
     }, 800)
-
     return () => window.clearInterval(interval)
-  }, [currentTrack, mode])
+  }, [mode])
 
   function showSessionToast(msg) {
     setSessionToast(msg)
@@ -1991,17 +2208,23 @@ function App() {
     const plId = extractYoutubePlaylistId(searchTerm.trim())
     if (plId && window.playerBridge.getPlaylist) {
       try {
-        const tracks = await window.playerBridge.getPlaylist(plId)
-        if (tracks && tracks.length > 0) {
+        const result = await window.playerBridge.getPlaylist(plId)
+        const tracks = Array.isArray(result) ? result : (result?.tracks ?? [])
+        const err = result?.error
+        if (tracks.length > 0) {
           const filtered = filterPlayableTracks(tracks)
           setSearchResults(filtered)
           setActiveTrackQuery(`Playlista (${filtered.length} utworów)`)
           selectTrack(filtered[0], true, false)
+          if (err && tracks.length < 500) setTrackError(`Wczytano ${filtered.length} z możliwych — reszta niedostępna.`)
         } else {
-          setTrackError('Nie znaleziono utworów w tej playliście (może być prywatna).')
+          if (err === 'quota') setTrackError('Przekroczono dzienny limit API YouTube. Spróbuj za kilka godzin.')
+          else if (err === 'private') setTrackError('Playlista jest prywatna lub niedostępna.')
+          else if (err === 'not_found') setTrackError('Nie znaleziono playlisty pod tym adresem.')
+          else setTrackError('Nie udało się załadować playlisty. Sprawdź link i spróbuj ponownie.')
         }
       } catch {
-        setTrackError('Nie udało się załadować playlisty.')
+        setTrackError('Błąd połączenia podczas ładowania playlisty.')
       } finally {
         setTrackLoading(false)
       }
@@ -2124,9 +2347,21 @@ function App() {
     }
   }
 
+  async function loadMyPlaylists() {
+    setMyPlaylistsLoading(true)
+    try {
+      const result = await window.playerBridge?.youtubeGetPlaylists?.()
+      setMyPlaylists(result?.playlists ?? [])
+      if (result?.error === 'not_logged_in') setYtLoggedIn(false)
+    } finally {
+      setMyPlaylistsLoading(false)
+    }
+  }
+
   function selectTrack(track, autoplay = true, notify = false) {
     setCurrentTrack(track)
     setTrackError('')
+    trackTimeRef.current = 0
     setTrackTime(0)
     setTrackDuration(track.seconds || 0)
     setIsTrackReady(false)
@@ -2333,11 +2568,7 @@ function App() {
     if (nextTime === null) return
     seekValueRef.current = null
     setTrackTime(nextTime)
-    const player = trackPlayerRef.current
-    if (player) {
-      if ('currentTime' in player) player.currentTime = nextTime
-      else player.seekTo?.(nextTime, 'seconds')
-    }
+    if (playerRef.current) playerRef.current.currentTime = nextTime
     if (isHost) {
       syncPositionNow(nextTime)
     } else if (inSession) {
@@ -2416,14 +2647,15 @@ function App() {
     onRemoteTrackChange: (trackData) => {
       setCurrentTrack(trackData)
       setIsTrackReady(false)
+      trackTimeRef.current = trackData.position ?? 0
       setTrackTime(trackData.position ?? 0)
+      setIsTrackPlaying(trackData.playing ?? true)
+      pendingRemoteSeekRef.current = trackData.position > 0 ? trackData.position : null
     },
     onRemoteSeek: (time) => {
       pendingRemoteSeekRef.current = time
-      const player = trackPlayerRef.current
-      if (!player) return
-      if ('currentTime' in player) player.currentTime = time
-      else player.seekTo?.(time, 'seconds')
+      if (!playerRef.current) return
+      playerRef.current.currentTime = time
       setTrackTime(time)
     },
     onRemotePlayPause: (playing, audioMode) => {
@@ -2460,6 +2692,22 @@ function App() {
 
   // Zawsze aktualny ref do sendSystemMessage (używany w onActionNotification przed inicjalizacją)
   sendSysMsgRef.current = sendSystemMessage
+
+  const handleItemSelect = useCallback((item) => {
+    if (mode === 'radio') {
+      if (!checkPerm('canSkip') && !checkPerm('canAdd')) return
+      selectStation(item)
+      if (inSession) notifyAction('stationChange', { id: item.id ?? '', name: item.name ?? '', url: item.url ?? '', country: item.country ?? '', countrycode: item.countrycode ?? '', favicon: item.favicon ?? '', tags: item.tags ?? '', codec: item.codec ?? '', bitrate: item.bitrate ?? 0, lastSong: item.lastSong ?? '' })
+      return
+    }
+    if (!checkPerm('canAdd')) return
+    selectTrack(item, true, true)
+  }, [mode, checkPerm, selectStation, selectTrack, inSession, notifyAction])
+
+  const handleItemSuggest = useCallback((e, item) => {
+    e.stopPropagation()
+    if (!suggestedIds.has(item.id)) handleSuggest(item)
+  }, [suggestedIds, handleSuggest])
 
   // Reset po zakończeniu sesji
   useEffect(() => {
@@ -2882,51 +3130,45 @@ function App() {
         }}
       />
 
+      {/* Single player */}
       <ReactPlayer
-        ref={trackPlayerRef}
-        src={resolvedTrackUrl}
-        playing={mode === 'player' && isTrackPlaying && !!resolvedTrackUrl}
+        key="main-player"
+        ref={playerRef}
+        src={currentTrack?.url ?? null}
+        playing={mode === 'player' && isTrackPlaying && !!currentTrack?.url}
         controls={false}
-        width="1px"
-        height="1px"
+        width="1px" height="1px"
         volume={effectiveVolume}
         muted={volumePercent === 0}
         playsInline
         style={{ position: 'absolute', opacity: 0, pointerEvents: 'none' }}
-        config={{
-          youtube: {
-            playerVars: {
-              controls: 0,
-              rel: 0,
-              modestbranding: 1,
-              playsinline: 1,
-            },
-          },
-        }}
+        config={{ youtube: { playerVars: { controls: 0, rel: 0, modestbranding: 1, playsinline: 1 } } }}
         onReady={() => {
-          setIsTrackReady(true)
-          setTrackError('')
+          setIsTrackReady(true); setTrackError('')
           if (pendingRemoteSeekRef.current !== null) {
-            const t = pendingRemoteSeekRef.current
-            pendingRemoteSeekRef.current = null
-            const player = trackPlayerRef.current
-            if (player) {
-              if ('currentTime' in player) player.currentTime = t
-              else player.seekTo?.(t, 'seconds')
-            }
-            setTrackTime(t)
+            const t = pendingRemoteSeekRef.current; pendingRemoteSeekRef.current = null
+            if (playerRef.current) playerRef.current.currentTime = t; setTrackTime(t)
           }
         }}
+        onProgress={({ loaded }) => {
+          seekBufferRef.current?.style.setProperty('--buf', `${(loaded * 100).toFixed(2)}%`)
+        }}
         onPlay={() => setIsTrackPlaying(true)}
-        onPause={() => { if (isTrackReady) setIsTrackPlaying(false) }}
-        onDurationChange={(duration) => setTrackDuration(Number(duration) || 0)}
-        onEnded={() => {
-          handleTrackNext(true)
-        }}
-        onError={() => {
-          setTrackError('Ten utwór nie daje się odtworzyć. Wybierz inny z listy.')
+        onPause={() => {/* YouTube odpala onPause przy bufferowaniu — ignoruj */}}
+        onDurationChange={(d) => setTrackDuration(Number(d) || 0)}
+        onEnded={() => handleTrackNext(true)}
+        onError={async () => {
           setIsTrackPlaying(false)
+          const ok = await window.playerBridge?.youtubeCheckLogin?.()
+          if (!ok) setTrackError('__yt_login__')
+          else setTrackError('Ten utwór nie daje się odtworzyć (prywatny lub usunięty). Wybierz inny.')
         }}
+      />
+
+      {/* Tło aplikacji — orby reagujące na muzykę */}
+      <canvas
+        ref={bgCanvasRef}
+        style={{ position: 'fixed', inset: 0, width: '100%', height: '100%', zIndex: -1, pointerEvents: 'none' }}
       />
 
       <header className="topbar">
@@ -2963,7 +3205,6 @@ function App() {
         </div>
 
         <div className="topbar-metrics">
-          <span>{mode === 'radio' ? `${stations.length} stacji` : `${allTracks.length} utworów`}</span>
           <span>{favorites.length} ulubionych</span>
           <span>{mode === 'radio' ? 'Radio online' : 'Audio z YouTube'}</span>
           <button
@@ -3060,20 +3301,43 @@ function App() {
           >
           <div className={`stage-visual ${mode}`} style={{ marginTop: 0 }}>
             <canvas ref={vizBgCanvasRef} className="viz-bg-canvas" />
-            {(() => {
-              const marqueeText = mode === 'radio'
-                ? `${currentStation?.name || 'Radio'} • ${currentStation?.country || 'Online'} • ${currentStation?.tags || activeGenre.label}`
-                : `${currentTrack?.title || 'Brak wybranego utworu'} • ${currentTrack?.author || 'YouTube'} • ${activeGenre.label}`
-              const scroll = marqueeText.length > 42
-              return (
-                <div className="stage-marquee">
-                  <div className={`marquee-track${scroll ? ' scrolling' : ''}`}>
-                    <span>{scroll ? marqueeText + '   ·   ' : marqueeText}</span>
-                    {scroll && <span>{marqueeText + '   ·   '}</span>}
+            <div className="stage-clock">
+              <div className="stage-clock-left">
+                <span className="stage-clock-hm">
+                  {clockTime.toLocaleTimeString('pl-PL', { hour: '2-digit', minute: '2-digit' })}
+                </span>
+                <span className="stage-clock-s">:{clockTime.getSeconds().toString().padStart(2, '0')}</span>
+              </div>
+              <span className="stage-clock-sep" />
+              <span className="stage-clock-date">
+                {clockTime.toLocaleDateString('pl-PL', { weekday: 'long', day: 'numeric', month: 'long' })}
+              </span>
+              {weather && (
+                <>
+                  <span className="stage-clock-sep" />
+                  <span className="stage-clock-now">
+                    <span className="weather-icon">{weatherIcon(weather.code)}</span>
+                    <span className="weather-temp">{weather.temp}°C</span>
+                    <span className="weather-city">Warszawa</span>
+                  </span>
+                  <span className="stage-clock-sep" />
+                  <div className="stage-clock-forecast">
+                    {weather.forecast.map((day) => (
+                      <span key={day.date} className="forecast-day">
+                        <span className="forecast-dow">
+                          {new Date(day.date + 'T12:00:00').toLocaleDateString('pl-PL', { weekday: 'short' })}
+                        </span>
+                        <span className="forecast-icon">{weatherIcon(day.code)}</span>
+                        <span className="forecast-temps">
+                          <span className="forecast-max">{day.max}°</span>
+                          <span className="forecast-min">{day.min}°</span>
+                        </span>
+                      </span>
+                    ))}
                   </div>
-                </div>
-              )
-            })()}
+                </>
+              )}
+            </div>
 
             <div className="radio-stage-body">
                 <div ref={audioMotionContainerRef} className="audio-motion-viz" />
@@ -3120,10 +3384,7 @@ function App() {
                   isPlaying={isTrackPlaying}
                   onSeek={(t) => {
                     setTrackTime(t)
-                    const player = trackPlayerRef.current
-                    if (!player) return
-                    if ('currentTime' in player) player.currentTime = t
-                    else if (player.seekTo) player.seekTo(t, 'seconds')
+                    if (playerRef.current) playerRef.current.currentTime = t
                   }}
                 />
               </div>
@@ -3138,16 +3399,23 @@ function App() {
                 {currentStation?.language ? <span>{currentStation.language}</span> : null}
                 {currentStation?.votes > 0 ? <span>♥ {currentStation.votes > 999 ? `${(currentStation.votes / 1000).toFixed(1)}k` : currentStation.votes}</span> : null}
                 {currentStation?.tags ? <span>{currentStation.tags.split(',')[0].trim()}</span> : null}
+                <span className="info-strip-dot">{isRadioVisualLoading ? '○ Buforuje' : isRadioPlaying ? '● Na żywo' : '○ Stop'}</span>
+                <span className="info-strip-online"><i className="online-dot" />{onlineCount} online</span>
               </>
             ) : (
               <>
+                {currentTrack && isTrackReady && trackDuration > 0 ? (
+                  <span className="info-strip-remaining">−{formatSeconds(Math.max(0, trackDuration - trackTime))}</span>
+                ) : (
+                  <span className="info-strip-remaining">{currentTrack?.duration || '—'}</span>
+                )}
                 {currentTrack ? (
                   <span>#{visibleTracks.findIndex((t) => t.id === currentTrack.id) + 1} / {visibleTracks.length}</span>
                 ) : null}
-                <span>{currentTrack?.duration || '—'}</span>
                 <span>{currentTrack?.author || 'YouTube'}</span>
-                {activeGenre.label !== 'Wszystkie' ? <span>{activeGenre.label}</span> : null}
-                <span>{isTrackReady ? '● Gotowy' : '○ Ładowanie'}</span>
+                {isFavorite ? <span>★ Ulubiona</span> : null}
+                <span className="info-strip-dot">{isTrackReady ? '● Gotowy' : '○ Ładowanie'}</span>
+                <span className="info-strip-online"><i className="online-dot" />{onlineCount} online</span>
               </>
             )}
           </div>
@@ -3171,6 +3439,18 @@ function App() {
                   {activeQueue.length > 0 && <span className="suggested-badge">{activeQueue.length}</span>}
                 </button>
               )}
+              {mode === 'player' && (
+                <button
+                  className={`${libraryView === 'myyt' ? 'active' : ''} myyt-tab`}
+                  onClick={() => {
+                    setLibraryView('myyt')
+                    if (ytLoggedIn && myPlaylists.length === 0) loadMyPlaylists()
+                  }}
+                >
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M10 15l5.19-3L10 9v6m11.56-7.83c.13.47.22 1.1.28 1.9.07.8.1 1.49.1 2.09L22 12c0 2.19-.16 3.8-.44 4.83-.25.9-.83 1.48-1.73 1.73-.47.13-1.33.22-2.65.28-1.3.07-2.49.1-3.59.1L12 19c-4.19 0-6.8-.16-7.83-.44-.9-.25-1.48-.83-1.73-1.73-.13-.47-.22-1.1-.28-1.9-.07-.8-.1-1.49-.1-2.09L2 12c0-2.19.16-3.8.44-4.83.25-.9.83-1.48 1.73-1.73.47-.13 1.33-.22 2.65-.28 1.3-.07 2.49-.1 3.59-.1L12 5c4.19 0 6.8.16 7.83.44.9.25 1.48.83 1.73 1.73z"/></svg>
+                  YT
+                </button>
+              )}
               {inSession && (
                 <button className={`${libraryView === 'chat' ? 'active' : ''} chat-tab`} onClick={() => setLibraryView('chat')}>
                   Chat
@@ -3179,17 +3459,6 @@ function App() {
               )}
             </div>
 
-            <span className="count-pill">
-              {libraryView === 'similar'
-                ? similarItems.length
-                : mode === 'radio'
-                  ? (radioGardenMode ? rgResults.length : filteredStations.length)
-                  : libraryView === 'suggested'
-                    ? activeQueue.length
-                    : libraryView === 'chat'
-                      ? chatMessages.length
-                      : visibleTracks.length} pozycji
-            </span>
           </div>
 
           <div className={`library-extras${(libraryView === 'chat' || libraryView === 'similar') ? ' library-extras--hidden' : ''}`}>
@@ -3388,7 +3657,20 @@ function App() {
           <div className="library-header">
             <div>
               <p className="stage-label">Lista źródeł</p>
-              <h3>{mode === 'radio' ? 'Stacje' : 'Utwory'}</h3>
+              <h3>
+                {mode === 'radio' ? 'Stacje' : 'Utwory'}
+                <span className="count-pill count-pill--sm">
+                  {libraryView === 'similar'
+                    ? similarItems.length
+                    : mode === 'radio'
+                      ? (radioGardenMode ? rgResults.length : filteredStations.length)
+                      : libraryView === 'suggested'
+                        ? activeQueue.length
+                        : libraryView === 'chat'
+                          ? chatMessages.length
+                          : visibleTracks.length}
+                </span>
+              </h3>
             </div>
             {mode === 'radio' ? (
               <div className="station-search">
@@ -3427,10 +3709,34 @@ function App() {
             ) : null}
           </div>
 
-          {trackError && mode === 'player' ? <p className="status-copy error">{trackError}</p> : null}
+          {trackError && mode === 'player' ? (
+            trackError === '__yt_login__' ? (
+              <p className="status-copy error" style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                Utwór 18+ wymaga zalogowania do YouTube.
+                <button
+                  style={{ fontSize: 12, padding: '2px 10px', borderRadius: 8, border: '1px solid #ffb05c', background: 'rgba(255,176,92,0.15)', color: '#ffb05c', cursor: 'pointer', whiteSpace: 'nowrap' }}
+                  onClick={async () => {
+                    await window.playerBridge?.youtubeLogin?.()
+                    setTrackError('')
+                    // Wymuś przeładowanie playera przez zmianę klucza
+                    if (currentTrack) {
+                      const saved = currentTrack
+                      setCurrentTrack(null)
+                      setTimeout(() => setCurrentTrack(saved), 300)
+                    }
+                  }}
+                >Zaloguj do YouTube</button>
+              </p>
+            ) : (
+              <p className="status-copy error">{trackError}</p>
+            )
+          ) : null}
           </div>
 
-          <div className={`library-list${libraryView === 'chat' ? ' library-list--chat' : ''}`}>
+          <div
+            ref={libraryListRef}
+            className={`library-list${libraryView === 'chat' ? ' library-list--chat' : ''}`}
+          >
             {mode === 'radio' && radioGardenMode && (
               rgLoading
                 ? Array.from({ length: 6 }, (_, i) => (
@@ -3487,27 +3793,28 @@ function App() {
                 <div className="empty-state">
                   {mode === 'player' && !currentTrack ? 'Włącz jakiś utwór, żeby zobaczyć podobne.' : mode === 'radio' && !currentStation ? 'Włącz stację, żeby zobaczyć podobne.' : 'Brak podobnych wyników.'}
                 </div>
-              ) : similarItems.map((item) => (
-                <div
-                  key={item.id}
-                  className={`library-item${(mode === 'player' ? currentTrack?.id : currentStation?.id) === item.id ? ' active' : ''}`}
-                  onClick={() => mode === 'player' ? selectTrack(item, true, inSession) : selectStation(item)}
-                >
-                  <div className="item-art with-badge">
-                    <img
-                      src={mode === 'player' ? safeArt(item.thumbnail, item.title, 'track') : safeArt(item.favicon, item.name, 'radio')}
-                      alt=""
-                      onError={(e) => withFallbackArt(e, mode === 'player' ? item.title : item.name, mode === 'player' ? 'track' : 'radio')}
-                    />
-                    <span className="flag-badge small">{mode === 'player' ? 'YT' : countryFlagEmoji(item.countryCode)}</span>
-                  </div>
-                  <div className="item-copy">
-                    <strong>{mode === 'player' ? item.title : item.name}</strong>
-                    <span>{mode === 'player' ? item.author : item.tags?.split(',').slice(0, 2).join(', ')}</span>
-                  </div>
-                  {mode === 'player' && <span className="item-duration">{item.duration}</span>}
-                </div>
-              ))
+              ) : similarItems.map((item) => {
+                const selected = (mode === 'player' ? currentTrack?.id : currentStation?.id) === item.id
+                const flag = mode === 'radio' ? countryFlagEmoji(item.countryCode) : 'YT'
+                const art = mode === 'radio'
+                  ? safeArt(item.favicon, item.name, 'radio')
+                  : safeArt(item.thumbnail, item.title, 'track')
+                return (
+                  <LibraryItem
+                    key={item.id}
+                    item={item}
+                    selected={selected}
+                    mode={mode}
+                    activeTrackRef={activeTrackRef}
+                    art={art}
+                    flag={flag}
+                    canSuggest={mode === 'player'}
+                    isSuggested={suggestedIds.has(item.id)}
+                    onSelect={handleItemSelect}
+                    onSuggest={handleItemSuggest}
+                  />
+                )
+              })
             ) : libraryView === 'suggested' && mode === 'player' ? (
               activeQueue.length === 0 ? (
                 <div className="empty-state">Kolejka jest pusta — dodaj utwory przyciskiem + przy każdym utworze.</div>
@@ -3539,6 +3846,92 @@ function App() {
                   </div>
                 </div>
               ))
+            ) : libraryView === 'myyt' && mode === 'player' ? (
+              <div className="myyt-panel">
+                {!ytLoggedIn ? (
+                  <div className="myyt-login-prompt">
+                    <svg width="40" height="40" viewBox="0 0 24 24" fill="rgba(255,176,92,0.6)"><path d="M10 15l5.19-3L10 9v6m11.56-7.83c.13.47.22 1.1.28 1.9.07.8.1 1.49.1 2.09L22 12c0 2.19-.16 3.8-.44 4.83-.25.9-.83 1.48-1.73 1.73-.47.13-1.33.22-2.65.28-1.3.07-2.49.1-3.59.1L12 19c-4.19 0-6.8-.16-7.83-.44-.9-.25-1.48-.83-1.73-1.73-.13-.47-.22-1.1-.28-1.9-.07-.8-.1-1.49-.1-2.09L2 12c0-2.19.16-3.8.44-4.83.25-.9.83-1.48 1.73-1.73.47-.13 1.33-.22 2.65-.28 1.3-.07 2.49-.1 3.59-.1L12 5c4.19 0 6.8.16 7.83.44.9.25 1.48.83 1.73 1.73z"/></svg>
+                    <p>Zaloguj się do YouTube, aby zobaczyć swoje playlisty i odtwarzać treści 18+</p>
+                    <button className="myyt-login-btn" onClick={async () => {
+                      await window.playerBridge?.youtubeLogin?.()
+                      const ok = await window.playerBridge?.youtubeCheckLogin?.()
+                      setYtLoggedIn(!!ok)
+                      if (ok) loadMyPlaylists()
+                    }}>
+                      Zaloguj przez Google
+                    </button>
+                  </div>
+                ) : myPlaylistsLoading ? (
+                  <div className="myyt-loading">
+                    {Array.from({ length: 5 }, (_, i) => (
+                      <div key={i} className="library-item skeleton" style={{ animationDelay: `${i * 0.06}s` }}>
+                        <div className="skeleton-art" />
+                        <div className="skeleton-copy">
+                          <div className="skeleton-line wide" />
+                          <div className="skeleton-line narrow" />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : myPlaylists.length === 0 ? (
+                  <div className="myyt-empty">
+                    <p>Brak playlist na tym koncie.</p>
+                    <button className="myyt-refresh-btn" onClick={loadMyPlaylists}>Odśwież</button>
+                    <button className="myyt-logout-btn" onClick={async () => {
+                      await window.playerBridge?.youtubeLogout?.()
+                      setYtLoggedIn(false)
+                      setMyPlaylists([])
+                    }}>Wyloguj</button>
+                  </div>
+                ) : (
+                  <>
+                    <div className="myyt-header">
+                      <span className="myyt-count">{myPlaylists.length} playlist</span>
+                      <div style={{ display: 'flex', gap: 6 }}>
+                        <button className="myyt-refresh-btn" onClick={loadMyPlaylists} title="Odśwież">↻</button>
+                        <button className="myyt-logout-btn" onClick={async () => {
+                          await window.playerBridge?.youtubeLogout?.()
+                          setYtLoggedIn(false)
+                          setMyPlaylists([])
+                          setLibraryView('all')
+                        }}>Wyloguj</button>
+                      </div>
+                    </div>
+                    {myPlaylists.map(pl => (
+                      <div key={pl.id} className={`library-item myyt-playlist-item${loadingPlaylistId === pl.id ? ' myyt-playlist-loading' : ''}`} onClick={async () => {
+                        if (loadingPlaylistId) return
+                        setLoadingPlaylistId(pl.id)
+                        setTrackError('')
+                        try {
+                          const result = await window.playerBridge?.getPlaylistInnertube?.(pl.id)
+                          const tracks = Array.isArray(result) ? result : (result?.tracks ?? [])
+                          if (tracks.length > 0) {
+                            startTransition(() => setSearchResults(tracks))
+                            setActiveTrackQuery(`${pl.title} (${tracks.length} utworów)`)
+                            setLibraryView('all')
+                            selectTrack(tracks[0], true, false)
+                          } else {
+                            setTrackError('Nie udało się załadować playlisty.')
+                          }
+                        } catch (e) {
+                          console.log('[myyt click] error:', e)
+                          setTrackError('Błąd podczas ładowania playlisty.')
+                        } finally {
+                          setLoadingPlaylistId(null)
+                        }
+                      }} style={{ cursor: 'pointer' }}>
+                        <div className="item-art">
+                          <img src={pl.thumbnail} alt="" onError={e => { e.target.style.display='none' }} />
+                        </div>
+                        <div className="item-copy">
+                          <strong>{pl.title}</strong>
+                          <span>{pl.countText}</span>
+                        </div>
+                      </div>
+                    ))}
+                  </>
+                )}
+              </div>
             ) : libraryView === 'chat' ? (
               <div className="chat-panel">
                 <div className="chat-messages">
@@ -3783,65 +4176,44 @@ function App() {
                   )
                 })()}
               </div>
-            ) : (mode === 'radio' && radioGardenMode) ? null : (mode === 'radio' ? filteredStations.slice(0, visibleStationCount) : visibleTracks.slice(0, visibleTrackCount)).map((item) => {
+            ) : (mode === 'radio' && radioGardenMode) ? null : (mode === 'radio' ? filteredStations.slice(0, visibleStationCount) : visibleTracks.slice(trackPage * PAGE_SIZE, (trackPage + 1) * PAGE_SIZE)).map((item) => {
               const selected = mode === 'radio' ? currentStation?.id === item.id : currentTrack?.id === item.id
               const flag = mode === 'radio' ? countryFlagEmoji(item.countryCode) : 'YT'
               const art = mode === 'radio'
                 ? safeArt(item.favicon, item.name, 'radio')
                 : safeArt(item.thumbnail, item.title, 'track')
               const canSuggest = mode === 'player'
-
               return (
-                <div
+                <LibraryItem
                   key={item.id}
-                  ref={selected && mode === 'player' ? activeTrackRef : null}
-                  className={`library-item${selected ? ' active' : ''}${canSuggest ? ' with-suggest' : ''}`}
-                  onClick={() => {
-                    if (mode === 'radio') {
-                      if (!checkPerm('canSkip') && !checkPerm('canAdd')) return
-                      selectStation(item)
-                      if (inSession) notifyAction('stationChange', { id: item.id ?? '', name: item.name ?? '', url: item.url ?? '', country: item.country ?? '', countrycode: item.countrycode ?? '', favicon: item.favicon ?? '', tags: item.tags ?? '', codec: item.codec ?? '', bitrate: item.bitrate ?? 0, lastSong: item.lastSong ?? '' })
-                      return
-                    }
-                    if (!checkPerm('canAdd')) return
-                    selectTrack(item, true, true)
-                  }}
-                  style={{ cursor: 'pointer' }}
-                >
-                  <div className="item-art with-badge">
-                    <img
-                      src={art}
-                      alt=""
-                      onError={(event) => withFallbackArt(event, mode === 'radio' ? item.name : item.title, mode === 'radio' ? 'radio' : 'track')}
-                    />
-                    <span className="flag-badge small">{flag}</span>
-                  </div>
-                  <div className="item-copy">
-                    <strong>{mode === 'radio' ? item.name : item.title}</strong>
-                    <span>
-                      {mode === 'radio'
-                        ? [item.country, item.codec, item.votes ? `${item.votes} głosów` : ''].filter(Boolean).join(' • ')
-                        : [item.author, item.duration].filter(Boolean).join(' • ')}
-                    </span>
-                  </div>
-                  {canSuggest && (
-                    <button
-                      className={`suggest-btn${suggestedIds.has(item.id) ? ' done' : ''}`}
-                      title={suggestedIds.has(item.id) ? 'Już zasugerowałeś' : 'Zasugeruj hostowi'}
-                      onClick={(e) => { e.stopPropagation(); if (!suggestedIds.has(item.id)) handleSuggest(item) }}
-                    >{suggestedIds.has(item.id) ? '✓' : '+'}</button>
-                  )}
-                </div>
+                  item={item}
+                  selected={selected}
+                  mode={mode}
+                  activeTrackRef={activeTrackRef}
+                  art={art}
+                  flag={flag}
+                  canSuggest={canSuggest}
+                  isSuggested={suggestedIds.has(item.id)}
+                  onSelect={handleItemSelect}
+                  onSuggest={handleItemSuggest}
+                />
               )
             })}
 
             {mode === 'radio' && filteredStations.length > visibleStationCount && (
               <div ref={stationListSentinelRef} style={{ height: 1 }} />
             )}
-            {mode === 'player' && visibleTracks.length > visibleTrackCount && (
-              <div ref={trackListSentinelRef} style={{ height: 1 }} />
+            {mode === 'player' && visibleTracks.length > PAGE_SIZE && (
+              <div className="track-pagination">
+                <button className="load-more-btn" disabled={trackPage === 0} onClick={() => { setTrackPage(p => p - 1); libraryListRef.current && (libraryListRef.current.scrollTop = 0) }}>
+                  ← Poprzednie
+                </button>
+                <span>{trackPage * PAGE_SIZE + 1}–{Math.min((trackPage + 1) * PAGE_SIZE, visibleTracks.length)} / {visibleTracks.length}</span>
+                <button className="load-more-btn" disabled={(trackPage + 1) * PAGE_SIZE >= visibleTracks.length} onClick={() => { setTrackPage(p => p + 1); libraryListRef.current && (libraryListRef.current.scrollTop = 0) }}>
+                  Następne →
+                </button>
+              </div>
             )}
-
             {libraryView !== 'chat' && libraryView !== 'similar' && !(mode === 'radio' && radioGardenMode) && libraryView !== 'suggested' && (mode === 'radio' ? filteredStations : visibleTracks).length === 0 ? (
               <div className="empty-state">
                 {libraryView === 'favorites'
@@ -3956,6 +4328,7 @@ function App() {
               <div className="bottom-track">
                 <span ref={seekTimeDisplayRef}>{formatSeconds(trackTime)}</span>
                 <div className={`track-slider-wrap${isSeeking ? ' seeking' : ''}`}>
+                  <div ref={seekBufferRef} className="track-slider-buffer" />
                   <div ref={seekFillRef} className="track-slider-fill" style={{ '--pct': `${pct}%` }} />
                   <div ref={seekThumbRef} className="track-slider-thumb" style={{ '--pct': `${pct}%` }} />
                   <input

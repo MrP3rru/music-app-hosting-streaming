@@ -1,7 +1,26 @@
 {
-  "version": "1.8.0",
-  "changelog": "Zmiana rozmiaru okna, poprawki wizualizatora i wirtualna lista playlisty.",
+  "version": "1.9.0",
+  "changelog": "Zegarek z pogodą, info-strip, presencja online, przezroczystość kart, fix synchronizacji ListenTogether.",
   "history": [
+    {
+      "version": "1.9.0",
+      "date": "2026-03-29",
+      "changes": [
+        "Pasek nad wizualizatorem — zastąpiono zbędną nazwę piosenki żywym zegarem z datą (HH:MM:SS · dzień, DD miesiąc)",
+        "Pogoda na żywo — zegarek pokazuje aktualną temperaturę i ikonę pogody dla Warszawy (Open-Meteo API, bez klucza)",
+        "4-dniowa prognoza pogody — obok bieżącej temperatury widoczne są kolejne 4 dni z ikoną, temperaturą max/min",
+        "Info-strip — player pokazuje teraz czas pozostały do końca (-MM:SS), pozycję w playliście, kanał YouTube i status ulubionej",
+        "Info-strip — radio pokazuje status na żywo / buforuje / stop",
+        "Licznik online — zielona kropka z liczbą osób aktualnie korzystających z aplikacji (Firebase Presence, aktualizacja w czasie rzeczywistym)",
+        "Karty przezroczyste podczas muzyki — topbar, toolbar, stage-card, library-card i bottom-player płynnie się rozmywają i przejaśniają w rytm dźwięku",
+        "Orby tła mocniej reagują na rytm — szybki atak na uderzenie, wolny zanik (asymetryczny lerp)",
+        "Badge z liczbą utworów przeniesiony do nagłówka 'Utwory'/'Stacje' w bibliotece — mniejszy i logiczniej umieszczony",
+        "Usunięto zbędny badge 'X utworów' z topbara",
+        "Zakładka Podobne — elementy wyglądają identycznie jak w zakładce Wszystkie (wspólny komponent LibraryItem z przyciskiem sugestii)",
+        "Fix ListenTogether — gość nie dostaje już nowej piosenki ze starą pozycją czasową (reset trackTimeRef przy zmianie utworu)",
+        "Fix ListenTogether — dołączanie do sesji nie wskakuje już kilka sekund za wcześnie (kalibracja zegara przez Firebase serverTimeOffset)"
+      ]
+    },
     {
       "version": "1.8.0",
       "date": "2026-03-27",

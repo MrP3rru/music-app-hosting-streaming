@@ -1,7 +1,7 @@
 {
   "name": "music-app",
   "private": true,
-  "version": "1.6.5",
+  "version": "1.9.0",
   "main": "electron/main.cjs",
   "type": "module",
   "scripts": {

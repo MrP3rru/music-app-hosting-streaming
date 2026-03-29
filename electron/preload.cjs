@@ -28,4 +28,12 @@ contextBridge.exposeInMainWorld('playerBridge', {
   // Zoom okna (natychmiastowy, bez restartu)
   setZoom:     (idx) => ipcRenderer.invoke('zoom:set', idx),
   onZoomIdx:   (cb)  => ipcRenderer.on('zoom:idx', (_e, idx) => cb(idx)),
+  // YouTube logowanie (18+)
+  youtubeLogin:      () => ipcRenderer.invoke('youtube:login'),
+  youtubeCheckLogin: () => ipcRenderer.invoke('youtube:check-login'),
+  // YouTube account (moje playlisty, 18+)
+  youtubeGetPlaylists:    () => ipcRenderer.invoke('youtube:my-playlists'),
+  youtubeLogout:          () => ipcRenderer.invoke('youtube:logout'),
+  getPlaylistInnertube:   (id) => ipcRenderer.invoke('youtube:playlist-innertube', id),
+  getAudioUrl:            (videoUrl) => ipcRenderer.invoke('youtube:get-audio-url', videoUrl),
 })

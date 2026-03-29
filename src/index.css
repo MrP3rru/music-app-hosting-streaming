@@ -3,10 +3,9 @@
   line-height: 1.4;
   font-weight: 400;
   color: #f2f5f7;
-  background:
-    radial-gradient(circle at top left, rgba(255, 95, 31, 0.25), transparent 32%),
-    radial-gradient(circle at right 20%, rgba(32, 168, 216, 0.18), transparent 26%),
-    linear-gradient(180deg, #09111b 0%, #0d1520 45%, #071019 100%);
+  --card-alpha: 0.76;
+  --card-blur: 22px;
+  --item-bg-alpha: 1.0;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
@@ -28,7 +27,23 @@ body {
   margin: 0;
   min-height: 100vh;
   overflow: hidden;
+  /* baza: bardzo ciemny, lekko niebieskawa czerń */
+  background: linear-gradient(175deg, #080d1b 0%, #040608 52%, #060a10 100%);
+  position: relative;
 }
+
+/* ── Subtelny szum filmowy (głębia) ──────────────────────────── */
+body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  opacity: 0.028;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-size: 200px 200px;
+}
+
 
 button,
 input {
