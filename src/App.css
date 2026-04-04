@@ -176,7 +176,7 @@ html.page-hidden *::after {
 .player-button.primary,
 .search-row > button,
 .accent.active {
-  background: linear-gradient(135deg, #ff7b39, #ffb05c);
+  background: linear-gradient(180deg, #ef7900, #ffa240);
   color: #09111b;
 }
 
@@ -1902,7 +1902,7 @@ html.page-hidden *::after {
   width: var(--pct, 0%);
   transform: translateY(-50%);
   border-radius: 999px;
-  background: linear-gradient(90deg, #ff6b2b, #ffb05c);
+  background: linear-gradient(90deg, #ff7e47, #ffb96d);
   box-shadow: 0 0 10px rgba(255, 107, 43, 0.4);
   transition: width 0.85s linear;
   pointer-events: none;
@@ -4404,3 +4404,511 @@ html.page-hidden *::after {
 }
 .crossfade-btn:hover { background: rgba(255,255,255,0.08); color: rgba(200,215,230,0.8); }
 .crossfade-btn.active { color: #ffb05c; border-color: rgba(255,176,92,0.4); background: rgba(255,140,0,0.1); }
+
+/* ═══════════════════════════════════════════════════════════
+   TV TAB
+═══════════════════════════════════════════════════════════ */
+
+/* Stage */
+.tv-stage {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  gap: 8px;
+  padding: 12px 16px 0;
+}
+
+.tv-submode-bar {
+  display: flex;
+  gap: 6px;
+  flex-shrink: 0;
+  justify-content: center;
+}
+.tv-submode-btn {
+  padding: 6px 16px;
+  border-radius: 20px;
+  border: 1px solid rgba(255,255,255,0.12);
+  background: rgba(255,255,255,0.05);
+  color: rgba(200,215,230,0.7);
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+.tv-submode-btn:hover { background: rgba(255,255,255,0.1); color: #fff; }
+.tv-submode-btn.active {
+  background: rgba(91,141,240,0.2);
+  border-color: rgba(91,141,240,0.5);
+  color: #8eb4ff;
+}
+.tv-submode-btn:disabled {
+  background-color: #ff4d4f;
+  color: white;
+  opacity: 0.1;
+  cursor: not-allowed;
+}
+
+.tv-yt-bar {
+  display: flex;
+  gap: 6px;
+  flex-shrink: 0;
+}
+.tv-yt-input {
+  flex: 1;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 10px;
+  padding: 7px 12px;
+  color: #e8edf2;
+  font-size: 0.82rem;
+  outline: none;
+  transition: border-color 0.15s;
+}
+.tv-yt-input:focus { border-color: rgba(91,141,240,0.5); }
+.tv-yt-input::placeholder { color: rgba(200,215,230,0.35); }
+.tv-yt-play-btn {
+  padding: 7px 16px;
+  border-radius: 10px;
+  border: 1px solid rgba(91,141,240,0.4);
+  background: rgba(91,141,240,0.18);
+  color: #8eb4ff;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: background 0.15s;
+  flex-shrink: 0;
+}
+.tv-yt-play-btn:hover { background: rgba(91,141,240,0.32); }
+
+.tv-player-wrap {
+  position: relative;
+  flex: 1;
+  min-height: 200px;
+  border-radius: 14px;
+  overflow: hidden;
+  background: #000;
+  border: 1px solid rgba(255,255,255,0.08);
+}
+.tv-player-wrap > div {
+  height: 100% !important;
+}
+.tv-player-wrap iframe,
+.tv-player-wrap video {
+  border-radius: 14px;
+}
+
+/* hls-video w portalu — wypełnia cały kontener */
+hls-video {
+  display: block;
+  width: 100%;
+  height: 100%;
+  /* clip-path: inset(0) wymusza kompozytowanie przez normalny pipeline
+     zamiast OS-level hardware overlay, dzięki czemu przyciski nad playerem
+     są widoczne i nie są zasłaniane przez warstwę video */
+  clip-path: inset(0);
+  transform: translateZ(0);
+}
+.tv-exp-btn {
+  position: absolute;
+  bottom: 14px;
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  border: 1px solid rgba(255,255,255,0.25);
+  background: rgba(0,0,0,0.65);
+  color: rgba(255,255,255,0.9);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  backdrop-filter: blur(6px);
+  pointer-events: auto;
+  transition: background 0.15s;
+}
+.tv-exp-btn:hover { background: rgba(0,0,0,0.9); color: #fff; }
+.tv-exp-close {
+  bottom: auto !important;
+  top: 14px;
+  right: 14px !important;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  font-size: 1.1rem;
+  border: 2px solid rgba(255,255,255,0.4) !important;
+}
+.tv-exp-close:hover { background: rgba(200,0,0,0.75) !important; border-color: #f66 !important; }
+.tv-overlay-close {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 2px solid rgba(255,255,255,0.4);
+  background: rgba(0,0,0,0.75);
+  color: #fff;
+  font-size: 1.1rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  backdrop-filter: blur(8px);
+  pointer-events: auto;
+  transition: background 0.15s, border-color 0.15s;
+}
+.tv-overlay-close:hover { background: rgba(200,0,0,0.8); border-color: #f66; }
+
+/* ── TV Fullscreen portal — nowe kontrolki ───────────────────────────────────── */
+.tv-fs-portal { cursor: default; }
+
+/* Przycisk ✕ w górnym prawym rogu */
+.tv-fs-close {
+  position: absolute;
+  top: 18px;
+  right: 18px;
+  z-index: 10;
+  transform: translateZ(0);
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  border: 2px solid rgba(255,255,255,0.5);
+  background: rgba(0,0,0,0.75);
+  backdrop-filter: blur(8px);
+  color: #fff;
+  font-size: 1.25rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.22s, background 0.15s, border-color 0.15s;
+}
+.tv-fs-portal:hover .tv-fs-close {
+  opacity: 1;
+  pointer-events: auto;
+}
+.tv-fs-close:hover { background: rgba(200,0,0,0.85); border-color: #f66; }
+
+/* Dolny pasek z gradientem */
+.tv-fs-bar {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 10;
+  transform: translateZ(0);
+  background: linear-gradient(transparent, rgba(0,0,0,0.92) 60%);
+  padding: 70px 24px 22px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.22s;
+}
+.tv-fs-portal:hover .tv-fs-bar {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* Nazwa kanału */
+.tv-fs-channel {
+  color: rgba(255,255,255,0.92);
+  font-size: 1.05rem;
+  font-weight: 600;
+  text-shadow: 0 1px 8px rgba(0,0,0,0.9);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 40%;
+}
+
+/* Przyciski w pasku */
+.tv-fs-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 18px;
+  border-radius: 10px;
+  border: 1.5px solid rgba(255,255,255,0.38);
+  background: rgba(0,0,0,0.72);
+  backdrop-filter: blur(10px);
+  color: #fff;
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.15s, border-color 0.15s;
+}
+.tv-fs-btn:hover { background: rgba(91,141,240,0.38); border-color: rgba(100,160,255,0.7); }
+.tv-fs-exit-btn:hover { background: rgba(200,40,40,0.72); border-color: rgba(220,80,80,0.85); }
+
+/* Głośność w pasku fullscreen */
+.tv-fs-vol {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-right: 6px;
+}
+.tv-fs-vol-icon {
+  background: none;
+  border: none;
+  color: rgba(255,255,255,0.85);
+  cursor: pointer;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  opacity: 0.85;
+  transition: opacity 0.15s;
+}
+.tv-fs-vol-icon:hover { opacity: 1; }
+.tv-fs-vol-slider {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 110px;
+  height: 4px;
+  border-radius: 2px;
+  background: linear-gradient(to right, #5b8df0 var(--vol, 35%), rgba(255,255,255,0.25) var(--vol, 35%));
+  outline: none;
+  cursor: pointer;
+}
+.tv-fs-vol-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.5);
+  cursor: pointer;
+  transition: transform 0.1s;
+}
+.tv-fs-vol-slider::-webkit-slider-thumb:hover { transform: scale(1.25); }
+.tv-fs-vol-num {
+  color: rgba(255,255,255,0.65);
+  font-size: 0.78rem;
+  min-width: 30px;
+  text-align: right;
+}
+
+.tv-placeholder {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  color: rgba(200,215,230,0.4);
+  font-size: 0.9rem;
+}
+.tv-placeholder-icon {
+  font-size: 2.8rem;
+  opacity: 0.5;
+}
+
+.tv-error-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  background: rgba(0,0,0,0.75);
+  backdrop-filter: blur(4px);
+  color: #ff8888;
+  font-size: 0.85rem;
+  font-weight: 600;
+  border-radius: 14px;
+}
+.tv-error-overlay button {
+  padding: 6px 18px;
+  border-radius: 20px;
+  border: 1px solid rgba(255,136,136,0.4);
+  background: rgba(255,136,136,0.15);
+  color: #ff9999;
+  cursor: pointer;
+  font-size: 0.8rem;
+  transition: background 0.15s;
+}
+.tv-error-overlay button:hover { background: rgba(255,136,136,0.28); }
+
+.tv-channel-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 4px;
+  flex-shrink: 0;
+  background: rgba(255,255,255,0.04);
+  border-radius: 10px;
+  padding: 6px 10px;
+}
+.tv-channel-logo {
+  width: 28px;
+  height: 28px;
+  object-fit: contain;
+  border-radius: 6px;
+  flex-shrink: 0;
+}
+.tv-channel-name {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #e8edf2;
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.tv-channel-country {
+  font-size: 0.75rem;
+  color: rgba(200,215,230,0.5);
+  flex-shrink: 0;
+}
+
+/* Library — TV top bar (categories + search) */
+.tv-library-top {
+  flex-shrink: 0;
+}
+
+/* Library — TV channel items */
+.tv-ch-art {
+  width: 44px !important;
+  height: 44px !important;
+  background: rgba(255,255,255,0.06) !important;
+  border-radius: 8px !important;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+.tv-ch-art img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  border-radius: 0;
+}
+.tv-ch-placeholder {
+  font-size: 1.3rem;
+  opacity: 0.5;
+}
+.tv-ch-live {
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: #ff5555;
+  flex-shrink: 0;
+  letter-spacing: 0.02em;
+}
+
+.tv-yt-hint {
+  text-align: center;
+  padding: 30px 16px;
+  font-size: 0.82rem;
+  color: rgba(200,215,230,0.4);
+}
+
+/* Przyciski normalnego trybu — pokazują się na hover */
+.tv-inline-controls {
+  position: absolute;
+  inset: 0;
+  z-index: 9999;
+  pointer-events: none;
+}
+.tv-inline-controls .tv-exp-btn {
+  pointer-events: auto;
+  opacity: 0;
+  transition: opacity 0.18s;
+}
+.tv-player-wrap:hover .tv-inline-controls .tv-exp-btn { opacity: 1; }
+
+/* TV live bar — animowany skan (nie statyczny) */
+.live-progress.tv-live.playing .live-progress-fill {
+  background: linear-gradient(90deg, rgba(91,141,240,0.3) 0%, #5b8df0 50%, #8eb4ff 100%);
+  box-shadow: 0 0 14px rgba(91,141,240,0.5);
+  animation: tv-live-scan 18s linear infinite;
+  width: 0%;
+}
+.live-progress.tv-live.playing .live-progress-dot {
+  animation: tv-dot-scan 18s linear infinite;
+}
+@keyframes tv-live-scan {
+  0%   { width: 0%; }
+  95%  { width: calc(100% - 12px); }
+  100% { width: calc(100% - 12px); }
+}
+@keyframes tv-dot-scan {
+  0%   { right: calc(100% - 10px); }
+  95%  { right: -2px; }
+  100% { right: -2px; }
+}
+.live-progress.tv-live.playing .live-pill {
+  background: rgba(91,141,240,0.22);
+  color: #8eb4ff;
+  border-color: rgba(91,141,240,0.4);
+  box-shadow: 0 0 10px rgba(91,141,240,0.2);
+  animation: tv-pill-glow 2.4s ease-in-out infinite;
+}
+@keyframes tv-pill-glow {
+  0%,100% { background: rgba(91,141,240,0.18); color: #8eb4ff; }
+  50%     { background: rgba(91,141,240,0.35); color: #c2d8ff; }
+}
+
+/* TV DVR seek bar */
+.tv-dvr-track {
+  gap: 8px;
+}
+.tv-dvr-behind {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: rgba(200,215,230,0.6);
+  white-space: nowrap;
+  min-width: 52px;
+  text-align: right;
+  flex-shrink: 0;
+}
+/* Przycisk LIVE — aktywny (przy live edge) = czerwony, nieaktywny = szary */
+.tv-live-btn {
+  padding: 3px 10px;
+  border-radius: 20px;
+  border: 1px solid rgba(255,255,255,0.15);
+  background: rgba(255,255,255,0.06);
+  color: rgba(200,215,230,0.5);
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+  flex-shrink: 0;
+}
+.tv-live-btn.active {
+  background: rgba(209,11,29,0.22);
+  border-color: rgba(255,60,90,0.5);
+  color: #ff8695;
+}
+.tv-live-btn:not(.active):hover {
+  background: rgba(255,255,255,0.12);
+  color: #e8edf2;
+}
+
+/* TV bez DVR — prosty statyczny wskaźnik LIVE/STOP */
+.tv-live-simple {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  color: rgba(200,215,230,0.55);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+}
+.tv-live-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.2);
+  flex-shrink: 0;
+}
+.tv-live-dot.on {
+  background: #e03050;
+}
+

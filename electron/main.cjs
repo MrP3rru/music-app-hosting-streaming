@@ -11,6 +11,13 @@ app.commandLine.appendSwitch('disable-renderer-backgrounding')
 app.commandLine.appendSwitch('disable-background-timer-throttling')
 app.commandLine.appendSwitch('disable-backgrounding-occluded-windows')
 
+// ─── Wyłącz sprzętowy overlay video ─────────────────────────────────────────
+// Chromium domyślnie renderuje <video> przez OS-level overlay który ignoruje
+// z-index i zawsze jest ponad elementami DOM. Ta flaga wyłącza ten mechanizm,
+// dzięki czemu przyciski nad playerem TV są widoczne.
+app.commandLine.appendSwitch('disable-features', 'HardwareMediaKeyHandling,UseChromeOSDirectVideoDecoder')
+app.commandLine.appendSwitch('disable-accelerated-video-decode')
+
 // ─── Auto-updater config ─────────────────────────────────────────────────────
 // Po założeniu repo na GitHub wpisz tutaj swoje dane:
 const GITHUB_OWNER = 'MrP3rru'        // ← twoja nazwa użytkownika na GitHub, np. 'mateu123'
@@ -417,8 +424,21 @@ function createWindow() {
   })
 
   // ─── Kontrolki okna (custom titlebar) ──────────────────────────────────
-  ipcMain.on('window:minimize', () => win.minimize())
-  ipcMain.on('window:close',    () => win.close())
+  ipcMain.on('window:minimize',    () => win.minimize())
+  ipcMain.on('window:close',       () => win.close())
+  ipcMain.on('window:setFullscreen', (_e, val) => {
+    if (val) {
+      win.setResizable(true)
+      win.setFullScreen(true)
+    } else {
+      win.setFullScreen(false)
+      const f = ZOOM_LEVELS[zoomIdx]
+      win.setSize(Math.round(BASE_W * f), Math.round(BASE_H * f))
+      win.center()
+      win.setResizable(false)
+    }
+  })
+  ipcMain.handle('window:isFullscreen', () => win.isFullScreen())
 
   // ─── Logowanie do YouTube (dla treści 18+) ───────────────────────────
   ipcMain.handle('youtube:login', () => {
@@ -976,6 +996,22 @@ app.whenReady().then(() => {
 
   initDiscordRPC()
   createWindow()
+
+  // ── Blokada domen reklamowych (bezpieczeństwo) ────────────────────────────
+  const AD_DOMAINS = [
+    'doubleclick.net', 'googlesyndication.com', 'googleadservices.com',
+    'google-analytics.com', 'googletagmanager.com', 'scorecardresearch.com',
+    'outbrain.com', 'taboola.com', 'adnxs.com', 'adsrvr.org',
+    'advertising.com', 'smartadserver.com', 'pubmatic.com',
+    'rubiconproject.com', 'openx.net', 'casalemedia.com',
+  ]
+  session.defaultSession.webRequest.onBeforeRequest({ urls: ['*://*/*'] }, (details, callback) => {
+    try {
+      const host = new URL(details.url).hostname
+      const blocked = AD_DOMAINS.some(d => host === d || host.endsWith('.' + d))
+      callback({ cancel: blocked })
+    } catch { callback({}) }
+  })
 
   // Auto-approve getDisplayMedia z loopback audio dla wizualizera
   session.defaultSession.setDisplayMediaRequestHandler((_request, callback) => {

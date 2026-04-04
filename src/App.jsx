@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState, startTransition, memo, useCallback } from 'react'
 import { createPortal } from 'react-dom'
 import ReactPlayer from 'react-player'
+import HlsVideo from 'hls-video-element/react'
 import AudioMotionAnalyzer from 'audiomotion-analyzer'
 import ElectricBorder from './ElectricBorder'
 import { useListenTogether } from './useListenTogether'
@@ -823,6 +824,95 @@ const LibraryItem = memo(function LibraryItem({ item, selected, mode, activeTrac
   )
 })
 
+// ─── TV — HLS player wrapper ─────────────────────────────────────────────────
+function TvChannelPlayer({ channel, videoRef, onError, onPlaying, onPause, volume }) {
+  const innerRef = useRef(null)
+  const resolvedRef = videoRef || innerRef
+  useEffect(() => {
+    // Wymuś clip-path na wewnętrznym <video> w Shadow DOM hls-video-element.
+    const el = resolvedRef.current
+    if (!el) return
+    const apply = () => {
+      const vid = el.nativeEl
+      if (vid) vid.style.clipPath = 'inset(0)'
+    }
+    apply()
+    const t = setTimeout(apply, 150)
+    return () => clearTimeout(t)
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    const el = resolvedRef.current
+    if (!el) return
+    // Ustaw głośność natychmiast — zanim autoPlay wyda dźwięk
+    if (volume !== undefined) el.volume = volume
+    const onErr  = () => onError?.()
+    const onPlay = () => onPlaying?.()
+    const onPaus = () => onPause?.()
+    el.addEventListener('error',   onErr)
+    el.addEventListener('playing', onPlay)
+    el.addEventListener('pause',   onPaus)
+    return () => {
+      el.removeEventListener('error',   onErr)
+      el.removeEventListener('playing', onPlay)
+      el.removeEventListener('pause',   onPaus)
+    }
+  }, [onError, onPlaying, onPause, volume])
+  return (
+    <HlsVideo
+      ref={resolvedRef}
+      src={channel.url}
+      autoPlay
+      style={{ width: '100%', height: '100%', display: 'block', background: '#000', borderRadius: 14 }}
+    />
+  )
+}
+
+// ─── TV — kategorie i parser M3U ─────────────────────────────────────────────
+// Kurowane polskie kanały TVP — statyczne HLS (tvpstream API jest nieaktywne)
+const CURATED_TV_PL = [
+  { id: 'tvp1',       name: 'TVP 1',       logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/a/a8/TVP1_logo.svg/100px-TVP1_logo.svg.png',       country: 'PL', url: 'https://ec06-krk3.cache.orange.pl/dai4/org1/vb/104/tvp1hd/index.m3u8' },
+  { id: 'tvpinfo',    name: 'TVP Info',    logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/1/11/TVP_Info_logo.svg/100px-TVP_Info_logo.svg.png', country: 'PL', url: 'http://78.130.250.2:8023/play/a03b/index.m3u8' },
+  { id: 'tvppolonia', name: 'TVP Polonia', logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/d/d5/TVP_Polonia_logo.svg/100px-TVP_Polonia_logo.svg.png', country: 'PL', url: 'https://dash2.antik.sk/live/test_tvp_polonia/playlist.m3u8' },
+  { id: 'tvpworld',   name: 'TVP World',   logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/1/19/TVP_World_logo_2022.svg/100px-TVP_World_logo_2022.svg.png', country: 'PL', url: 'https://dash2.antik.sk/live/test_tvp_world/playlist.m3u8' },
+]
+
+const TV_CATEGORIES = [
+  { id: 'pl',            label: '🇵🇱 Polskie',      url: 'https://iptv-org.github.io/iptv/countries/pl.m3u', curated: CURATED_TV_PL },
+  { id: 'news',          label: '📰 Wiadomości',    url: 'https://iptv-org.github.io/iptv/categories/news.m3u' },
+  { id: 'music',         label: '🎵 Muzyczne',      url: 'https://iptv-org.github.io/iptv/categories/music.m3u' },
+  { id: 'sports',        label: '⚽ Sport',          url: 'https://iptv-org.github.io/iptv/categories/sports.m3u' },
+  { id: 'entertainment', label: '🎬 Rozrywka',      url: 'https://iptv-org.github.io/iptv/categories/entertainment.m3u' },
+  { id: 'kids',          label: '👶 Dla dzieci',    url: 'https://iptv-org.github.io/iptv/categories/kids.m3u' },
+  { id: 'science',       label: '🔭 Nauka',         url: 'https://iptv-org.github.io/iptv/categories/science.m3u' },
+  { id: 'documentary',   label: '🎥 Dokumentalne',  url: 'https://iptv-org.github.io/iptv/categories/documentary.m3u' },
+]
+
+function parseM3U(text) {
+  const lines = text.split('\n').map(l => l.trim()).filter(Boolean)
+  const channels = []
+  for (let i = 0; i < lines.length; i++) {
+    if (!lines[i].startsWith('#EXTINF')) continue
+    const info = lines[i]
+    const url  = lines[i + 1]
+    if (!url || url.startsWith('#')) continue
+    if (!/^https?:\/\//i.test(url)) continue          // bezpieczeństwo — tylko http/https
+    if (/liveovh\d+\.cda\.pl/.test(url)) continue     // CDA CDN wymaga tokenów auth
+    const name    = (info.match(/,(.+)$/)         || [])[1]?.trim() || 'Kanał'
+    const logo    = (info.match(/tvg-logo="([^"]*)"/) || [])[1] || ''
+    const country = (info.match(/tvg-country="([^"]*)"/) || [])[1] || ''
+    const id      = (info.match(/tvg-id="([^"]*)"/)     || [])[1] || url
+    channels.push({ id, name, logo, country, url })
+  }
+  return channels
+}
+
+function isValidYoutubeUrl(url) {
+  try {
+    const u = new URL(url)
+    return ['youtube.com','www.youtube.com','youtu.be','m.youtube.com'].includes(u.hostname)
+  } catch { return false }
+}
+
 function App() {
   const ZOOM_LEVELS = Array.from({ length: 31 }, (_, i) => Math.round((0.70 + i * 0.02) * 100) / 100)
   const ZOOM_LABELS = ZOOM_LEVELS.map(f => `${Math.round(f * 100)}%`)
@@ -980,6 +1070,44 @@ function App() {
   const [previousTracks, setPreviousTracks] = useState([])
   const [trackHistory, setTrackHistory] = useState(loadHistory)
   const [historyExpanded, setHistoryExpanded] = useState(false)
+
+  // ─── TV ───────────────────────────────────────────────────────────────────
+  const [tvSubMode, setTvSubMode]         = useState('channels') // 'channels' | 'youtube'
+  const [tvCategoryId, setTvCategoryId]   = useState('pl')
+  const [tvChannels, setTvChannels]       = useState([])
+  const [tvLoading, setTvLoading]         = useState(false)
+  const [currentTvChannel, setCurrentTvChannel] = useState(null)
+  const [tvPlayerError, setTvPlayerError] = useState(false)
+  const [tvYoutubeInput, setTvYoutubeInput] = useState('')
+  const [tvYoutubeUrl, setTvYoutubeUrl]   = useState('')
+  const [tvChannelSearch, setTvChannelSearch] = useState('')
+  const [tvChannelPage, setTvChannelPage]     = useState(0)
+  const [tvCountryFilter, setTvCountryFilter] = useState('')
+  const [tvExpandMode, setTvExpandMode] = useState('normal') // 'normal' | 'app' | 'monitor'
+  const TV_PAGE_SIZE = 40
+  const tvPlayerRef    = useRef(null)
+  const tvVideoRef     = useRef(null)
+  const tvPlayerWrapRef = useRef(null)
+  const [tvIsPlaying, setTvIsPlaying] = useState(false)
+  const [tvCurrentTime, setTvCurrentTime]       = useState(0)
+  const [tvSeekableStart, setTvSeekableStart]   = useState(0)
+  const [tvSeekableEnd, setTvSeekableEnd]       = useState(0)
+  const [tvHasDvr, setTvHasDvr]               = useState(false)
+  const onTvError   = useCallback(() => setTvPlayerError(true),  [])
+  const onTvPlaying = useCallback(() => { setTvPlayerError(false); setTvIsPlaying(true) }, [])
+  const onTvPause   = useCallback(() => setTvIsPlaying(false), [])
+
+  // Wyjście z trybu rozszerzonego — Escape
+  useEffect(() => {
+    const onKey = (e) => {
+      if (e.key === 'Escape') {
+        window.playerBridge?.setWindowFullscreen?.(false)
+        setTvExpandMode('normal')
+      }
+    }
+    window.addEventListener('keydown', onKey, true)
+    return () => window.removeEventListener('keydown', onKey, true)
+  }, [])
   const [suggestions, setSuggestions] = useState([])
   const [showSuggestions, setShowSuggestions] = useState(false)
   const [localQueue, setLocalQueue] = useState([])
@@ -1440,6 +1568,71 @@ function App() {
     }, 600)
     return () => clearTimeout(timer)
   }, [mode, isTrackPlaying, isRadioPlaying, currentTrack, currentStation, radioNowPlaying])
+
+  // ─── TV — ładowanie kanałów z iptv-org ───────────────────────────────────
+  useEffect(() => {
+    if (mode !== 'tv' || tvSubMode !== 'channels') return
+    const cat = TV_CATEGORIES.find(c => c.id === tvCategoryId)
+    if (!cat) return
+    let cancelled = false
+    setTvLoading(true)
+    setTvChannels(cat.curated || [])
+    fetch(cat.url)
+      .then(r => r.text())
+      .then(text => {
+        if (!cancelled) {
+          const parsed = parseM3U(text)
+          // Deduplikuj: usuń kanały które już są w curated (po nazwie)
+          const curatedNames = new Set((cat.curated || []).map(c => c.name.toLowerCase()))
+          const extra = parsed.filter(ch => !curatedNames.has(ch.name.toLowerCase()))
+          setTvChannels([...(cat.curated || []), ...extra])
+          setTvLoading(false)
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          // Nawet bez sieci pokaż curated
+          if (cat.curated) setTvChannels(cat.curated)
+          setTvLoading(false)
+        }
+      })
+    return () => { cancelled = true }
+  }, [mode, tvSubMode, tvCategoryId])
+
+  // ─── TV — ustaw głośność + auto-seek do live-15s przy załadowaniu ─────────
+  useEffect(() => {
+    if (!currentTvChannel) { setTvIsPlaying(false); return }
+    setTvPlayerError(false)
+    setTvIsPlaying(false)
+    setTvHasDvr(false)
+    setTvSeekableStart(0)
+    setTvSeekableEnd(0)
+    setTvCurrentTime(0)
+    const t = setTimeout(() => {
+      const el = tvVideoRef.current
+      if (!el) return
+      el.volume = toEffectiveVolume(volumePercent, 'log')
+    }, 1500)
+    return () => clearTimeout(t)
+  }, [currentTvChannel])
+
+  // ─── TV — DVR tracking (co 2s, żeby nie lagować) ─────────────────────────
+  useEffect(() => {
+    if (!tvIsPlaying) return
+    const tick = () => {
+      const el = tvVideoRef.current
+      if (!el || el.seekable.length === 0) return
+      const start = el.seekable.start(0)
+      const end   = el.seekable.end(0)
+      setTvCurrentTime(el.currentTime)
+      setTvSeekableStart(start)
+      setTvSeekableEnd(end)
+      setTvHasDvr(end - start > 20)
+    }
+    tick() // natychmiast przy starcie
+    const interval = setInterval(tick, 2000)
+    return () => clearInterval(interval)
+  }, [tvIsPlaying, currentTvChannel])
 
   // ─── Historia odtwarzania (localStorage, 2 dni) ───────────────────────────
   useEffect(() => {
@@ -2283,6 +2476,11 @@ function App() {
       showSessionToast('Tylko host może zmieniać zakładki podczas sesji')
       return
     }
+    // Opuszczamy zakładkę TV — zatrzymaj expand/fullscreen
+    if (mode === 'tv' && nextMode !== 'tv') {
+      window.playerBridge?.setWindowFullscreen?.(false)
+      setTvExpandMode('normal')
+    }
     setMode(nextMode)
     if (nextMode === 'radio') setLyricsVisible(false)
     localStorage.setItem('hiphop-player-mode', nextMode)
@@ -2701,6 +2899,7 @@ function App() {
       radioGainNodeRef.current.gain.cancelScheduledValues(now)
       radioGainNodeRef.current.gain.setTargetAtTime(eff, now, 0.05)
     }
+    if (tvVideoRef.current) tvVideoRef.current.volume = eff
   }
 
   function handleVolumeCommit() {
@@ -3305,17 +3504,20 @@ function App() {
             <button className={mode === 'player' ? 'active' : ''} onClick={() => updateMode('player')}>
               Player
             </button>
+            <button className={mode === 'tv' ? 'active' : ''} onClick={() => updateMode('tv')}>
+              TV
+            </button>
           </div>
         </div>
 
         <div className="topbar-main">
           <p className="eyebrow">Jeden player, dwa tryby,powered by MrPerru </p>
-          <h1>{mode === 'radio' ? 'Radio' : 'Player'}</h1>
+          <h1>{mode === 'radio' ? 'Radio' : mode === 'player' ? 'Player' : 'TV'}</h1>
         </div>
 
         <div className="topbar-metrics">
           <span>{favorites.length} ulubionych</span>
-          <span>{mode === 'radio' ? 'Radio online' : 'Audio z YouTube'}</span>
+          <span>{mode === 'radio' ? 'Radio online' : mode === 'player' ? 'Audio z YouTube' : 'IPTV & YouTube'}</span>
           <button
             className={`together-btn${inSession ? ' active' : ''}`}
             onClick={() => setSessionModalOpen(v => !v)}
@@ -3344,7 +3546,7 @@ function App() {
 
       <section className="content-grid">
         <article className="stage-card">
-          <div className="stage-header">
+          <div className="stage-header" style={{ display: mode === 'tv' ? 'none' : '' }}>
             <div className="stage-main">
               <div className="cover-badge">
                 <img
@@ -3369,7 +3571,15 @@ function App() {
                 )}
                 {mode === 'radio' && currentStation && (
                   <div className="radio-track-timeline">
-                    <p key={radioNowPlaying} className="stage-nowplaying">
+                    <p key={radioNowPlaying} className="stage-nowplaying"
+                      title={radioNowPlaying ? 'Kliknij aby skopiować' : undefined}
+                      style={radioNowPlaying ? { cursor: 'pointer' } : undefined}
+                      onClick={() => {
+                        if (!radioNowPlaying) return
+                        navigator.clipboard?.writeText(radioNowPlaying)
+                        showSessionToast('📋 Skopiowano: ' + radioNowPlaying)
+                      }}
+                    >
                       {radioNowPlaying ? (
                         <>
                           Teraz gra: {radioNowPlaying}
@@ -3381,7 +3591,15 @@ function App() {
                         </>
                       ) : 'Teraz gra: brak metadanych od stacji'}
                     </p>
-                    <p className={`radio-track-prev${radioPlayHistory.length === 0 ? ' radio-track-prev--empty' : ''}`}>
+                    <p className={`radio-track-prev${radioPlayHistory.length === 0 ? ' radio-track-prev--empty' : ''}`}
+                      title={radioPlayHistory.length > 0 ? 'Kliknij aby skopiować' : undefined}
+                      style={radioPlayHistory.length > 0 ? { cursor: 'pointer' } : undefined}
+                      onClick={() => {
+                        if (!radioPlayHistory[0]) return
+                        navigator.clipboard?.writeText(radioPlayHistory[0])
+                        showSessionToast('📋 Skopiowano: ' + radioPlayHistory[0])
+                      }}
+                    >
                       <span className="radio-track-prev-label">Wcześniej grało: </span>
                       {radioPlayHistory[0] || ''}
                     </p>
@@ -3395,6 +3613,170 @@ function App() {
             </button>
           </div>
 
+          {mode === 'tv' && (
+            <div className="tv-stage">
+              <div className="tv-submode-bar">
+                <button className={`tv-submode-btn${tvSubMode === 'channels' ? ' active' : ''}`} onClick={() => setTvSubMode('channels')}>📺 Kanały</button>
+                <button className={`tv-submode-btn${tvSubMode === 'youtube' ? ' active' : ''}`} onClick={() => setTvSubMode('youtube')} disabled title="Jeszcze nie skończone"> ▶ YouTube</button>
+             
+              </div>
+              {tvSubMode === 'youtube' && (
+                <div className="tv-yt-bar">
+                  <input
+                    className="tv-yt-input"
+                    value={tvYoutubeInput}
+                    onChange={e => setTvYoutubeInput(e.target.value)}
+                    onKeyDown={e => { if (e.key === 'Enter' && isValidYoutubeUrl(tvYoutubeInput)) { setTvYoutubeUrl(tvYoutubeInput); setTvPlayerError(false) } }}
+                    placeholder="Wklej link YouTube lub YouTube Live..."
+                  />
+                  <button
+                    className="tv-yt-play-btn"
+                    onClick={() => { if (isValidYoutubeUrl(tvYoutubeInput)) { setTvYoutubeUrl(tvYoutubeInput); setTvPlayerError(false) } }}
+                  >▶</button>
+                </div>
+              )}
+              <div ref={tvPlayerWrapRef} className="tv-player-wrap">
+                {tvSubMode === 'channels' && currentTvChannel && (() => {
+                  const expanded = tvExpandMode !== 'normal'
+
+                  const exitExpand = () => {
+                    window.playerBridge?.setWindowFullscreen?.(false)
+                    setTvExpandMode('normal')
+                  }
+
+                  const playerEl = (
+                    <TvChannelPlayer
+                      key={currentTvChannel.id + currentTvChannel.url}
+                      channel={currentTvChannel}
+                      videoRef={tvVideoRef}
+                      onError={onTvError}
+                      onPlaying={onTvPlaying}
+                      onPause={onTvPause}
+                      volume={toEffectiveVolume(volumePercent, 'log')}
+                    />
+                  )
+
+                  if (expanded) {
+                    return (
+                      <>
+                        <div className="tv-placeholder"><span className="tv-placeholder-icon">📺</span><span>{currentTvChannel.name}</span></div>
+                        {createPortal(
+                          <div style={{ position: 'fixed', inset: 0, zIndex: 2147483647, background: '#000' }} className="tv-fs-portal">
+                            <div style={{ position: 'absolute', inset: 0 }}>{playerEl}</div>
+                            {/* Przycisk X — górny prawy róg */}
+                            <button className="tv-fs-close" title="Zamknij (Esc)" onClick={exitExpand}>✕</button>
+                            {/* Dolny pasek kontrolny — pojawia się na hover */}
+                            <div className="tv-fs-bar">
+                              <span className="tv-fs-channel">📺 {currentTvChannel.name}</span>
+                              <div style={{ flex: 1 }} />
+                              {/* Głośność */}
+                              <div className="tv-fs-vol">
+                                <button className="tv-fs-vol-icon" title="Wycisz/Włącz"
+                                  onClick={() => setVolumePercent(v => v === 0 ? 35 : 0)}>
+                                  {volumePercent === 0
+                                    ? <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M16.5 12A4.5 4.5 0 0 0 14 7.97v2.21l2.45 2.45c.03-.2.05-.41.05-.63zm2.5 0c0 .94-.2 1.82-.54 2.64l1.51 1.51A8.796 8.796 0 0 0 21 12c0-4.28-3-7.86-7-8.77v2.06c2.89.86 5 3.54 5 6.71zM4.27 3L3 4.27 7.73 9H3v6h4l5 5v-6.73l4.25 4.25c-.67.52-1.42.93-2.25 1.18v2.06A8.99 8.99 0 0 0 17.73 18l1.98 2L21 18.73 4.27 3zM12 4L9.91 6.09 12 8.18V4z"/></svg>
+                                    : volumePercent < 50
+                                    ? <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M18.5 12A4.5 4.5 0 0 0 16 7.97v8.05c1.48-.73 2.5-2.25 2.5-4.02zM5 9v6h4l5 5V4L9 9H5z"/></svg>
+                                    : <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3A4.5 4.5 0 0 0 14 7.97v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/></svg>}
+                                </button>
+                                <input className="tv-fs-vol-slider" type="range" min="0" max="100" step="1"
+                                  value={volumePercent}
+                                  onChange={handleVolumeChange}
+                                  onMouseUp={handleVolumeCommit}
+                                  onTouchEnd={handleVolumeCommit}
+                                  style={{ '--vol': `${volumePercent}%` }}
+                                />
+                                <span className="tv-fs-vol-num">{volumePercent}%</span>
+                              </div>
+                              <button className="tv-fs-btn" title={tvExpandMode === 'app' ? 'Wyjdź z monitora' : 'Pełny ekran monitora'}
+                                onClick={() => {
+                                  if (tvExpandMode === 'app') {
+                                    setTvExpandMode('monitor')
+                                    window.playerBridge?.setWindowFullscreen?.(true)
+                                  } else {
+                                    setTvExpandMode('app')
+                                    window.playerBridge?.setWindowFullscreen?.(false)
+                                  }
+                                }}>
+                                {tvExpandMode === 'monitor'
+                                  ? <><svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M5 16h3v3h2v-5H5v2zm3-8H5v2h5V5H8v3zm6 11h2v-3h3v-2h-5v5zm2-11V5h-2v5h5V8h-3z"/></svg><span>Tryb aplikacji</span></>
+                                  : <><svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M3 5v4h2V5h4V3H5C3.9 3 3 3.9 3 5zm2 10H3v4c0 1.1.9 2 2 2h4v-2H5v-4zm14 4h-4v2h4c1.1 0 2-.9 2-2v-4h-2v4zm0-16h-4v2h4v4h2V5c0-1.1-.9-2-2-2z"/></svg><span>Pełny monitor</span></>}
+                              </button>
+                              <button className="tv-fs-btn tv-fs-exit-btn" onClick={exitExpand}>
+                                <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+                                <span>Zamknij</span>
+                              </button>
+                            </div>
+                          </div>,
+                          document.body
+                        )}
+                      </>
+                    )
+                  }
+
+                  // Normalny tryb — inline, przyciski na hover
+                  return (
+                    <>
+                      {playerEl}
+                      <div className="tv-inline-controls">
+                        <button className="tv-exp-btn" style={{ right: 56 }}
+                          title="Pełna aplikacja"
+                          onClick={() => setTvExpandMode('app')}>
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z"/></svg>
+                        </button>
+                        <button className="tv-exp-btn" style={{ right: 12 }}
+                          title="Pełny ekran monitora"
+                          onClick={() => { setTvExpandMode('monitor'); window.playerBridge?.setWindowFullscreen?.(true) }}>
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M3 5v4h2V5h4V3H5C3.9 3 3 3.9 3 5zm2 10H3v4c0 1.1.9 2 2 2h4v-2H5v-4zm14 4h-4v2h4c1.1 0 2-.9 2-2v-4h-2v4zm0-16h-4v2h4v4h2V5c0-1.1-.9-2-2-2z"/></svg>
+                        </button>
+                      </div>
+                    </>
+                  )
+                })()}
+                {tvSubMode === 'youtube' && tvYoutubeUrl && (
+                  <>
+                    <ReactPlayer
+                      key={tvYoutubeUrl}
+                      ref={tvPlayerRef}
+                      url={tvYoutubeUrl}
+                      playing
+                      controls
+                      width="100%"
+                      height="100%"
+                      onError={() => setTvPlayerError(true)}
+                      onReady={() => setTvPlayerError(false)}
+                      config={{ youtube: { playerVars: { modestbranding: 1, rel: 0 } } }}
+                    />
+                    {tvPlayerError && (
+                      <div className="tv-error-overlay">
+                        <span>⚠ Nie udało się załadować wideo</span>
+                        <button onClick={() => setTvPlayerError(false)}>OK</button>
+                      </div>
+                    )}
+                  </>
+                )}
+                {((tvSubMode === 'channels' && !currentTvChannel) || (tvSubMode === 'youtube' && !tvYoutubeUrl)) && (
+                  <div className="tv-placeholder">
+                    {tvSubMode === 'channels' ? (
+                      <><span className="tv-placeholder-icon">📺</span><span>Wybierz kanał z listy po prawej</span></>
+                    ) : (
+                      <><span className="tv-placeholder-icon">▶</span><span>Wklej link YouTube powyżej i naciśnij ▶</span></>
+                    )}
+                  </div>
+                )}
+              </div>
+              {tvSubMode === 'channels' && currentTvChannel && (
+                <div className="tv-channel-bar">
+                  {currentTvChannel.logo && (
+                    <img className="tv-channel-logo" src={currentTvChannel.logo} alt="" onError={e => { e.target.style.display = 'none' }} />
+                  )}
+                  <span className="tv-channel-name">{currentTvChannel.name}</span>
+                  {currentTvChannel.country && <span className="tv-channel-country">{currentTvChannel.country}</span>}
+                </div>
+              )}
+            </div>
+          )}
+
           <ElectricBorder
             colorBase="#a5a5a5b9"
             colorPeak="#ff6600"
@@ -3404,7 +3786,7 @@ function App() {
             chaosMax={0.075}
             energyRef={electricEnergyRef}
             borderRadius={20}
-            style={{ flex: 1, minHeight: 0, marginTop: 10 }}
+            style={{ flex: 1, minHeight: 0, marginTop: 10, display: mode === 'tv' ? 'none' : undefined }}
           >
           <div className={`stage-visual ${mode}`} style={{ marginTop: 0 }}>
             <canvas ref={vizBgCanvasRef} className="viz-bg-canvas" />
@@ -3494,7 +3876,7 @@ function App() {
             </div>
           </ElectricBorder>
 
-          <div className="info-strip">
+          <div className="info-strip" style={{ display: mode === 'tv' ? 'none' : '' }}>
             {mode === 'radio' ? (
               <>
                 <span>{countryFlagEmoji(currentStation?.countryCode)} {currentStation?.country || 'Online'}</span>
@@ -3525,7 +3907,7 @@ function App() {
         </article>
 
         <aside className="library-card">
-          <div className="library-toolbar">
+          <div className="library-toolbar" style={{ display: mode === 'tv' ? 'none' : '' }}>
             <div className="segmented-control small">
               <button className={libraryView === 'all' ? 'active' : ''} onClick={() => setLibraryView('all')}>
                 Wszystkie
@@ -3564,7 +3946,7 @@ function App() {
 
           </div>
 
-          <div className={`library-extras${(libraryView === 'chat' || libraryView === 'similar') ? ' library-extras--hidden' : ''}`}>
+          <div className={`library-extras${(libraryView === 'chat' || libraryView === 'similar') ? ' library-extras--hidden' : ''}`} style={{ display: mode === 'tv' ? 'none' : '' }}>
           {mode === 'player' ? (
             <>
               <div className="filters-panel">
@@ -3766,7 +4148,7 @@ function App() {
             </div>
           )}
 
-          <div className="library-header">
+          <div className="library-header" style={{ display: mode === 'tv' ? 'none' : '' }}>
             <div>
               <p className="stage-label">Lista źródeł</p>
               <h3>
@@ -3845,10 +4227,112 @@ function App() {
           ) : null}
           </div>
 
+          {mode === 'tv' && (
+            <div className="tv-library-top">
+              {/* Filtry — jak radio-filters */}
+              <div className="radio-filters">
+                <div className="country-filter">
+                  <label>Kategoria</label>
+                  <div className="radio-genre-chips" style={{ flexWrap: 'wrap' }}>
+                    {TV_CATEGORIES.map(cat => (
+                      <button
+                        key={cat.id}
+                        className={`filter-chip${tvCategoryId === cat.id ? ' active' : ''}`}
+                        onClick={() => { setTvCategoryId(cat.id); setTvSubMode('channels'); setTvChannelSearch(''); setTvChannelPage(0); setTvCountryFilter('') }}
+                      >{cat.label}</button>
+                    ))}
+                  </div>
+                </div>
+                {(() => {
+                  const countries = [...new Set(tvChannels.map(ch => ch.country).filter(Boolean))].sort()
+                  if (countries.length < 2) return null
+                  return (
+                    <div className="country-filter">
+                      <label>Kraj kanału</label>
+                      <select
+                        value={tvCountryFilter}
+                        onChange={e => { setTvCountryFilter(e.target.value); setTvChannelPage(0) }}
+                      >
+                        <option value="">Wszystkie kraje</option>
+                        {countries.map(c => <option key={c} value={c}>{c}</option>)}
+                      </select>
+                    </div>
+                  )
+                })()}
+              </div>
+              {/* Nagłówek listy — jak library-header */}
+              <div className="library-header">
+                <div>
+                  <p className="stage-label">Lista źródeł</p>
+                  <h3>Kanały <span className="count-pill count-pill--sm">{tvChannels.length}</span></h3>
+                </div>
+                {tvSubMode === 'channels' && (
+                  <div className="station-search">
+                    <input
+                      type="text"
+                      value={tvChannelSearch}
+                      onChange={e => { setTvChannelSearch(e.target.value); setTvChannelPage(0) }}
+                      placeholder="Szukaj kanału..."
+                    />
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
           <div
             ref={libraryListRef}
             className={`library-list${libraryView === 'chat' ? ' library-list--chat' : ''}`}
           >
+            {mode === 'tv' && tvSubMode === 'channels' && (() => {
+              if (tvLoading) return Array.from({ length: 8 }, (_, i) => (
+                <div key={i} className="library-item skeleton" style={{ animationDelay: `${i * 0.06}s`, opacity: 0, animation: `fadeIn 0.3s ease ${i * 0.06}s forwards` }}>
+                  <div className="skeleton-art" /><div className="skeleton-copy"><div className="skeleton-line wide" /><div className="skeleton-line narrow" /></div>
+                </div>
+              ))
+              const q = tvChannelSearch.trim().toLowerCase()
+              const filtered = tvChannels.filter(ch => {
+                if (tvCountryFilter && ch.country !== tvCountryFilter) return false
+                if (q && !ch.name.toLowerCase().includes(q) && !(ch.country || '').toLowerCase().includes(q)) return false
+                return true
+              })
+              if (filtered.length === 0) return <div className="empty-state">{tvChannels.length === 0 ? 'Brak kanałów w tej kategorii.' : 'Brak wyników dla wyszukiwanej frazy.'}</div>
+              const paginated = filtered.slice(tvChannelPage * TV_PAGE_SIZE, (tvChannelPage + 1) * TV_PAGE_SIZE)
+              return <>
+                {paginated.map(ch => {
+                  const selected = currentTvChannel?.id === ch.id
+                  return (
+                    <div key={ch.id} className={`library-item${selected ? ' active' : ''}`} onClick={() => {
+                            setTvPlayerError(false)
+                            setCurrentTvChannel(ch)
+                          }} style={{ cursor: 'pointer' }}>
+                      <div className="item-art with-badge">
+                        {ch.logo
+                          ? <img src={ch.logo} alt="" onError={e => { e.target.style.display = 'none' }} />
+                          : <span style={{ fontSize: '1.4rem' }}>📺</span>}
+                        {ch.country && <span className="item-flag">{countryFlagEmoji(ch.country)}</span>}
+                      </div>
+                      <div className="item-copy">
+                        <span className="item-title">{ch.name}</span>
+                        <span className="item-meta">{ch.country || 'TV'}{selected ? ' · ● Live' : ''}</span>
+                      </div>
+                    </div>
+                  )
+                })}
+                {filtered.length > TV_PAGE_SIZE && (
+                  <div className="track-pagination">
+                    <button className="load-more-btn" disabled={tvChannelPage === 0} onClick={() => { setTvChannelPage(p => p - 1); libraryListRef.current && (libraryListRef.current.scrollTop = 0) }}>← Poprzednie</button>
+                    <span>{tvChannelPage * TV_PAGE_SIZE + 1}–{Math.min((tvChannelPage + 1) * TV_PAGE_SIZE, filtered.length)} / {filtered.length}</span>
+                    <button className="load-more-btn" disabled={(tvChannelPage + 1) * TV_PAGE_SIZE >= filtered.length} onClick={() => { setTvChannelPage(p => p + 1); libraryListRef.current && (libraryListRef.current.scrollTop = 0) }}>Następne →</button>
+                  </div>
+                )}
+              </>
+            })()}
+            {mode === 'tv' && tvSubMode === 'youtube' && (
+              <div className="tv-yt-hint empty-state">
+                <span>▶ Wklej link YouTube po lewej i oglądaj razem</span>
+              </div>
+            )}
             {mode === 'radio' && radioGardenMode && (
               rgLoading
                 ? Array.from({ length: 6 }, (_, i) => (
@@ -3879,7 +4363,7 @@ function App() {
                       )
                     })
             )}
-            {libraryView !== 'chat' && libraryView !== 'similar' && !(mode === 'radio' && radioGardenMode) && (mode === 'radio' ? radioLoading : trackLoading) && (mode === 'radio' ? filteredStations : visibleTracks).length === 0
+            {mode !== 'tv' && libraryView !== 'chat' && libraryView !== 'similar' && !(mode === 'radio' && radioGardenMode) && (mode === 'radio' ? radioLoading : trackLoading) && (mode === 'radio' ? filteredStations : visibleTracks).length === 0
               ? Array.from({ length: 8 }, (_, i) => (
                   <div key={i} className="library-item skeleton" style={{ animationDelay: `${i * 0.06}s`, opacity: 0, animation: `fadeIn 0.3s ease ${i * 0.06}s forwards` }}>
                     <div className="skeleton-art" />
@@ -4288,7 +4772,7 @@ function App() {
                   )
                 })()}
               </div>
-            ) : (mode === 'radio' && radioGardenMode) ? null : (mode === 'radio' ? filteredStations.slice(0, visibleStationCount) : visibleTracks.slice(trackPage * PAGE_SIZE, (trackPage + 1) * PAGE_SIZE)).map((item) => {
+            ) : (mode === 'radio' && radioGardenMode) ? null : mode === 'tv' ? null : (mode === 'radio' ? filteredStations.slice(0, visibleStationCount) : visibleTracks.slice(trackPage * PAGE_SIZE, (trackPage + 1) * PAGE_SIZE)).map((item) => {
               const selected = mode === 'radio' ? currentStation?.id === item.id : currentTrack?.id === item.id
               const flag = mode === 'radio' ? countryFlagEmoji(item.countryCode) : 'YT'
               const art = mode === 'radio'
@@ -4326,7 +4810,7 @@ function App() {
                 </button>
               </div>
             )}
-            {libraryView !== 'chat' && libraryView !== 'similar' && !(mode === 'radio' && radioGardenMode) && libraryView !== 'suggested' && (mode === 'radio' ? filteredStations : visibleTracks).length === 0 ? (
+            {mode !== 'tv' && libraryView !== 'chat' && libraryView !== 'similar' && !(mode === 'radio' && radioGardenMode) && libraryView !== 'suggested' && (mode === 'radio' ? filteredStations : visibleTracks).length === 0 ? (
               <div className="empty-state">
                 {libraryView === 'favorites'
                   ? 'Brak ulubionych w tym trybie.'
@@ -4375,57 +4859,133 @@ function App() {
 
       <footer className="bottom-player">
         <div className="bottom-nowplaying">
-          <img
-            src={playerArt}
-            alt=""
-            onError={(event) => withFallbackArt(event, mode === 'radio' ? currentStation?.name : currentTrack?.title, mode)}
-          />
-          <div className="bottom-nowcopy">
-            <p className="bottom-label">Teraz odtwarzasz</p>
-            {shouldScrollTitle ? (
-              <div className="title-marquee compact">
-                <div className="title-track">
-                  <span>{currentTitle}</span>
-                  <span>{currentTitle}</span>
-                </div>
+          {mode === 'tv' ? (
+            <>
+              {currentTvChannel?.logo
+                ? <img key="tv-art" src={currentTvChannel.logo} alt="" style={{ borderRadius: 8, objectFit: 'contain', background: 'rgba(255,255,255,0.07)' }} onError={e => { e.target.style.display = 'none' }} />
+                : <div key="tv-art" style={{ width: 48, height: 48, borderRadius: 8, background: 'rgba(255,255,255,0.06)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.4rem', flexShrink: 0 }}>📺</div>
+              }
+              <div className="bottom-nowcopy">
+                <p className="bottom-label">Teraz oglądasz</p>
+                <p className="title-single-text compact">{currentTvChannel?.name || 'Wybierz kanał'}</p>
               </div>
-            ) : (
-              <p className="title-single-text compact">{currentTitle}</p>
-            )}
-          </div>
+            </>
+          ) : (
+            <>
+              <img
+                key="music-art"
+                src={playerArt}
+                alt=""
+                onError={(event) => withFallbackArt(event, mode === 'radio' ? currentStation?.name : currentTrack?.title, mode)}
+              />
+              <div className="bottom-nowcopy">
+                <p className="bottom-label">Teraz odtwarzasz</p>
+                {shouldScrollTitle ? (
+                  <div className="title-marquee compact">
+                    <div className="title-track">
+                      <span>{currentTitle}</span>
+                      <span>{currentTitle}</span>
+                    </div>
+                  </div>
+                ) : (
+                  <p className="title-single-text compact">{currentTitle}</p>
+                )}
+              </div>
+            </>
+          )}
         </div>
 
         <div className="bottom-center">
           <div className="bottom-controls">
-            {mode === 'player' ? (
+            {mode === 'tv' ? (
+              <>
+                <button className="player-button ghost" onClick={() => {
+                  const el = tvVideoRef.current
+                  if (!el) return
+                  if (tvIsPlaying) { el.pause(); setTvIsPlaying(false) }
+                  else { el.play().catch(() => {}); setTvIsPlaying(true) }
+                }}>
+                  {tvIsPlaying ? 'Pause' : 'Play'}
+                </button>
+                <button className="player-button ghost" onClick={() => {
+                  if (tvVideoRef.current) { tvVideoRef.current.currentTime = 0; tvVideoRef.current.play().catch(() => {}) }
+                }}>⟳ Od nowa</button>
+              </>
+            ) : mode === 'player' ? (
               <button className="player-button ghost" onClick={() => handleTrackPrevious(isTrackPlaying)}>
                 Poprzednie
               </button>
             ) : null}
 
-            <button className="player-button ghost" onClick={handlePlayPause}>
-              {mode === 'radio'
-                ? isRadioPlaying
-                  ? 'Pause'
-                  : 'Play'
-                : isTrackPlaying
-                  ? 'Pause'
-                  : 'Play'}
-            </button>
+            {mode !== 'tv' && (
+              <button className="player-button ghost" onClick={handlePlayPause}>
+                {mode === 'radio'
+                  ? isRadioPlaying ? 'Pause' : 'Play'
+                  : isTrackPlaying ? 'Pause' : 'Play'}
+              </button>
+            )}
 
             {mode === 'radio' ? (
               <button className="player-button primary" onClick={handleStationNext} disabled={inSession && !isHost && !myPermissions.canSkip}>Nastepne</button>
-            ) : (
+            ) : mode === 'player' ? (
               <>
                 <button className="player-button primary" onClick={() => handleTrackNext(isTrackPlaying)}>
                   {loadingMoreTracks ? 'Ladowanie...' : 'Dalej'}
                 </button>
                 <button className="player-button ghost" onClick={pickRandomTrack}>Losuj</button>
               </>
-            )}
+            ) : null}
           </div>
 
-          {mode === 'radio' ? (
+          {mode === 'tv' ? (
+            tvHasDvr && tvSeekableEnd > tvSeekableStart ? (() => {
+              // Pasek DVR — max to seekableEnd-15s (ukryty bufor live)
+              const LIVE_BUFFER = 15
+              const dvrMax  = tvSeekableEnd - LIVE_BUFFER
+              const dvrRange = Math.max(1, dvrMax - tvSeekableStart)
+              const clampedTime = Math.min(dvrMax, Math.max(tvSeekableStart, tvCurrentTime))
+              const pct = Math.min(100, ((clampedTime - tvSeekableStart) / dvrRange) * 100).toFixed(2)
+              const isAtLive = tvCurrentTime >= dvrMax - 2
+              const behindSec = Math.max(0, Math.round(tvSeekableEnd - tvCurrentTime))
+              return (
+                <div className="bottom-track tv-dvr-track">
+                  <span className="tv-dvr-behind">
+                    {isAtLive ? '' : `-${formatSeconds(behindSec)}`}
+                  </span>
+                  <div className="track-slider-wrap">
+                    <div className="track-slider-fill" style={{ '--pct': `${pct}%` }} />
+                    <div className="track-slider-thumb" style={{ '--pct': `${pct}%` }} />
+                    <input
+                      className="track-slider-input"
+                      type="range"
+                      min={Math.floor(tvSeekableStart)}
+                      max={Math.ceil(dvrMax)}
+                      step="1"
+                      value={Math.round(clampedTime)}
+                      onChange={e => {
+                        const v = Math.min(Math.ceil(dvrMax), Math.max(Math.floor(tvSeekableStart), Number(e.target.value)))
+                        if (tvVideoRef.current) tvVideoRef.current.currentTime = v
+                        setTvCurrentTime(v)
+                      }}
+                    />
+                  </div>
+                  <button
+                    className={`tv-live-btn${isAtLive ? ' active' : ''}`}
+                    onClick={() => {
+                      const el = tvVideoRef.current
+                      if (el?.seekable.length > 0)
+                        el.currentTime = Math.max(el.seekable.start(0), el.seekable.end(0) - LIVE_BUFFER)
+                    }}
+                  >● LIVE</button>
+                </div>
+              )
+            })() : (
+              <div className="tv-live-simple">
+                <span className={`tv-live-dot${tvIsPlaying ? ' on' : ''}`} />
+                <span>{tvIsPlaying ? 'LIVE' : 'STOP'}</span>
+              </div>
+            )
+          ) : mode === 'radio' ? (
             <div className={`live-progress${isRadioPlaying ? ' playing' : ' paused'}`} aria-label="Radio live">
               <div className="live-progress-track">
                 <div className="live-progress-fill"></div>

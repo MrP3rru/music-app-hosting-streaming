@@ -28,8 +28,10 @@ contextBridge.exposeInMainWorld('playerBridge', {
   // Tło / focus
   onAppBackground: (cb) => ipcRenderer.on('app:background', (_e, isBackground) => cb(isBackground)),
   // Custom titlebar
-  minimizeWindow: () => ipcRenderer.send('window:minimize'),
-  closeWindow:    () => ipcRenderer.send('window:close'),
+  minimizeWindow:      () => ipcRenderer.send('window:minimize'),
+  closeWindow:         () => ipcRenderer.send('window:close'),
+  setWindowFullscreen: (val) => ipcRenderer.send('window:setFullscreen', val),
+  isWindowFullscreen:  () => ipcRenderer.invoke('window:isFullscreen'),
   // Zoom okna (natychmiastowy, bez restartu)
   setZoom:     (idx) => ipcRenderer.invoke('zoom:set', idx),
   onZoomIdx:   (cb)  => ipcRenderer.on('zoom:idx', (_e, idx) => cb(idx)),
