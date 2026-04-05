@@ -1,7 +1,36 @@
 {
-  "version": "2.1.0",
-  "changelog": "Nowa zakładka TV — kanały HLS, filtry kategorii i krajów, tryb pełnoekranowy, DVR bar, naprawa widoczności przycisków nad playerem.",
+  "version": "3.1.7",
+  "changelog": "Duży pakiet poprawek: Discord Presence (radio/player/TV), synchronizacja czasu i seek, przywrócone obrazki stacji/utworów, stabilniejszy start playera, rozszerzone polskie źródła TV i lepsze filtrowanie krajów.",
   "history": [
+    {
+      "version": "3.1.7",
+      "date": "2026-04-05",
+      "changes": [
+        "Poprawki wydajnościowe i stabilności — optymalizacje renderowania, lepsze zarządzanie stanem, naprawa wycieków pamięci RAM",
+        "Discord Rich Presence — dodano osobne statusy dla trybów Player, Radio i TV (w tym YouTube w TV)",
+        "Discord Rich Presence — TV (kanały): nazwa kanału + flaga kraju + czytelniejszy opis",
+        "Discord Rich Presence — TV (YouTube): dedykowany status YouTube (TV)",
+        "Radio Presence — format tytułu: Nazwa stacji | co leci",
+        "Radio Presence — szczegóły pokazują aktualne 'co leci' z fallbackiem 'Kanał na żywo'",
+        "Player Presence — synchronizacja czasu z aktualnym seekiem (poprawny licznik po przewinięciu)",
+        "Player Presence — dodano start/end timestamp utworu (lepszy postęp czasu w Discord)",
+        "Player Presence — odświeżanie po seeku lokalnym i zdalnym (sesje Listen Together)",
+        "TV Presence — dodano informacje o kraju kanału (flaga + kod/nazwa kraju)",
+        "Przywrócono poprawne wyświetlanie obrazków (okładek/favikon) w Presence dla playera i radia",
+        "Player Presence — fallback miniatury po ID YouTube, gdy brak/awaria thumbnail",
+        "Radio Presence — przywrócone favicony stacji jako główna ikona aktywności",
+        "Ograniczono częstotliwość aktualizacji Presence do 2 sekund, aby zmniejszyć mikro-lagi",
+        "Naprawiono opóźniony start utworów w playerze — źródło ładuje się od razu, a fallback audio działa dopiero przy błędzie",
+        "Naprawiono problemy ze startem utworów po ostatnich zmianach Presence (mniej przycięć przy przełączaniu)",
+        "TV — rozszerzono zaufane źródła polskich kanałów (bez niestabilnych tokenowych linków)",
+        "TV — dodano dodatkową kategorię kanałów: Dziwne / Retro / Local",
+        "TV — parser M3U rozszerzony o tvg-language i group-title przy wykrywaniu kraju",
+        "TV — lepsze heurystyki wykrywania kanałów PL (metadata, język, nazwa, id, źródło feedu)",
+        "TV — poprawiono tryb Wszystkie + kraj (fallback feedy per kraj, lepsza spójność wyników)",
+        "TV — deduplikacja kanałów i stabilniejsze filtrowanie po kraju",
+        "Build/diagnostyka — poprawki zweryfikowane wielokrotnym buildem i kontrolą błędów"
+      ]
+    },
     {
       "version": "2.1.0",
       "date": "2026-04-04",

@@ -68,9 +68,11 @@ export default function UpdateModal({ updateInfo, onDismiss }) {
         </div>
 
         {updateInfo.changes?.length > 0 && (
-          <ul className="update-changelog">
-            {updateInfo.changes.map((c, i) => <li key={i}>{c}</li>)}
-          </ul>
+          <div className="update-changelog-wrap">
+            <ul className="update-changelog">
+              {updateInfo.changes.map((c, i) => <li key={i}>{c}</li>)}
+            </ul>
+          </div>
         )}
 
         {state === 'idle' && (

@@ -13,6 +13,7 @@ import { db } from './firebase'
 import { GameLobby } from './GameLobby'
 import { MonopolyGame } from './MonopolyGame'
 import { LyricsOverlay } from './LyricsOverlay'
+import DevDiagnosticsOverlay from './DevDiagnosticsOverlay'
 import './App.css'
 
 const genres = [
@@ -608,6 +609,45 @@ function countryFlagEmoji(countryCode) {
     .join('')
 }
 
+const countryRegionNames = typeof Intl !== 'undefined' && typeof Intl.DisplayNames === 'function'
+  ? new Intl.DisplayNames(['pl', 'en'], { type: 'region' })
+  : null
+
+function formatCountryCodeLabel(countryCode) {
+  const code = String(countryCode || '').trim().toUpperCase()
+  if (!/^[A-Z]{2}$/.test(code)) return code
+  try {
+    const regionName = countryRegionNames?.of(code)
+    if (!regionName || regionName.toUpperCase() === code) return code
+    return `${code} (${regionName})`
+  } catch {
+    return code
+  }
+}
+
+function formatCountryOptionLabel(countryCode) {
+  const code = String(countryCode || '').trim().toUpperCase()
+  if (!/^[A-Z]{2}$/.test(code)) return code
+  return `${countryFlagEmoji(code)} ${formatCountryCodeLabel(code)}`
+}
+
+function getCountryFlagImageUrl(countryCode) {
+  const code = String(countryCode || '').trim().toLowerCase()
+  if (!/^[a-z]{2}$/.test(code)) return ''
+  return `https://flagcdn.com/24x18/${code}.png`
+}
+
+function getTvChannelCountryCodes(channel) {
+  const fromArray = Array.isArray(channel?.countryCodes) ? channel.countryCodes : []
+  const fromSingle = String(channel?.country || '')
+    .toUpperCase()
+    .split(/[\s,;|/]+/)
+    .map((token) => token.trim())
+    .filter(Boolean)
+
+  return [...new Set([...fromArray, ...fromSingle])].filter((code) => /^[A-Z]{2}$/.test(code))
+}
+
 function weatherIcon(code) {
   if (code === 0) return '☀️'
   if (code <= 2) return '🌤️'
@@ -742,6 +782,27 @@ function getPlaceholderArt(label, type) {
   return `https://placehold.co/320x320/1c1d3c/ffd36e?text=${safeLabel}`
 }
 
+function sanitizeImageUrl(url) {
+  if (!url) return ''
+  try {
+    const u = new URL(url)
+    const host = u.hostname.toLowerCase()
+    const path = u.pathname.toLowerCase()
+    // Znane źródła generujące duży szum 404/403/412/429.
+    if (host.includes('upload.wikimedia.org')) return ''
+    if (host.includes('24dubstep.pl')) return ''
+    if (host.includes('firebasestorage.googleapis.com')) return ''
+    if (host.includes('super-radio-mobile.devhub.top')) return ''
+    if (host.includes('superradio.cc')) return ''
+    if (host.includes('radiofrance.fr') && path.includes('favicon')) return ''
+    if (host.includes('lesonunique.com') && path.includes('/images_flux/logos/')) return ''
+    if (path.endsWith('/apple-touch-icon.png')) return ''
+    return url
+  } catch {
+    return ''
+  }
+}
+
 function withFallbackArt(event, label, type) {
   const target = event.currentTarget
   const failed = target.src
@@ -753,8 +814,17 @@ function withFallbackArt(event, label, type) {
 }
 
 function safeArt(url, label, type) {
-  if (!url || failedImageUrls.has(url)) return getPlaceholderArt(label, type)
-  return url
+  const clean = sanitizeImageUrl(url)
+  if (!clean || failedImageUrls.has(clean)) return getPlaceholderArt(label, type)
+  return clean
+}
+
+function getDiscordTrackArt(track) {
+  const primary = sanitizeImageUrl(track?.thumbnail)
+  if (primary) return primary
+  const ytId = String(track?.id || '').trim() || extractYoutubeId(String(track?.url || '').trim())
+  if (ytId) return `https://img.youtube.com/vi/${ytId}/hqdefault.jpg`
+  return ''
 }
 
 function shuffleArray(arr) {
@@ -825,7 +895,7 @@ const LibraryItem = memo(function LibraryItem({ item, selected, mode, activeTrac
 })
 
 // ─── TV — HLS player wrapper ─────────────────────────────────────────────────
-function TvChannelPlayer({ channel, videoRef, onError, onPlaying, onPause, volume }) {
+function TvChannelPlayer({ channel, videoRef, onError, onPlaying, onPause, onStall, volume, expanded = false }) {
   const innerRef = useRef(null)
   const resolvedRef = videoRef || innerRef
   useEffect(() => {
@@ -848,21 +918,27 @@ function TvChannelPlayer({ channel, videoRef, onError, onPlaying, onPause, volum
     const onErr  = () => onError?.()
     const onPlay = () => onPlaying?.()
     const onPaus = () => onPause?.()
+    const onWait = () => onStall?.()
     el.addEventListener('error',   onErr)
     el.addEventListener('playing', onPlay)
     el.addEventListener('pause',   onPaus)
+    el.addEventListener('stalled', onWait)
+    el.addEventListener('waiting', onWait)
     return () => {
       el.removeEventListener('error',   onErr)
       el.removeEventListener('playing', onPlay)
       el.removeEventListener('pause',   onPaus)
+      el.removeEventListener('stalled', onWait)
+      el.removeEventListener('waiting', onWait)
     }
-  }, [onError, onPlaying, onPause, volume])
+  }, [onError, onPlaying, onPause, onStall, volume])
+
   return (
     <HlsVideo
       ref={resolvedRef}
       src={channel.url}
-      autoPlay
-      style={{ width: '100%', height: '100%', display: 'block', background: '#000', borderRadius: 14 }}
+      autoPlay={false}
+      style={{ width: '100%', height: '100%', display: 'block', background: '#000', borderRadius: expanded ? 0 : 14 }}
     />
   )
 }
@@ -870,16 +946,51 @@ function TvChannelPlayer({ channel, videoRef, onError, onPlaying, onPause, volum
 // ─── TV — kategorie i parser M3U ─────────────────────────────────────────────
 // Kurowane polskie kanały TVP — statyczne HLS (tvpstream API jest nieaktywne)
 const CURATED_TV_PL = [
-  { id: 'tvp1',       name: 'TVP 1',       logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/a/a8/TVP1_logo.svg/100px-TVP1_logo.svg.png',       country: 'PL', url: 'https://ec06-krk3.cache.orange.pl/dai4/org1/vb/104/tvp1hd/index.m3u8' },
-  { id: 'tvpinfo',    name: 'TVP Info',    logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/1/11/TVP_Info_logo.svg/100px-TVP_Info_logo.svg.png', country: 'PL', url: 'http://78.130.250.2:8023/play/a03b/index.m3u8' },
-  { id: 'tvppolonia', name: 'TVP Polonia', logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/d/d5/TVP_Polonia_logo.svg/100px-TVP_Polonia_logo.svg.png', country: 'PL', url: 'https://dash2.antik.sk/live/test_tvp_polonia/playlist.m3u8' },
-  { id: 'tvpworld',   name: 'TVP World',   logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/1/19/TVP_World_logo_2022.svg/100px-TVP_World_logo_2022.svg.png', country: 'PL', url: 'https://dash2.antik.sk/live/test_tvp_world/playlist.m3u8' },
+  { id: 'tvp1',       name: 'TVP 1',       logo: '', country: 'PL', url: 'https://ec06-krk3.cache.orange.pl/dai4/org1/vb/104/tvp1hd/index.m3u8' },
+  { id: 'tvpinfo',    name: 'TVP Info',    logo: '', country: 'PL', url: 'http://78.130.250.2:8023/play/a03b/index.m3u8' },
+  { id: 'tvppolonia', name: 'TVP Polonia', logo: '', country: 'PL', url: 'https://dash2.antik.sk/live/test_tvp_polonia/playlist.m3u8' },
+  { id: 'tvpworld',   name: 'TVP World',   logo: '', country: 'PL', url: 'https://dash2.antik.sk/live/test_tvp_world/playlist.m3u8' },
 ]
 
+const TV_POLAND_TRUSTED_EXTRA_URLS = [
+  'https://iptv-org.github.io/iptv/languages/pol.m3u',
+  'https://iptv-org.github.io/iptv/regions/europe.m3u',
+  'https://iptv-org.github.io/iptv/categories/news.m3u',
+  'https://iptv-org.github.io/iptv/categories/music.m3u'
+]
+
+const TV_RETRO_LOCAL_PATTERN = /\b(retro|classic|vintage|oldies|local|regional|community|city|travel|weather|shop|music|party|dance|fun|comedy)\b/i
+
 const TV_CATEGORIES = [
-  { id: 'pl',            label: '🇵🇱 Polskie',      url: 'https://iptv-org.github.io/iptv/countries/pl.m3u', curated: CURATED_TV_PL },
+  {
+    id: 'all',
+    label: '🌐 Wszystkie',
+    url: 'https://iptv-org.github.io/iptv/index.m3u',
+    extraUrls: ['https://raw.githubusercontent.com/Free-TV/IPTV/master/playlist.m3u8']
+  },
+  {
+    id: 'pl',
+    label: '🇵🇱 Polskie',
+    url: 'https://iptv-org.github.io/iptv/countries/pl.m3u',
+    extraUrls: TV_POLAND_TRUSTED_EXTRA_URLS,
+    countryHints: ['PL'],
+    curated: CURATED_TV_PL
+  },
   { id: 'news',          label: '📰 Wiadomości',    url: 'https://iptv-org.github.io/iptv/categories/news.m3u' },
   { id: 'music',         label: '🎵 Muzyczne',      url: 'https://iptv-org.github.io/iptv/categories/music.m3u' },
+  {
+    id: 'retro-local',
+    label: '🪩 Dziwne / Retro / Local',
+    url: 'https://iptv-org.github.io/iptv/categories/classic.m3u',
+    extraUrls: [
+      'https://iptv-org.github.io/iptv/categories/public.m3u',
+      'https://iptv-org.github.io/iptv/categories/travel.m3u',
+      'https://iptv-org.github.io/iptv/categories/weather.m3u',
+      'https://iptv-org.github.io/iptv/categories/shop.m3u',
+      'https://iptv-org.github.io/iptv/categories/relax.m3u'
+    ],
+    keywordFilter: TV_RETRO_LOCAL_PATTERN
+  },
   { id: 'sports',        label: '⚽ Sport',          url: 'https://iptv-org.github.io/iptv/categories/sports.m3u' },
   { id: 'entertainment', label: '🎬 Rozrywka',      url: 'https://iptv-org.github.io/iptv/categories/entertainment.m3u' },
   { id: 'kids',          label: '👶 Dla dzieci',    url: 'https://iptv-org.github.io/iptv/categories/kids.m3u' },
@@ -887,23 +998,182 @@ const TV_CATEGORIES = [
   { id: 'documentary',   label: '🎥 Dokumentalne',  url: 'https://iptv-org.github.io/iptv/categories/documentary.m3u' },
 ]
 
+const TV_COMMON_COUNTRY_CODES = [
+  'PL', 'US', 'GB', 'DE', 'FR', 'IT', 'ES', 'PT', 'NL', 'BE', 'CH', 'AT', 'SE', 'NO', 'DK', 'FI', 'IE',
+  'CZ', 'SK', 'HU', 'RO', 'BG', 'HR', 'SI', 'RS', 'BA', 'ME', 'MK', 'AL', 'GR', 'TR', 'UA', 'LT', 'LV',
+  'EE', 'IS', 'LU', 'MD', 'GE', 'AM', 'AZ', 'IL', 'AE', 'SA', 'QA', 'KW', 'EG', 'MA', 'TN', 'DZ', 'ZA',
+  'KE', 'NG', 'GH', 'IN', 'PK', 'BD', 'LK', 'NP', 'TH', 'VN', 'MY', 'SG', 'ID', 'PH', 'JP', 'KR', 'TW',
+  'HK', 'CN', 'AU', 'NZ', 'CA', 'MX', 'BR', 'AR', 'CL', 'CO', 'PE', 'VE', 'UY', 'PY', 'BO', 'EC', 'CR',
+  'PA', 'DO', 'CU', 'JM', 'TT', 'PR', 'AW', 'CW'
+]
+
+function normalizeCountryToken(value) {
+  return String(value || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z\s]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+}
+
+const TV_COUNTRY_NAME_ALIASES = new Map([
+  ['poland', 'PL'],
+  ['polska', 'PL'],
+  ['pol', 'PL'],
+  ['polish', 'PL'],
+  ['jezyk polski', 'PL'],
+  ['united states', 'US'],
+  ['usa', 'US'],
+  ['u s a', 'US'],
+  ['united kingdom', 'GB'],
+  ['great britain', 'GB'],
+  ['uk', 'GB'],
+  ['england', 'GB'],
+  ['germany', 'DE'],
+  ['deutschland', 'DE'],
+  ['france', 'FR'],
+  ['italy', 'IT'],
+  ['spain', 'ES'],
+  ['portugal', 'PT'],
+  ['netherlands', 'NL'],
+  ['holland', 'NL'],
+  ['czech republic', 'CZ'],
+  ['czechia', 'CZ'],
+  ['slovakia', 'SK'],
+  ['ukraine', 'UA'],
+  ['turkey', 'TR'],
+  ['turkiye', 'TR'],
+  ['south korea', 'KR'],
+  ['north korea', 'KP'],
+  ['united arab emirates', 'AE'],
+  ['uae', 'AE']
+])
+
+const TV_REGION_NAME_TO_CODE = (() => {
+  const map = new Map(TV_COUNTRY_NAME_ALIASES)
+  if (!countryRegionNames) return map
+  for (const code of TV_COMMON_COUNTRY_CODES) {
+    try {
+      const name = countryRegionNames.of(code)
+      const normalized = normalizeCountryToken(name)
+      if (normalized) map.set(normalized, code)
+    } catch {}
+  }
+  return map
+})()
+
+const TV_POLISH_HINT_PATTERN = /\b(polska|poland|polski|polskie|tvp|polsat|tvn|eska|polo\s*tv|republika|trwam|wpolsce24|w\s*polsce\s*24)\b/i
+
+function isLikelyPolishFeed(url) {
+  const value = String(url || '').toLowerCase()
+  return value.includes('/countries/pl.m3u') || value.includes('/languages/pol.m3u')
+}
+
+function isLikelyPolishTvChannel(channel) {
+  if (!channel) return false
+  const countries = getTvChannelCountryCodes(channel)
+  if (countries.includes('PL')) return true
+
+  const lang = normalizeCountryToken(channel.languageRaw || '')
+  if (lang.includes('pol') || lang.includes('polish') || lang.includes('polski')) return true
+
+  const text = `${channel.name || ''} ${channel.id || ''}`
+  if (TV_POLISH_HINT_PATTERN.test(text)) return true
+
+  try {
+    const host = new URL(channel.url).hostname.toLowerCase()
+    if (host.endsWith('.pl')) return true
+  } catch {}
+
+  if (channel.feedHintCountry === 'PL') return true
+  return false
+}
+
+function resolveCountryTokenToCode(token) {
+  const upper = String(token || '').trim().toUpperCase()
+  if (/^[A-Z]{2}$/.test(upper)) return upper
+  const normalized = normalizeCountryToken(token)
+  if (!normalized) return ''
+  return TV_REGION_NAME_TO_CODE.get(normalized) || ''
+}
+
+function sanitizeTvLogoUrl(url) {
+  if (!url) return ''
+  try {
+    const u = new URL(url)
+    const host = u.hostname.toLowerCase()
+    if (host.includes('upload.wikimedia.org')) return ''
+    if (host.includes('24dubstep.pl')) return ''
+    return url
+  } catch {
+    return ''
+  }
+}
+
+function normalizeTvCountryCodes(countryRaw, channelId = '', streamUrl = '') {
+  const codes = new Set()
+  const rawTokens = String(countryRaw || '')
+    .split(/[\s,;|/]+/)
+    .map((t) => t.trim())
+    .filter(Boolean)
+
+  for (const token of rawTokens) {
+    const code = resolveCountryTokenToCode(token)
+    if (code) codes.add(code)
+  }
+
+  const idMatch = String(channelId || '').toUpperCase().match(/(?:^|[._-])([A-Z]{2})(?:$|[._-])/)
+  if (idMatch?.[1]) codes.add(idMatch[1])
+
+  return [...codes]
+}
+
 function parseM3U(text) {
   const lines = text.split('\n').map(l => l.trim()).filter(Boolean)
   const channels = []
+  const MAX_CHANNELS = 12000
   for (let i = 0; i < lines.length; i++) {
     if (!lines[i].startsWith('#EXTINF')) continue
     const info = lines[i]
-    const url  = lines[i + 1]
+    let j = i + 1
+    while (j < lines.length && lines[j].startsWith('#')) j += 1
+    const url = lines[j]
     if (!url || url.startsWith('#')) continue
     if (!/^https?:\/\//i.test(url)) continue          // bezpieczeństwo — tylko http/https
     if (/liveovh\d+\.cda\.pl/.test(url)) continue     // CDA CDN wymaga tokenów auth
     const name    = (info.match(/,(.+)$/)         || [])[1]?.trim() || 'Kanał'
-    const logo    = (info.match(/tvg-logo="([^"]*)"/) || [])[1] || ''
-    const country = (info.match(/tvg-country="([^"]*)"/) || [])[1] || ''
+    const logoRaw = (info.match(/tvg-logo="([^"]*)"/) || [])[1] || ''
+    const logo    = sanitizeTvLogoUrl(logoRaw)
     const id      = (info.match(/tvg-id="([^"]*)"/)     || [])[1] || url
-    channels.push({ id, name, logo, country, url })
+    const countryRaw = (info.match(/tvg-country="([^"]*)"/) || [])[1] || ''
+    const groupTitleRaw = (info.match(/group-title="([^"]*)"/) || [])[1] || ''
+    const languageRaw = (info.match(/tvg-language="([^"]*)"/) || [])[1] || ''
+    const countryCodes = normalizeTvCountryCodes(
+      `${countryRaw} ${groupTitleRaw} ${languageRaw}`,
+      id,
+      url
+    )
+    const country = countryCodes[0] || ''
+    channels.push({ id, name, logo, country, countryCodes, languageRaw, groupTitleRaw, url })
+    if (channels.length >= MAX_CHANNELS) break
+    i = j
   }
   return channels
+}
+
+function dedupeTvChannels(channels) {
+  const seen = new Set()
+  const result = []
+  for (const ch of channels) {
+    const urlKey = String(ch?.url || '').trim().toLowerCase()
+    const nameKey = String(ch?.name || '').trim().toLowerCase()
+    const key = urlKey || `${nameKey}::${String(ch?.id || '')}`
+    if (!key || seen.has(key)) continue
+    seen.add(key)
+    result.push(ch)
+  }
+  return result
 }
 
 function isValidYoutubeUrl(url) {
@@ -930,6 +1200,8 @@ function getYoutubeEmbedUrl(url) {
 }
 
 function App() {
+  const TV_DVR_LIVE_BUFFER = 12
+  const TV_DVR_MAX_WINDOW_SECONDS = 180
   const ZOOM_LEVELS = Array.from({ length: 31 }, (_, i) => Math.round((0.70 + i * 0.02) * 100) / 100)
   const ZOOM_LABELS = ZOOM_LEVELS.map(f => `${Math.round(f * 100)}%`)
   const ZOOM_NAMES  = ZOOM_LEVELS.map((f, i) => {
@@ -1036,6 +1308,7 @@ function App() {
   const [isRadioBuffering, setIsRadioBuffering] = useState(false)
   const [isTrackPlaying, setIsTrackPlaying] = useState(false)
   const [isTrackReady, setIsTrackReady] = useState(false)
+  const [devPanelOpen, setDevPanelOpen] = useState(false)
 
   const [sessionEndedMsg, setSessionEndedMsg] = useState(null)
   const [radioNowPlaying, setRadioNowPlaying] = useState('')
@@ -1044,6 +1317,8 @@ function App() {
   const prevRadioNowPlayingRef = useRef('')
   const [trackDuration, setTrackDuration] = useState(0)
   const [trackTime, setTrackTime] = useState(0)
+  const [discordTrackSyncNonce, setDiscordTrackSyncNonce] = useState(0)
+  const [trackStreamUrl, setTrackStreamUrl] = useState('')
   const trackTimeRef = useRef(0)
   const pendingRemoteSeekRef = useRef(null)
   const [isSeeking, setIsSeeking] = useState(false)
@@ -1087,6 +1362,16 @@ function App() {
   const [trackHistory, setTrackHistory] = useState(loadHistory)
   const [historyExpanded, setHistoryExpanded] = useState(false)
 
+  useEffect(() => {
+    function onKeyDown(e) {
+      if (e.key !== 'F9') return
+      e.preventDefault()
+      setDevPanelOpen((v) => !v)
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [])
+
   // ─── TV ───────────────────────────────────────────────────────────────────
   const [tvSubMode, setTvSubMode]         = useState('channels') // 'channels' | 'youtube'
   const [tvCategoryId, setTvCategoryId]   = useState('pl')
@@ -1099,19 +1384,85 @@ function App() {
   const [tvChannelSearch, setTvChannelSearch] = useState('')
   const [tvChannelPage, setTvChannelPage]     = useState(0)
   const [tvCountryFilter, setTvCountryFilter] = useState('')
+  const [tvCountryPickerOpen, setTvCountryPickerOpen] = useState(false)
+  const [tvCountrySearch, setTvCountrySearch] = useState('')
   const [tvExpandMode, setTvExpandMode] = useState('normal') // 'normal' | 'app' | 'monitor'
+  const [tvStreamNonce, setTvStreamNonce] = useState(0)
   const TV_PAGE_SIZE = 40
   const tvPlayerRef    = useRef(null)
   const tvVideoRef     = useRef(null)
   const tvPlayerWrapRef = useRef(null)
+  const tvCountryPickerRef = useRef(null)
   const [tvIsPlaying, setTvIsPlaying] = useState(false)
   const [tvCurrentTime, setTvCurrentTime]       = useState(0)
   const [tvSeekableStart, setTvSeekableStart]   = useState(0)
   const [tvSeekableEnd, setTvSeekableEnd]       = useState(0)
   const [tvHasDvr, setTvHasDvr]               = useState(false)
+  const tvLastProgressRef = useRef({ time: 0, at: 0 })
+  const tvRecoverTimerRef = useRef(null)
+  const tvM3uAbortRef = useRef(null)
+  const tvAutoRetryRef = useRef(0)
   const onTvError   = useCallback(() => setTvPlayerError(true),  [])
   const onTvPlaying = useCallback(() => { setTvPlayerError(false); setTvIsPlaying(true) }, [])
   const onTvPause   = useCallback(() => setTvIsPlaying(false), [])
+
+  useEffect(() => {
+    if (!tvCountryPickerOpen) return
+    const onDocClick = (event) => {
+      if (!tvCountryPickerRef.current?.contains(event.target)) {
+        setTvCountryPickerOpen(false)
+        setTvCountrySearch('')
+      }
+    }
+    const onEsc = (event) => {
+      if (event.key === 'Escape') {
+        setTvCountryPickerOpen(false)
+        setTvCountrySearch('')
+      }
+    }
+    document.addEventListener('mousedown', onDocClick)
+    window.addEventListener('keydown', onEsc)
+    return () => {
+      document.removeEventListener('mousedown', onDocClick)
+      window.removeEventListener('keydown', onEsc)
+    }
+  }, [tvCountryPickerOpen])
+
+  const recoverTvStream = useCallback(() => {
+    if (mode !== 'tv' || !currentTvChannel || tvSubMode !== 'channels') return
+    // Krótki debounce, żeby nie robić wielu restartów naraz.
+    if (tvRecoverTimerRef.current) return
+    tvRecoverTimerRef.current = setTimeout(() => {
+      tvRecoverTimerRef.current = null
+      const el = tvVideoRef.current
+      try {
+        if (el) {
+          const base = Number.isFinite(el.seekable?.length) && el.seekable.length > 0 ? el.seekable.end(0) : null
+          el.load?.()
+          el.play?.().catch(() => {})
+          if (base !== null) el.currentTime = Math.max(el.seekable.start(0), base - 10)
+        } else {
+          setTvStreamNonce(n => n + 1)
+        }
+      } catch {
+        setTvStreamNonce(n => n + 1)
+      }
+      tvAutoRetryRef.current += 1
+      if (tvAutoRetryRef.current > 3) {
+        setTvPlayerError(true)
+      }
+    }, 900)
+  }, [mode, currentTvChannel, tvSubMode])
+
+  const onTvStall = useCallback(() => {
+    if (!tvIsPlaying || !currentTvChannel) return
+    recoverTvStream()
+  }, [tvIsPlaying, currentTvChannel, recoverTvStream])
+
+  useEffect(() => {
+    if (!tvPlayerError || tvSubMode !== 'channels' || !currentTvChannel) return
+    recoverTvStream()
+  }, [tvPlayerError, tvSubMode, currentTvChannel, recoverTvStream])
 
   // ─── TV YouTube IFrame API ─────────────────────────────────────────────────
   const tvYtIframeRef    = useRef(null)
@@ -1149,23 +1500,24 @@ function App() {
   })
   // Inicjalizacja currentStation z localStorage jeśli istnieje
   const [favorites, setFavorites] = useState(loadStoredFavorites)
-  // ─── Adaptacyjne FPS: 60 aktywna, 30 nieaktywna, 10 ukryta ─────────────────
-  const fpsRef = useRef(60)
+  // ─── Adaptacyjne FPS: 45 aktywna, 24 nieaktywna, 6 ukryta ──────────────────
+  const fpsRef = useRef(45)
   useEffect(() => {
     const update = () => {
       if (document.visibilityState === 'hidden') {
-        fpsRef.current = 10
+        fpsRef.current = 6
         document.documentElement.classList.add('page-hidden')
       } else {
-        fpsRef.current = document.hasFocus() ? 60 : 30
+        fpsRef.current = document.hasFocus() ? 45 : 24
         document.documentElement.classList.remove('page-hidden')
       }
     }
-    const onFocus = () => { if (document.visibilityState !== 'hidden') { fpsRef.current = 60; document.documentElement.classList.remove('page-hidden') } }
-    const onBlur  = () => { if (document.visibilityState !== 'hidden') fpsRef.current = 30 }
+    const onFocus = () => { if (document.visibilityState !== 'hidden') { fpsRef.current = 45; document.documentElement.classList.remove('page-hidden') } }
+    const onBlur  = () => { if (document.visibilityState !== 'hidden') fpsRef.current = 24 }
     document.addEventListener('visibilitychange', update)
     window.addEventListener('focus', onFocus)
     window.addEventListener('blur',  onBlur)
+    update()
     return () => {
       document.removeEventListener('visibilitychange', update)
       window.removeEventListener('focus', onFocus)
@@ -1332,6 +1684,7 @@ function App() {
 
   // ─── Tło wizualizera — aurora blobs reagujące na energię ────────────────────
   useEffect(() => {
+    if (mode === 'tv') return
     const canvas = vizBgCanvasRef.current
     if (!canvas) return
     const ctx = canvas.getContext('2d')
@@ -1399,10 +1752,11 @@ function App() {
       ro.disconnect()
       window.removeEventListener('resize', resize)
     }
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [mode]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // ─── Tło aplikacji — orby reagujące na energię muzyki ───────────────────────
   useEffect(() => {
+    if (mode === 'tv') return
     const canvas = bgCanvasRef.current
     if (!canvas) return
     const ctx = canvas.getContext('2d')
@@ -1500,7 +1854,7 @@ function App() {
     ro.observe(canvas)
     window.addEventListener('resize', resize)
     return () => { cancelAnimationFrame(raf); ro.disconnect(); window.removeEventListener('resize', resize) }
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [mode]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // ─── Thumbar — ref zawsze aktualny, listenerzy rejestrują się raz ─────────
   const thumbarActionsRef = useRef({})
@@ -1519,7 +1873,7 @@ function App() {
     // Tryb tła — wyłącz ciężkie animacje CSS gdy okno nie jest aktywne
     window.playerBridge.onAppBackground?.((isBackground) => {
       document.documentElement.classList.toggle('app-background', isBackground)
-      if (isBackground) { fpsRef.current = 10 } else if (document.visibilityState !== 'hidden') { fpsRef.current = document.hasFocus() ? 60 : 30 }
+      if (isBackground) { fpsRef.current = 6 } else if (document.visibilityState !== 'hidden') { fpsRef.current = document.hasFocus() ? 45 : 24 }
     })
   }, [])
 
@@ -1565,35 +1919,114 @@ function App() {
           window.playerBridge.clearDiscordPresence()
           return
         }
+        const elapsedMs = Math.max(0, Math.floor(Number(trackTimeRef.current || trackTime || 0))) * 1000
+        const durationSeconds = Math.max(0, Math.floor(Number(trackDuration || currentTrack.seconds || 0)))
+        const startTimestamp = Date.now() - elapsedMs
+        const endTimestamp = durationSeconds > 0
+          ? startTimestamp + (durationSeconds * 1000)
+          : undefined
+        const discordTrackArt = getDiscordTrackArt(currentTrack) || 'appicon'
         window.playerBridge.updateDiscordPresence({
           type: 2,
           name: currentTrack.title || 'Nieznany utwór',
           details: currentTrack.author || 'YouTube',
-          largeImageKey: currentTrack.thumbnail || 'appicon',
-          largeImageText: currentTrack.title || '',
+          state: 'Music App',
+          largeImageKey: discordTrackArt,
+          largeImageText: currentTrack.title || 'Music App',
           smallImageKey: 'appicon',
           smallImageText: 'byPerru',
-          startTimestamp: Date.now(),
+          startTimestamp,
+          endTimestamp,
         })
-      } else {
+        return
+      }
+
+      if (mode === 'radio') {
         if (!isRadioPlaying || !currentStation) {
           window.playerBridge.clearDiscordPresence()
           return
         }
         window.playerBridge.updateDiscordPresence({
           type: 2,
-          name: radioNowPlaying ? `${currentStation.name} | ${radioNowPlaying}` : currentStation.name,
-          details: radioNowPlaying || undefined,
-          largeImageKey: 'appicon',
+          name: radioNowPlaying
+            ? `${currentStation.name || 'Radio'} | ${radioNowPlaying}`
+            : (currentStation.name || 'Radio'),
+          details: radioNowPlaying || 'Kanał na żywo',
+          state: 'Music App',
+          largeImageKey: sanitizeImageUrl(currentStation.favicon) || 'appicon',
           largeImageText: currentStation.name || 'Radio',
-          smallImageKey: currentStation.favicon || undefined,
-          smallImageText: currentStation.name || '',
+          smallImageKey: 'appicon',
+          smallImageText: currentStation.name || 'Radio',
           startTimestamp: Date.now(),
         })
+        return
       }
-    }, 600)
+
+      if (mode === 'tv') {
+        if (tvSubMode === 'channels') {
+          if (!tvIsPlaying || !currentTvChannel) {
+            window.playerBridge.clearDiscordPresence()
+            return
+          }
+          const tvCountryCode = getTvChannelCountryCodes(currentTvChannel)[0] || currentTvChannel.country || ''
+          const tvFlag = /^[A-Z]{2}$/.test(String(tvCountryCode || '').toUpperCase())
+            ? countryFlagEmoji(tvCountryCode)
+            : 'TV'
+          window.playerBridge.updateDiscordPresence({
+            type: 3,
+            name: currentTvChannel.name || 'Kanał TV',
+            details: tvCountryCode
+              ? `${tvFlag} ${formatCountryCodeLabel(String(tvCountryCode).toUpperCase())}`
+              : `${tvFlag} Kanał na żywo`,
+            state: 'Music App TV',
+            largeImageKey: currentTvChannel.logo || 'appicon',
+            largeImageText: `${tvFlag} ${currentTvChannel.name || 'TV'}`,
+            smallImageKey: 'appicon',
+            smallImageText: 'Music App TV',
+            startTimestamp: Date.now(),
+          })
+          return
+        }
+
+        if (tvSubMode === 'youtube') {
+          if (!tvYtPlaying || !tvYoutubeUrl) {
+            window.playerBridge.clearDiscordPresence()
+            return
+          }
+          window.playerBridge.updateDiscordPresence({
+            type: 3,
+            name: 'YouTube (TV)',
+            details: tvYtTitle || 'YouTube na żywo',
+            state: 'Music App TV',
+            largeImageKey: 'appicon',
+            largeImageText: tvYtTitle || 'YouTube',
+            smallImageKey: 'appicon',
+            smallImageText: 'Music App TV',
+            startTimestamp: Date.now(),
+          })
+          return
+        }
+      }
+
+      window.playerBridge.clearDiscordPresence()
+    }, 2000)
     return () => clearTimeout(timer)
-  }, [mode, isTrackPlaying, isRadioPlaying, currentTrack, currentStation, radioNowPlaying])
+  }, [
+    mode,
+    isTrackPlaying,
+    isRadioPlaying,
+    currentTrack,
+    discordTrackSyncNonce,
+    currentStation,
+    radioNowPlaying,
+    tvSubMode,
+    tvIsPlaying,
+    currentTvChannel,
+    tvYtPlaying,
+    tvYtTitle,
+    tvYtThumbnail,
+    tvYoutubeUrl,
+  ])
 
   // ─── TV — ładowanie kanałów z iptv-org ───────────────────────────────────
   useEffect(() => {
@@ -1601,35 +2034,72 @@ function App() {
     const cat = TV_CATEGORIES.find(c => c.id === tvCategoryId)
     if (!cat) return
     let cancelled = false
+    if (tvM3uAbortRef.current) tvM3uAbortRef.current.abort()
+    const ctrl = new AbortController()
+    tvM3uAbortRef.current = ctrl
     setTvLoading(true)
-    setTvChannels(cat.curated || [])
-    fetch(cat.url)
-      .then(r => r.text())
-      .then(text => {
+    const curatedWithCountryCodes = (cat.curated || []).map((ch) => ({
+      ...ch,
+      countryCodes: getTvChannelCountryCodes(ch)
+    }))
+    setTvChannels(curatedWithCountryCodes)
+    const countryFallbackUrls = (cat.id === 'all' && /^[A-Z]{2}$/.test(tvCountryFilter))
+      ? [
+        `https://iptv-org.github.io/iptv/countries/${tvCountryFilter.toLowerCase()}.m3u`,
+        ...(tvCountryFilter === 'PL' ? ['https://iptv-org.github.io/iptv/languages/pol.m3u'] : [])
+      ]
+      : []
+    const feedUrls = [...new Set([cat.url, ...(cat.extraUrls || []), ...countryFallbackUrls].filter(Boolean))]
+    Promise.allSettled(feedUrls.map((url) => fetch(url, { signal: ctrl.signal }).then((r) => r.text())))
+      .then((results) => {
         if (!cancelled) {
-          const parsed = parseM3U(text)
+          const parsed = results.flatMap((entry, index) => {
+            if (entry.status !== 'fulfilled') return []
+            const sourceUrl = feedUrls[index] || ''
+            const hintCountry = isLikelyPolishFeed(sourceUrl) ? 'PL' : ''
+            return parseM3U(entry.value).map((ch) => ({
+              ...ch,
+              feedHintCountry: hintCountry,
+            }))
+          })
+          const uniqueParsed = dedupeTvChannels(parsed)
+          const categoryFiltered = cat.keywordFilter
+            ? uniqueParsed.filter((ch) => cat.keywordFilter.test(`${ch.name || ''} ${ch.id || ''}`))
+            : uniqueParsed
+          const countryHintFiltered = Array.isArray(cat.countryHints) && cat.countryHints.length > 0
+            ? categoryFiltered.filter((ch) => {
+              if (cat.countryHints.includes('PL')) return isLikelyPolishTvChannel(ch)
+              const channelCountries = getTvChannelCountryCodes(ch)
+              return channelCountries.some((code) => cat.countryHints.includes(code))
+            })
+            : categoryFiltered
           // Deduplikuj: usuń kanały które już są w curated (po nazwie)
-          const curatedNames = new Set((cat.curated || []).map(c => c.name.toLowerCase()))
-          const extra = parsed.filter(ch => !curatedNames.has(ch.name.toLowerCase()))
-          setTvChannels([...(cat.curated || []), ...extra])
+          const curatedNames = new Set(curatedWithCountryCodes.map(c => c.name.toLowerCase()))
+          const extra = countryHintFiltered.filter(ch => !curatedNames.has(ch.name.toLowerCase()))
+          setTvChannels(dedupeTvChannels([...curatedWithCountryCodes, ...extra]))
           setTvLoading(false)
         }
       })
       .catch(() => {
         if (!cancelled) {
           // Nawet bez sieci pokaż curated
-          if (cat.curated) setTvChannels(cat.curated)
+          if (curatedWithCountryCodes.length > 0) setTvChannels(curatedWithCountryCodes)
           setTvLoading(false)
         }
       })
-    return () => { cancelled = true }
-  }, [mode, tvSubMode, tvCategoryId])
+    return () => {
+      cancelled = true
+      ctrl.abort()
+      if (tvM3uAbortRef.current === ctrl) tvM3uAbortRef.current = null
+    }
+  }, [mode, tvSubMode, tvCategoryId, tvCountryFilter])
 
   // ─── TV — ustaw głośność + auto-seek do live-15s przy załadowaniu ─────────
   useEffect(() => {
-    if (!currentTvChannel) { setTvIsPlaying(false); return }
+    if (mode !== 'tv' || tvSubMode !== 'channels' || !currentTvChannel) { setTvIsPlaying(false); return }
     setTvPlayerError(false)
     setTvIsPlaying(false)
+    tvAutoRetryRef.current = 0
     setTvHasDvr(false)
     setTvSeekableStart(0)
     setTvSeekableEnd(0)
@@ -1638,9 +2108,10 @@ function App() {
       const el = tvVideoRef.current
       if (!el) return
       el.volume = toEffectiveVolume(volumePercent, 'log')
+      el.play?.().catch(() => {})
     }, 1500)
     return () => clearTimeout(t)
-  }, [currentTvChannel])
+  }, [mode, tvSubMode, currentTvChannel, volumePercent])
 
   // ─── TV — DVR tracking (co 2s, żeby nie lagować) ─────────────────────────
   useEffect(() => {
@@ -1651,6 +2122,14 @@ function App() {
       const start = el.seekable.start(0)
       const end   = el.seekable.end(0)
       setTvCurrentTime(el.currentTime)
+      const now = Date.now()
+      if (Math.abs((tvLastProgressRef.current.time ?? 0) - el.currentTime) > 0.2) {
+        tvLastProgressRef.current = { time: el.currentTime, at: now }
+      } else if (now - (tvLastProgressRef.current.at || 0) > 15000) {
+        // Stream stoi >15s mimo stanu playing — spróbuj auto-recovery.
+        recoverTvStream()
+        tvLastProgressRef.current.at = now
+      }
       setTvSeekableStart(start)
       setTvSeekableEnd(end)
       setTvHasDvr(end - start > 20)
@@ -1658,7 +2137,33 @@ function App() {
     tick() // natychmiast przy starcie
     const interval = setInterval(tick, 2000)
     return () => clearInterval(interval)
-  }, [tvIsPlaying, currentTvChannel])
+  }, [tvIsPlaying, currentTvChannel, recoverTvStream])
+
+  // Gdy opuszczasz TV/channels, zwolnij twardo zasoby elementu video.
+  useEffect(() => {
+    if (mode === 'tv' && tvSubMode === 'channels' && currentTvChannel) return
+    if (tvRecoverTimerRef.current) {
+      clearTimeout(tvRecoverTimerRef.current)
+      tvRecoverTimerRef.current = null
+    }
+    const el = tvVideoRef.current
+    if (!el) return
+    try {
+      el.pause?.()
+      el.removeAttribute?.('src')
+      el.src = ''
+      el.load?.()
+    } catch {}
+  }, [mode, tvSubMode, currentTvChannel])
+
+  useEffect(() => {
+    return () => {
+      if (tvRecoverTimerRef.current) clearTimeout(tvRecoverTimerRef.current)
+      tvRecoverTimerRef.current = null
+      if (tvM3uAbortRef.current) tvM3uAbortRef.current.abort()
+      tvM3uAbortRef.current = null
+    }
+  }, [])
 
   // ─── TV YouTube — nasłuch wiadomości IFrame API ───────────────────────────
   useEffect(() => {
@@ -1739,6 +2244,16 @@ function App() {
     activeTrackRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
   }, [currentTrack, mode])
 
+  useEffect(() => {
+    const trackUrl = String(currentTrack?.url || '').trim()
+    if (mode !== 'player' || !trackUrl) {
+      setTrackStreamUrl('')
+      return
+    }
+    setTrackStreamUrl(trackUrl)
+    setTrackError('')
+  }, [mode, currentTrack?.id, currentTrack?.url])
+
   const activeGenre = useMemo(
     () => genres.find((genre) => genre.id === genreId) ?? genres[0],
     [genreId],
@@ -1815,6 +2330,23 @@ function App() {
 
     return result
   }, [stationSearchTerm, radioTagFilter, visibleStations])
+
+  const tvCountryOptions = useMemo(() => {
+    const fromChannels = tvChannels.flatMap((ch) => getTvChannelCountryCodes(ch))
+    const merged = [...new Set([...fromChannels, ...TV_COMMON_COUNTRY_CODES])]
+    return merged
+      .filter((code) => /^[A-Z]{2}$/.test(code))
+      .sort((a, b) => formatCountryCodeLabel(a).localeCompare(formatCountryCodeLabel(b), 'pl'))
+  }, [tvChannels])
+
+  const tvVisibleCountryOptions = useMemo(() => {
+    const q = normalizeCountryToken(tvCountrySearch)
+    if (!q) return tvCountryOptions
+    return tvCountryOptions.filter((code) => {
+      const label = normalizeCountryToken(formatCountryCodeLabel(code))
+      return code.toLowerCase().includes(q) || label.includes(q)
+    })
+  }, [tvCountryOptions, tvCountrySearch])
 
   // Reset widocznej liczby stacji gdy lista się zmienia
   useEffect(() => {
@@ -2353,6 +2885,10 @@ function App() {
         try { audioMotionRef.current.disconnectInput(audioMotionSourceRef.current) } catch {}
         audioMotionSourceRef.current = null
       }
+      if (loopbackStreamRef.current) {
+        loopbackStreamRef.current.getTracks().forEach(t => t.stop())
+        loopbackStreamRef.current = null
+      }
       return
     }
 
@@ -2510,7 +3046,7 @@ function App() {
         setTrackTime(nextTime)
       }
       if (Number.isFinite(nextDuration) && nextDuration > 0) setTrackDuration(nextDuration)
-    }, 800)
+    }, 1000)
     return () => window.clearInterval(interval)
   }, [mode])
 
@@ -2549,12 +3085,31 @@ function App() {
     }
     // Opuszczamy zakładkę TV — zatrzymaj expand/fullscreen i zwolnij RAM
     if (mode === 'tv' && nextMode !== 'tv') {
+      if (tvRecoverTimerRef.current) {
+        clearTimeout(tvRecoverTimerRef.current)
+        tvRecoverTimerRef.current = null
+      }
+      if (tvM3uAbortRef.current) {
+        tvM3uAbortRef.current.abort()
+        tvM3uAbortRef.current = null
+      }
+      const el = tvVideoRef.current
+      if (el) {
+        try {
+          el.pause?.()
+          el.removeAttribute?.('src')
+          el.src = ''
+          el.load?.()
+        } catch {}
+      }
       if (tvExpandMode !== 'normal') {
         window.playerBridge?.setWindowFullscreen?.(false)
       }
       setTvExpandMode('normal')
       setTvChannels([])
       setCurrentTvChannel(null)
+      setTvIsPlaying(false)
+      setTvStreamNonce(0)
       setTvYoutubeUrl('')
       setTvYoutubeInput('')
     }
@@ -2964,7 +3519,9 @@ function App() {
     setIsSeeking(false)
     if (nextTime === null) return
     seekValueRef.current = null
+    trackTimeRef.current = nextTime
     setTrackTime(nextTime)
+    setDiscordTrackSyncNonce((value) => value + 1)
     if (playerRef.current) playerRef.current.currentTime = nextTime
     if (isHost) {
       syncPositionNow(nextTime)
@@ -3052,14 +3609,17 @@ function App() {
       setIsTrackReady(false)
       trackTimeRef.current = trackData.position ?? 0
       setTrackTime(trackData.position ?? 0)
+      setDiscordTrackSyncNonce((value) => value + 1)
       setIsTrackPlaying(trackData.playing ?? true)
       pendingRemoteSeekRef.current = trackData.position > 0 ? trackData.position : null
     },
     onRemoteSeek: (time) => {
       pendingRemoteSeekRef.current = time
+      trackTimeRef.current = time
       if (!playerRef.current) return
       playerRef.current.currentTime = time
       setTrackTime(time)
+      setDiscordTrackSyncNonce((value) => value + 1)
     },
     onRemotePlayPause: (playing, audioMode) => {
       if (audioMode === 'radio') {
@@ -3269,7 +3829,7 @@ function App() {
     if (!hasTimed) return
     const id = setInterval(() => setChatTick(t => t + 1), 1000)
     return () => clearInterval(id)
-  }, [chatMuted, chatTick])
+  }, [chatMuted])
 
   // Chat — auto-scroll i licznik nieprzeczytanych (ref zapobiega fałszywemu resetowi)
   const lastSeenChatCountRef = useRef(0)
@@ -3526,8 +4086,73 @@ function App() {
     }
   }
 
+  const devSnapshot = useMemo(() => {
+    if (!devPanelOpen) return null
+    return {
+      mode,
+      tvSubMode,
+      libraryView,
+      volumePercent,
+      isTrackPlaying,
+      isTrackReady,
+      trackTime: Number(trackTime || 0).toFixed(1),
+      trackDuration: Number(trackDuration || 0).toFixed(1),
+      isRadioPlaying,
+      isRadioBuffering,
+      isSwitchingStationStream,
+      currentTvChannel: currentTvChannel?.name || '',
+      tvIsPlaying,
+      tvPlayerError,
+      tvExpandMode,
+      tvChannelsCount: tvChannels.length,
+      currentTrack: currentTrack?.title || '',
+      currentStation: currentStation?.name || '',
+      visibleTracksCount: visibleTracks.length,
+      visibleStationsCount: filteredStations.length,
+      queueLength: activeQueue.length,
+      inSession,
+      isHost,
+      trackError,
+      radioError,
+    }
+  }, [
+    devPanelOpen,
+    mode,
+    tvSubMode,
+    libraryView,
+    volumePercent,
+    isTrackPlaying,
+    isTrackReady,
+    trackTime,
+    trackDuration,
+    isRadioPlaying,
+    isRadioBuffering,
+    isSwitchingStationStream,
+    currentTvChannel?.name,
+    tvIsPlaying,
+    tvPlayerError,
+    tvExpandMode,
+    tvChannels.length,
+    currentTrack?.title,
+    currentStation?.name,
+    visibleTracks.length,
+    filteredStations.length,
+    activeQueue.length,
+    inSession,
+    isHost,
+    trackError,
+    radioError,
+  ])
+
   return (
     <>
+    {devPanelOpen && (
+      <DevDiagnosticsOverlay
+        snapshot={devSnapshot}
+        getFps={() => fpsRef.current}
+        onClose={() => setDevPanelOpen(false)}
+      />
+    )}
     {splashVisible && (
       <div className={`splash-screen${splashFading ? ' fading' : ''}`}>
         <div className="splash-inner">
@@ -3536,7 +4161,7 @@ function App() {
         </div>
       </div>
     )}
-    <main className={`app-shell${tvSubMode === 'youtube' && tvExpandMode !== 'normal' ? ' tv-yt-expanded' : ''}`}>
+    <main className={`app-shell${mode === 'tv' && tvExpandMode !== 'normal' ? ' tv-yt-expanded' : ''}`}>
       <audio
         ref={audioRef}
         crossOrigin="anonymous"
@@ -3567,39 +4192,59 @@ function App() {
       />
 
       {/* Single player */}
-      <ReactPlayer
-        key="main-player"
-        ref={playerRef}
-        src={mode === 'player' ? (currentTrack?.url ?? null) : null}
-        playing={mode === 'player' && isTrackPlaying && !!currentTrack?.url}
-        controls={false}
-        width="1px" height="1px"
-        volume={effectiveVolume}
-        muted={volumePercent === 0}
-        playsInline
-        style={{ position: 'absolute', opacity: 0, pointerEvents: 'none' }}
-        config={{ youtube: { playerVars: { controls: 0, rel: 0, modestbranding: 1, playsinline: 1 } } }}
-        onReady={() => {
-          setIsTrackReady(true); setTrackError('')
-          if (pendingRemoteSeekRef.current !== null) {
-            const t = pendingRemoteSeekRef.current; pendingRemoteSeekRef.current = null
-            if (playerRef.current) playerRef.current.currentTime = t; setTrackTime(t)
-          }
-        }}
-        onProgress={({ loaded }) => {
-          seekBufferRef.current?.style.setProperty('--buf', `${(loaded * 100).toFixed(2)}%`)
-        }}
-        onPlay={() => setIsTrackPlaying(true)}
-        onPause={() => {/* YouTube odpala onPause przy bufferowaniu — ignoruj */}}
-        onDurationChange={(d) => setTrackDuration(Number(d) || 0)}
-        onEnded={() => handleTrackNext(true)}
-        onError={async () => {
-          setIsTrackPlaying(false)
-          const ok = await window.playerBridge?.youtubeCheckLogin?.()
-          if (!ok) setTrackError('__yt_login__')
-          else setTrackError('Ten utwór nie daje się odtworzyć (prywatny lub usunięty). Wybierz inny.')
-        }}
-      />
+      {mode === 'player' && (
+        <ReactPlayer
+          key="main-player"
+          ref={playerRef}
+          src={trackStreamUrl || null}
+          playing={isTrackPlaying && !!trackStreamUrl}
+          controls={false}
+          width="1px" height="1px"
+          volume={effectiveVolume}
+          muted={volumePercent === 0}
+          playsInline
+          style={{ position: 'absolute', opacity: 0, pointerEvents: 'none' }}
+          config={{ youtube: { playerVars: { controls: 0, rel: 0, modestbranding: 1, playsinline: 1 } } }}
+          onReady={() => {
+            setIsTrackReady(true); setTrackError('')
+            if (pendingRemoteSeekRef.current !== null) {
+              const t = pendingRemoteSeekRef.current; pendingRemoteSeekRef.current = null
+              trackTimeRef.current = t
+              if (playerRef.current) playerRef.current.currentTime = t; setTrackTime(t)
+              setDiscordTrackSyncNonce((value) => value + 1)
+            }
+          }}
+          onProgress={({ loaded }) => {
+            seekBufferRef.current?.style.setProperty('--buf', `${(loaded * 100).toFixed(2)}%`)
+          }}
+          onPlay={() => setIsTrackPlaying(true)}
+          onPause={() => {/* YouTube odpala onPause przy bufferowaniu — ignoruj */}}
+          onDurationChange={(d) => setTrackDuration(Number(d) || 0)}
+          onEnded={() => handleTrackNext(true)}
+          onError={async () => {
+            const originalUrl = String(currentTrack?.url || '').trim()
+            if (isValidYoutubeUrl(originalUrl) && trackStreamUrl === originalUrl) {
+              try {
+                const resolved = await window.playerBridge?.getAudioUrl?.(originalUrl)
+                if (resolved && String(resolved) !== originalUrl) {
+                  setTrackStreamUrl(String(resolved))
+                  setTrackError('')
+                  return
+                }
+              } catch {}
+            }
+            if (isValidYoutubeUrl(originalUrl) && trackStreamUrl && trackStreamUrl !== originalUrl) {
+              setTrackStreamUrl(originalUrl)
+              setTrackError('')
+              return
+            }
+            setIsTrackPlaying(false)
+            const ok = await window.playerBridge?.youtubeCheckLogin?.()
+            if (!ok) setTrackError('__yt_login__')
+            else setTrackError('Ten utwór nie daje się odtworzyć (prywatny lub usunięty). Wybierz inny.')
+          }}
+        />
+      )}
 
       {/* Tło aplikacji — orby reagujące na muzykę */}
       <canvas
@@ -3778,31 +4423,35 @@ function App() {
                   }
 
                   const playerEl = (
-                    <TvChannelPlayer
-                      key={currentTvChannel.id + currentTvChannel.url}
-                      channel={currentTvChannel}
-                      videoRef={tvVideoRef}
-                      onError={onTvError}
-                      onPlaying={onTvPlaying}
-                      onPause={onTvPause}
-                      volume={toEffectiveVolume(volumePercent, 'log')}
-                    />
+                    <div style={expanded
+                      ? { position: 'fixed', inset: 0, zIndex: 2147483646, background: '#000' }
+                      : { position: 'relative', width: '100%', height: '100%' }
+                    }>
+                      <TvChannelPlayer
+                        key={`${currentTvChannel.id + currentTvChannel.url}-${tvStreamNonce}`}
+                        channel={currentTvChannel}
+                        videoRef={tvVideoRef}
+                        onError={onTvError}
+                        onPlaying={onTvPlaying}
+                        onPause={onTvPause}
+                        onStall={onTvStall}
+                        volume={toEffectiveVolume(volumePercent, 'log')}
+                        expanded={expanded}
+                      />
+                    </div>
                   )
 
-                  if (expanded) {
-                    return (
-                      <>
-                        <div className="tv-placeholder"><span className="tv-placeholder-icon">📺</span><span>{currentTvChannel.name}</span></div>
-                        {createPortal(
-                          <div style={{ position: 'fixed', inset: 0, zIndex: 2147483647, background: '#000' }} className="tv-fs-portal">
-                            <div style={{ position: 'absolute', inset: 0 }}>{playerEl}</div>
-                            {/* Przycisk X — górny prawy róg */}
+                  return (
+                    <>
+                      {expanded && <div className="tv-placeholder"><span className="tv-placeholder-icon">📺</span><span>{currentTvChannel.name}</span></div>}
+                      {playerEl}
+                      {expanded
+                        ? createPortal(
+                          <div style={{ position: 'fixed', inset: 0, zIndex: 2147483647, background: 'transparent' }} className="tv-fs-portal">
                             <button className="tv-fs-close" title="Zamknij (Esc)" onClick={exitExpand}>✕</button>
-                            {/* Dolny pasek kontrolny — pojawia się na hover */}
                             <div className="tv-fs-bar">
                               <span className="tv-fs-channel">📺 {currentTvChannel.name}</span>
                               <div style={{ flex: 1 }} />
-                              {/* Głośność */}
                               <div className="tv-fs-vol">
                                 <button className="tv-fs-vol-icon" title="Wycisz/Włącz"
                                   onClick={() => setVolumePercent(v => v === 0 ? 35 : 0)}>
@@ -3842,27 +4491,21 @@ function App() {
                             </div>
                           </div>,
                           document.body
+                        )
+                        : (
+                          <div className="tv-inline-controls">
+                            <button className="tv-exp-btn" style={{ right: 56 }}
+                              title="Pełna aplikacja"
+                              onClick={() => setTvExpandMode('app')}>
+                              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z"/></svg>
+                            </button>
+                            <button className="tv-exp-btn" style={{ right: 12 }}
+                              title="Pełny ekran monitora"
+                              onClick={() => { setTvExpandMode('monitor'); window.playerBridge?.setWindowFullscreen?.(true) }}>
+                              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M3 5v4h2V5h4V3H5C3.9 3 3 3.9 3 5zm2 10H3v4c0 1.1.9 2 2 2h4v-2H5v-4zm14 4h-4v2h4c1.1 0 2-.9 2-2v-4h-2v4zm0-16h-4v2h4v4h2V5c0-1.1-.9-2-2-2z"/></svg>
+                            </button>
+                          </div>
                         )}
-                      </>
-                    )
-                  }
-
-                  // Normalny tryb — inline, przyciski na hover
-                  return (
-                    <>
-                      {playerEl}
-                      <div className="tv-inline-controls">
-                        <button className="tv-exp-btn" style={{ right: 56 }}
-                          title="Pełna aplikacja"
-                          onClick={() => setTvExpandMode('app')}>
-                          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z"/></svg>
-                        </button>
-                        <button className="tv-exp-btn" style={{ right: 12 }}
-                          title="Pełny ekran monitora"
-                          onClick={() => { setTvExpandMode('monitor'); window.playerBridge?.setWindowFullscreen?.(true) }}>
-                          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M3 5v4h2V5h4V3H5C3.9 3 3 3.9 3 5zm2 10H3v4c0 1.1.9 2 2 2h4v-2H5v-4zm14 4h-4v2h4c1.1 0 2-.9 2-2v-4h-2v4zm0-16h-4v2h4v4h2V5c0-1.1-.9-2-2-2z"/></svg>
-                        </button>
-                      </div>
                     </>
                   )
                 })()}
@@ -4032,15 +4675,20 @@ function App() {
                   </div>
                 )}
               </div>
-              {tvSubMode === 'channels' && currentTvChannel && (
-                <div className="tv-channel-bar">
-                  {currentTvChannel.logo && (
-                    <img className="tv-channel-logo" src={currentTvChannel.logo} alt="" onError={e => { e.target.style.display = 'none' }} />
-                  )}
-                  <span className="tv-channel-name">{currentTvChannel.name}</span>
-                  {currentTvChannel.country && <span className="tv-channel-country">{currentTvChannel.country}</span>}
-                </div>
-              )}
+              <div className="info-strip info-strip-tv">
+                <span>{tvSubMode === 'youtube' ? 'YouTube TV' : 'Kanały TV'}</span>
+                <span>
+                  {tvSubMode === 'youtube'
+                    ? (tvYtTitle || (tvYoutubeUrl ? 'Ładowanie danych filmu...' : 'Wklej link YouTube'))
+                    : (currentTvChannel?.name || 'Wybierz kanał')}
+                </span>
+                <span className="info-strip-dot">
+                  {tvSubMode === 'youtube'
+                    ? (tvYtPlaying ? '● Na żywo' : '○ Stop')
+                    : (tvIsPlaying ? '● Na żywo' : '○ Stop')}
+                </span>
+                <span className="info-strip-online"><i className="online-dot" />{onlineCount} online</span>
+              </div>
             </div>
           )}
 
@@ -4510,22 +5158,60 @@ function App() {
                     ))}
                   </div>
                 </div>
-                {(() => {
-                  const countries = [...new Set(tvChannels.map(ch => ch.country).filter(Boolean))].sort()
-                  if (countries.length < 2) return null
-                  return (
-                    <div className="country-filter">
-                      <label>Kraj kanału</label>
-                      <select
-                        value={tvCountryFilter}
-                        onChange={e => { setTvCountryFilter(e.target.value); setTvChannelPage(0) }}
-                      >
-                        <option value="">Wszystkie kraje</option>
-                        {countries.map(c => <option key={c} value={c}>{c}</option>)}
-                      </select>
-                    </div>
-                  )
-                })()}
+                <div className="country-filter">
+                  <label>Kraj kanału</label>
+                  <div className="tv-country-picker" ref={tvCountryPickerRef}>
+                    <button
+                      type="button"
+                      className={`tv-country-picker-btn${tvCountryPickerOpen ? ' open' : ''}`}
+                      onClick={() => {
+                        setTvCountryPickerOpen((v) => {
+                          const next = !v
+                          if (next) setTvCountrySearch('')
+                          return next
+                        })
+                      }}
+                    >
+                      {tvCountryFilter
+                        ? <img src={getCountryFlagImageUrl(tvCountryFilter)} alt="" className="tv-country-flag" loading="lazy" />
+                        : <span className="tv-country-globe">🌐</span>}
+                      <span>{tvCountryFilter ? formatCountryCodeLabel(tvCountryFilter) : 'Wszystkie kraje'}</span>
+                      <span className="tv-country-caret">▾</span>
+                    </button>
+                    {tvCountryPickerOpen && (
+                      <div className="tv-country-picker-menu">
+                        <div className="tv-country-picker-search-wrap">
+                          <input
+                            className="tv-country-picker-search"
+                            type="text"
+                            value={tvCountrySearch}
+                            onChange={(e) => setTvCountrySearch(e.target.value)}
+                            placeholder="Szukaj kraju..."
+                          />
+                        </div>
+                        <button
+                          type="button"
+                          className={`tv-country-picker-option${!tvCountryFilter ? ' active' : ''}`}
+                          onClick={() => { setTvCountryFilter(''); setTvChannelPage(0); setTvCountryPickerOpen(false); setTvCountrySearch('') }}
+                        >
+                          <span className="tv-country-globe">🌐</span>
+                          <span>Wszystkie kraje</span>
+                        </button>
+                        {tvVisibleCountryOptions.map((c) => (
+                          <button
+                            key={c}
+                            type="button"
+                            className={`tv-country-picker-option${tvCountryFilter === c ? ' active' : ''}`}
+                            onClick={() => { setTvCountryFilter(c); setTvChannelPage(0); setTvCountryPickerOpen(false); setTvCountrySearch('') }}
+                          >
+                            <img src={getCountryFlagImageUrl(c)} alt="" className="tv-country-flag" loading="lazy" />
+                            <span>{formatCountryCodeLabel(c)}</span>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
               </div>
               {/* Nagłówek listy — jak library-header */}
               <div className="library-header">
@@ -4559,8 +5245,10 @@ function App() {
               ))
               const q = tvChannelSearch.trim().toLowerCase()
               const filtered = tvChannels.filter(ch => {
-                if (tvCountryFilter && ch.country !== tvCountryFilter) return false
-                if (q && !ch.name.toLowerCase().includes(q) && !(ch.country || '').toLowerCase().includes(q)) return false
+                const channelCountries = getTvChannelCountryCodes(ch)
+                if (tvCountryFilter && !channelCountries.includes(tvCountryFilter)) return false
+                const countriesText = channelCountries.join(' ').toLowerCase()
+                if (q && !ch.name.toLowerCase().includes(q) && !countriesText.includes(q)) return false
                 return true
               })
               if (filtered.length === 0) return <div className="empty-state">{tvChannels.length === 0 ? 'Brak kanałów w tej kategorii.' : 'Brak wyników dla wyszukiwanej frazy.'}</div>
@@ -4571,11 +5259,12 @@ function App() {
                   return (
                     <div key={ch.id} className={`library-item${selected ? ' active' : ''}`} onClick={() => {
                             setTvPlayerError(false)
+                          if (currentTvChannel?.id === ch.id) setTvStreamNonce(n => n + 1)
                             setCurrentTvChannel(ch)
                           }} style={{ cursor: 'pointer' }}>
                       <div className="item-art with-badge">
                         {ch.logo
-                          ? <img src={ch.logo} alt="" onError={e => { e.target.style.display = 'none' }} />
+                          ? <img src={safeArt(sanitizeTvLogoUrl(ch.logo), ch.name, 'radio')} alt="" onError={e => withFallbackArt(e, ch.name, 'radio')} />
                           : <span style={{ fontSize: '1.4rem' }}>📺</span>}
                         {ch.country && <span className="item-flag">{countryFlagEmoji(ch.country)}</span>}
                       </div>
@@ -4630,6 +5319,7 @@ function App() {
                       )
                     })
             )}
+
             {mode !== 'tv' && libraryView !== 'chat' && libraryView !== 'similar' && !(mode === 'radio' && radioGardenMode) && (mode === 'radio' ? radioLoading : trackLoading) && (mode === 'radio' ? filteredStations : visibleTracks).length === 0
               ? Array.from({ length: 8 }, (_, i) => (
                   <div key={i} className="library-item skeleton" style={{ animationDelay: `${i * 0.06}s`, opacity: 0, animation: `fadeIn 0.3s ease ${i * 0.06}s forwards` }}>
@@ -5133,7 +5823,7 @@ function App() {
                   ? <img key="tv-yt-art" src={tvYtThumbnail} alt="" style={{ width: 48, height: 36, borderRadius: 6, objectFit: 'cover', flexShrink: 0 }} />
                   : <div key="tv-yt-art" style={{ width: 48, height: 36, borderRadius: 6, background: 'rgba(255,50,50,0.12)', border: '1px solid rgba(255,80,80,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}><svg width="20" height="20" viewBox="0 0 24 24" fill="#ff6060"><path d="M10 15l5.19-3L10 9v6m11.56-7.83c.13.47.22 1.1.28 1.9.07.8.1 1.49.1 2.09L22 12c0 2.19-.16 3.8-.44 4.83-.25.9-.83 1.48-1.73 1.73-.47.13-1.33.22-2.65.28-1.3.07-2.49.1-3.59.1L12 19c-4.19 0-6.8-.16-7.83-.44-.9-.25-1.48-.83-1.73-1.73-.13-.47-.22-1.1-.28-1.9-.07-.8-.1-1.49-.1-2.09L2 12c0-2.19.16-3.8.44-4.83.25-.9.83-1.48 1.73-1.73.47-.13 1.33-.22 2.65-.28 1.3-.07 2.49-.1 3.59-.1L12 5c4.19 0 6.8.16 7.83.44.9.25 1.48.83 1.73 1.73z"/></svg></div>
                 : currentTvChannel?.logo
-                  ? <img key="tv-art" src={currentTvChannel.logo} alt="" style={{ borderRadius: 8, objectFit: 'contain', background: 'rgba(255,255,255,0.07)' }} onError={e => { e.target.style.display = 'none' }} />
+                  ? <img key="tv-art" src={safeArt(sanitizeTvLogoUrl(currentTvChannel.logo), currentTvChannel?.name, 'radio')} alt="" style={{ borderRadius: 8, objectFit: 'contain', background: 'rgba(255,255,255,0.07)' }} onError={e => withFallbackArt(e, currentTvChannel?.name, 'radio')} />
                   : <div key="tv-art" style={{ width: 48, height: 48, borderRadius: 8, background: 'rgba(255,255,255,0.06)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}><svg width="24" height="24" viewBox="0 0 24 24" fill="rgba(200,215,230,0.5)"><path d="M21 3H3c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h5v2h8v-2h5c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 14H3V5h18v12z"/></svg></div>
               }
               <div className="bottom-nowcopy">
@@ -5270,18 +5960,18 @@ function App() {
                 </div>
               )
             })() : tvHasDvr && tvSeekableEnd > tvSeekableStart ? (() => {
-              // Pasek DVR — max to seekableEnd-15s (ukryty bufor live)
-              const LIVE_BUFFER = 15
-              const dvrMax  = tvSeekableEnd - LIVE_BUFFER
-              const dvrRange = Math.max(1, dvrMax - tvSeekableStart)
-              const clampedTime = Math.min(dvrMax, Math.max(tvSeekableStart, tvCurrentTime))
-              const pct = Math.min(100, ((clampedTime - tvSeekableStart) / dvrRange) * 100).toFixed(2)
-              const isAtLive = tvCurrentTime >= dvrMax - 2
-              const behindSec = Math.max(0, Math.round(tvSeekableEnd - tvCurrentTime))
+              // Pasek DVR — pokazuj tylko ostatnie 3 minuty (rolling window) dla płynniejszego seeka.
+              const dvrEnd = Math.max(tvSeekableStart, tvSeekableEnd - TV_DVR_LIVE_BUFFER)
+              const dvrStart = Math.max(tvSeekableStart, dvrEnd - TV_DVR_MAX_WINDOW_SECONDS)
+              const dvrRange = Math.max(1, dvrEnd - dvrStart)
+              const clampedTime = Math.min(dvrEnd, Math.max(dvrStart, tvCurrentTime))
+              const pct = Math.min(100, ((clampedTime - dvrStart) / dvrRange) * 100).toFixed(2)
+              const behindSec = Math.max(0, Math.ceil(dvrEnd - clampedTime))
+              const isAtLive = behindSec <= 1
               return (
                 <div className="bottom-track tv-dvr-track">
                   <span className="tv-dvr-behind">
-                    {isAtLive ? '' : `-${formatSeconds(behindSec)}`}
+                    {isAtLive ? 'LIVE' : `-${formatSeconds(behindSec)}`}
                   </span>
                   <div className="track-slider-wrap">
                     <div className="track-slider-fill" style={{ '--pct': `${pct}%` }} />
@@ -5289,12 +5979,12 @@ function App() {
                     <input
                       className="track-slider-input"
                       type="range"
-                      min={Math.floor(tvSeekableStart)}
-                      max={Math.ceil(dvrMax)}
+                      min={Math.floor(dvrStart)}
+                      max={Math.ceil(dvrEnd)}
                       step="1"
                       value={Math.round(clampedTime)}
                       onChange={e => {
-                        const v = Math.min(Math.ceil(dvrMax), Math.max(Math.floor(tvSeekableStart), Number(e.target.value)))
+                        const v = Math.min(Math.ceil(dvrEnd), Math.max(Math.floor(dvrStart), Number(e.target.value)))
                         if (tvVideoRef.current) tvVideoRef.current.currentTime = v
                         setTvCurrentTime(v)
                       }}
@@ -5304,8 +5994,13 @@ function App() {
                     className={`tv-live-btn${isAtLive ? ' active' : ''}`}
                     onClick={() => {
                       const el = tvVideoRef.current
-                      if (el?.seekable.length > 0)
-                        el.currentTime = Math.max(el.seekable.start(0), el.seekable.end(0) - LIVE_BUFFER)
+                      if (!el || el.seekable.length === 0) return
+                      const seekStart = el.seekable.start(0)
+                      const seekEnd = el.seekable.end(0)
+                      const liveTarget = Math.max(seekStart, seekEnd - TV_DVR_LIVE_BUFFER)
+                      el.currentTime = liveTarget
+                      setTvCurrentTime(liveTarget)
+                      el.play?.().then(() => setTvIsPlaying(true)).catch(() => recoverTvStream())
                     }}
                   >● LIVE</button>
                 </div>

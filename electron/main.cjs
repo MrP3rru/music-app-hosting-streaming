@@ -609,20 +609,41 @@ async function readNowPlayingFromIcyStream(streamUrl, options = {}) {
 
 
 // ─── Discord Rich Presence ──────────────────────────────────────────────────
+function sanitizeDiscordAssetKey(key) {
+  const value = String(key || '').trim()
+  if (!value) return ''
+  if (/^mp:/i.test(value)) return value.slice(0, 512)
+  if (/^https?:\/\//i.test(value)) return value.slice(0, 512)
+  const normalized = value.toLowerCase()
+  if (!/^[a-z0-9_]{1,128}$/.test(normalized)) return ''
+  return normalized
+}
+
 ipcMain.handle('discord:update-presence', (_event, data) => {
+  const largeAssetKey = sanitizeDiscordAssetKey(data.largeImageKey) || 'appicon'
+  const smallAssetKey = sanitizeDiscordAssetKey(data.smallImageKey) || 'appicon'
+  const startTimestamp = Number(data.startTimestamp)
+  const endTimestamp = Number(data.endTimestamp)
+  const timestamps = {}
+  if (Number.isFinite(startTimestamp) && startTimestamp > 0) {
+    timestamps.start = Math.floor(startTimestamp / 1000)
+  }
+  if (Number.isFinite(endTimestamp) && endTimestamp > 0) {
+    timestamps.end = Math.floor(endTimestamp / 1000)
+  }
   const activity = {
     type: data.type ?? 2,
     name: String(data.name || 'music-app').slice(0, 128),
     details: data.details ? String(data.details).slice(0, 128) : undefined,
     state: data.state ? String(data.state).slice(0, 128) : undefined,
-    timestamps: data.startTimestamp ? { start: Math.floor(data.startTimestamp / 1000) } : undefined,
+    timestamps: Object.keys(timestamps).length > 0 ? timestamps : undefined,
   }
-  if (data.largeImageKey) {
+  if (largeAssetKey) {
     activity.assets = {
-      large_image: data.largeImageKey,
+      large_image: largeAssetKey,
       large_text: String(data.largeImageText || '').slice(0, 128),
-      ...(data.smallImageKey ? {
-        small_image: data.smallImageKey,
+      ...(smallAssetKey ? {
+        small_image: smallAssetKey,
         small_text: String(data.smallImageText || '').slice(0, 128),
       } : {}),
     }
@@ -1008,21 +1029,25 @@ app.whenReady().then(() => {
   initDiscordRPC()
   createWindow()
 
-  // ── Blokada domen reklamowych (bezpieczeństwo) ────────────────────────────
-  const AD_DOMAINS = [
-    'doubleclick.net', 'googlesyndication.com', 'googleadservices.com',
-    'google-analytics.com', 'googletagmanager.com', 'scorecardresearch.com',
-    'outbrain.com', 'taboola.com', 'adnxs.com', 'adsrvr.org',
-    'advertising.com', 'smartadserver.com', 'pubmatic.com',
-    'rubiconproject.com', 'openx.net', 'casalemedia.com',
-  ]
-  session.defaultSession.webRequest.onBeforeRequest({ urls: ['*://*/*'] }, (details, callback) => {
-    try {
-      const host = new URL(details.url).hostname
-      const blocked = AD_DOMAINS.some(d => host === d || host.endsWith('.' + d))
-      callback({ cancel: blocked })
-    } catch { callback({}) }
-  })
+  // ── Opcjonalna blokada domen reklamowych ──────────────────────────────────
+  // Domyślnie wyłączona, aby nie generować ERR_BLOCKED_BY_CLIENT w konsoli.
+  // Włącz przez: MUSICAPP_ENABLE_ADBLOCK=1
+  if (process.env.MUSICAPP_ENABLE_ADBLOCK === '1') {
+    const AD_DOMAINS = [
+      'doubleclick.net', 'googlesyndication.com', 'googleadservices.com',
+      'google-analytics.com', 'googletagmanager.com', 'scorecardresearch.com',
+      'outbrain.com', 'taboola.com', 'adnxs.com', 'adsrvr.org',
+      'advertising.com', 'smartadserver.com', 'pubmatic.com',
+      'rubiconproject.com', 'openx.net', 'casalemedia.com',
+    ]
+    session.defaultSession.webRequest.onBeforeRequest({ urls: ['*://*/*'] }, (details, callback) => {
+      try {
+        const host = new URL(details.url).hostname
+        const blocked = AD_DOMAINS.some(d => host === d || host.endsWith('.' + d))
+        callback({ cancel: blocked })
+      } catch { callback({}) }
+    })
+  }
 
   // Auto-approve getDisplayMedia z loopback audio dla wizualizera
   session.defaultSession.setDisplayMediaRequestHandler((_request, callback) => {
