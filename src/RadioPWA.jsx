@@ -138,12 +138,12 @@ export default function RadioPWA() {
   useEffect(() => {
     if (!vizContainerRef.current) return
     const am = new AudioMotionAnalyzer(vizContainerRef.current, {
-      mode: 2,
+      mode: 10,
       channelLayout: 'single',
       frequencyScale: 'log',
-      barSpace: 0.18,
+      barSpace: 0.35,
       fftSize: 8192,
-      smoothing: 0.78,
+      smoothing: 0.75,
       showPeaks: false,
       showScaleX: false,
       showScaleY: false,
@@ -591,7 +591,7 @@ export default function RadioPWA() {
               key={g.id}
               role="tab"
               aria-selected={genreId === g.id}
-              className={`pwa-genre-btn${genreId === g.id ? ' active' : ''}`}
+              className={`filter-chip${genreId === g.id ? ' active' : ''}`}
               onClick={() => setGenreId(g.id)}
             >
               {g.label}
@@ -608,21 +608,24 @@ export default function RadioPWA() {
               <button
                 key={s.id}
                 role="listitem"
-                className={`pwa-station-card${isActive ? ' active' : ''}`}
+                className={`pwa-station-row${isActive ? ' active' : ''}`}
                 onClick={() => playStation(s)}
                 aria-pressed={isActive}
                 aria-label={s.name}
               >
                 <img
                   src={imgSrc} alt=""
-                  className="pwa-card-art"
+                  className="pwa-row-art"
                   onError={e => { e.currentTarget.src = stationGradientArt(s.name) }}
                 />
-                <span className="pwa-card-name">{s.name}</span>
+                <span className="pwa-row-name">{s.name}</span>
                 {isActive && isPlaying && (
                   <span className="pwa-card-eq" aria-hidden="true">
                     <span/><span/><span/><span/>
                   </span>
+                )}
+                {isActive && isBuffering && !isPlaying && (
+                  <span className="pwa-row-dot buffering" aria-hidden="true" />
                 )}
               </button>
             )
