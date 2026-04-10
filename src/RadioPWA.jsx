@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, useCallback, useMemo } from 'react'
-import AudioMotionAnalyzer from 'audiomotion-analyzer'
 import './RadioPWA.css'
+import { ref as fbRef, onValue, push, set, remove, onDisconnect, serverTimestamp } from 'firebase/database'
+import { db } from './firebase'
 
 // ─── Curated Polish stations ──────────────────────────────────────────────────
 function _s(id, name, tags, bitrate, urls, favicon = '') {
@@ -38,6 +39,7 @@ const CURATED = [
   _s('ps-decade90','Polskastacja Lata 90', '90s,retro',         128, ['http://91.121.124.91:8000/ps-lata90'], ''),
   _s('eskarock',   'Eska Rock',            'rock',              128, ['http://poznan5.radio.pionier.net.pl:8000/eskarock.mp3'], ''),
   _s('planetafm',  'Planeta FM',           'dance,clubbing',    128, ['http://planetamp3-01.eurozet.pl:8400/'], ''),
+  _s('vibefm',     'Vibe FM',              'dance,electronic,hits', 128, ['https://n-9-6.dcs.redcdn.pl/sc/o2/Eurozet/live/vibefm.livx', 'https://n-4-6.dcs.redcdn.pl/sc/o2/Eurozet/live/vibefm.livx'], 'https://www.vibefm.pl/favicon.ico'),
 ]
 
 const GENRES = [
@@ -98,173 +100,53 @@ export default function RadioPWA() {
   const [currentStation, setCurrentStation] = useState(null)
   const [isPlaying, setIsPlaying] = useState(false)
   const [isBuffering, setIsBuffering] = useState(false)
-  const [volumePct, setVolumePct] = useState(() => {
-    const v = parseInt(localStorage.getItem('pwa-radio-vol') || '60', 10)
-    return isNaN(v) ? 60 : Math.min(100, Math.max(0, v))
-  })
   const [genreId, setGenreId] = useState('all')
   const [nowPlaying, setNowPlaying] = useState('')
   const [streamIdx, setStreamIdx] = useState(0)
   const [loadingApi, setLoadingApi] = useState(false)
-  const [vizConnected, setVizConnected] = useState(false)
-  const [showVolSlider, setShowVolSlider] = useState(false)
   const [searchQuery, setSearchQuery]     = useState('')
   const [polandOnly, setPolandOnly]       = useState(false)
+  const [onlineCount, setOnlineCount]     = useState(0)
+  const [showFilterPanel, setShowFilterPanel] = useState(false)
 
-  const audioRef       = useRef(null)
-  const audioMotionRef = useRef(null)
-  const vizContainerRef = useRef(null)
-  const bgCanvasRef    = useRef(null)
-  const energyRef      = useRef(0)
-  const fpsRef         = useRef(45)
-  const failedUrls     = useRef(new Set())
-  const vizSrcRef      = useRef(null)
+  const audioRef           = useRef(null)
+  const failedUrls         = useRef(new Set())
   const nowPlayingTimerRef = useRef(null)
-  const isPlayingRef   = useRef(false)
+  const isPlayingRef       = useRef(false)
+  const stallTimerRef      = useRef(null)
+  const currentSrcRef      = useRef('')
 
   useEffect(() => { isPlayingRef.current = isPlaying }, [isPlaying])
-  useEffect(() => {
-    localStorage.setItem('pwa-radio-vol', String(volumePct))
-    if (audioRef.current) audioRef.current.volume = volumePct / 100
-  }, [volumePct])
 
   // ─── Audio element (create once) ─────────────────────────────────────────
   useEffect(() => {
     const audio = new Audio()
     audio.crossOrigin = 'anonymous'
     audio.preload = 'none'
+    audio.volume = 1.0
     audioRef.current = audio
     return () => { audio.src = ''; audio.load() }
   }, [])
 
-  // ─── AudioMotionAnalyzer ─────────────────────────────────────────────────
+  // ─── Firebase online presence ─────────────────────────────────────────────
   useEffect(() => {
-    if (!vizContainerRef.current) return
-    const am = new AudioMotionAnalyzer(vizContainerRef.current, {
-      mode: 10,
-      channelLayout: 'single',
-      frequencyScale: 'log',
-      barSpace: 0.35,
-      fftSize: 8192,
-      smoothing: 0.75,
-      showPeaks: false,
-      showScaleX: false,
-      showScaleY: false,
-      overlay: true,
-      bgAlpha: 0,
-      connectSpeakers: false,
+    const connectedRef = fbRef(db, '.info/connected')
+    let myPresenceRef = null
+    const unsubConnected = onValue(connectedRef, (snap) => {
+      if (snap.val() === true) {
+        myPresenceRef = push(fbRef(db, 'presence'))
+        onDisconnect(myPresenceRef).remove()
+        set(myPresenceRef, { ts: serverTimestamp() })
+      }
     })
-    am.registerGradient('radio', {
-      colorStops: [
-        { color: '#ff6b2b', pos: 0 },
-        { color: '#ffac50', pos: 0.5 },
-        { color: '#ffe8c0', pos: 1 },
-      ],
+    const unsubCount = onValue(fbRef(db, 'presence'), (snap) => {
+      const val = snap.val()
+      setOnlineCount(val ? Object.keys(val).length : 0)
     })
-    am.gradient = 'radio'
-    am.onCanvasDraw = (inst) => {
-      energyRef.current = Math.min(1, inst.getEnergy('bass') * 0.65 + inst.getEnergy() * 0.35)
-    }
-    audioMotionRef.current = am
-    return () => { am.destroy(); audioMotionRef.current = null }
-  }, [])
-
-  // ─── Aurora background canvas ────────────────────────────────────────────
-  useEffect(() => {
-    const canvas = bgCanvasRef.current
-    if (!canvas) return
-    const ctx = canvas.getContext('2d')
-    const blobs = [
-      // — ciepłe pomarańcze (identyczne jak App.jsx) —
-      { x: 0.10, y: 0.08, vx:  0.00030, vy:  0.00020, hue: 20,  hs:  0.008, sz: 0.22 },
-      { x: 0.50, y: 0.05, vx: -0.00025, vy:  0.00015, hue: 35,  hs: -0.006, sz: 0.17 },
-      { x: 0.90, y: 0.12, vx: -0.00028, vy:  0.00022, hue: 25,  hs:  0.010, sz: 0.19 },
-      { x: 0.20, y: 0.30, vx:  0.00022, vy: -0.00018, hue: 15,  hs: -0.007, sz: 0.24 },
-      { x: 0.65, y: 0.28, vx: -0.00020, vy:  0.00025, hue: 30,  hs:  0.009, sz: 0.18 },
-      { x: 0.85, y: 0.40, vx:  0.00018, vy: -0.00015, hue: 22,  hs: -0.008, sz: 0.20 },
-      { x: 0.05, y: 0.52, vx:  0.00026, vy:  0.00012, hue: 28,  hs:  0.007, sz: 0.21 },
-      { x: 0.38, y: 0.50, vx: -0.00015, vy: -0.00020, hue: 18,  hs: -0.009, sz: 0.26 },
-      { x: 0.72, y: 0.55, vx:  0.00020, vy:  0.00018, hue: 32,  hs:  0.006, sz: 0.19 },
-      { x: 0.95, y: 0.62, vx: -0.00024, vy: -0.00016, hue: 14,  hs: -0.007, sz: 0.16 },
-      { x: 0.15, y: 0.72, vx:  0.00019, vy: -0.00022, hue: 26,  hs:  0.010, sz: 0.21 },
-      { x: 0.48, y: 0.78, vx: -0.00022, vy:  0.00017, hue: 20,  hs: -0.008, sz: 0.23 },
-      { x: 0.78, y: 0.75, vx:  0.00025, vy: -0.00019, hue: 33,  hs:  0.008, sz: 0.18 },
-      { x: 0.30, y: 0.92, vx:  0.00021, vy: -0.00024, hue: 17,  hs: -0.006, sz: 0.20 },
-      { x: 0.62, y: 0.95, vx: -0.00018, vy: -0.00020, hue: 24,  hs:  0.009, sz: 0.17 },
-      { x: 0.92, y: 0.88, vx: -0.00020, vy: -0.00015, hue: 28,  hs: -0.007, sz: 0.19 },
-      // — dodatkowe kolory rozsiane po kole barw —
-      { x: 0.35, y: 0.15, vx:  0.00017, vy:  0.00023, hue: 80,  hs:  0.008, sz: 0.18 },
-      { x: 0.74, y: 0.08, vx: -0.00022, vy:  0.00018, hue: 140, hs: -0.007, sz: 0.20 },
-      { x: 0.08, y: 0.35, vx:  0.00025, vy:  0.00014, hue: 170, hs:  0.009, sz: 0.17 },
-      { x: 0.55, y: 0.38, vx: -0.00019, vy: -0.00021, hue: 195, hs: -0.008, sz: 0.21 },
-      { x: 0.83, y: 0.22, vx:  0.00021, vy:  0.00016, hue: 220, hs:  0.006, sz: 0.19 },
-      { x: 0.25, y: 0.60, vx: -0.00016, vy:  0.00024, hue: 245, hs: -0.009, sz: 0.22 },
-      { x: 0.58, y: 0.68, vx:  0.00023, vy: -0.00017, hue: 270, hs:  0.010, sz: 0.18 },
-      { x: 0.42, y: 0.88, vx: -0.00020, vy: -0.00022, hue: 300, hs: -0.007, sz: 0.20 },
-      { x: 0.70, y: 0.85, vx:  0.00018, vy:  0.00019, hue: 325, hs:  0.008, sz: 0.17 },
-      { x: 0.12, y: 0.90, vx:  0.00024, vy: -0.00013, hue: 350, hs: -0.006, sz: 0.19 },
-    ]
-    let smooth = 0; let beat = 0; let raf; let lastFrame = 0
-    const draw = (ts = 0) => {
-      const interval = 1000 / fpsRef.current
-      if (ts - lastFrame < interval) { raf = requestAnimationFrame(draw); return }
-      lastFrame = ts
-      const w = canvas.offsetWidth, h = canvas.offsetHeight
-      ctx.clearRect(0, 0, w, h)
-      const idlePulse = isPlayingRef.current ? 0 : 0.12 + 0.08 * Math.sin(ts / 800)
-      const raw = energyRef.current > 0.02 ? energyRef.current : idlePulse
-      smooth += (raw - smooth) * (raw > smooth ? 0.10 : 0.04)
-      beat   += (raw - beat)   * (raw > beat   ? 0.45 : 0.07)
-      ctx.globalCompositeOperation = 'screen'
-      const speedMul = 1 + smooth * 3.5
-      blobs.forEach(b => {
-        b.x += b.vx * speedMul; b.y += b.vy * speedMul
-        if (b.x < -0.12 || b.x > 1.12) b.vx *= -1
-        if (b.y < -0.12 || b.y > 1.12) b.vy *= -1
-        b.hue = ((b.hue + b.hs + 360) % 360)
-        const hue    = ((b.hue - smooth * 90 + 360) % 360)
-        const radius = Math.min(w, h) * (b.sz + smooth * 0.18 + beat * 0.14)
-        const alpha  = 0.06 + smooth * 0.38 + beat * 0.28
-        const g = ctx.createRadialGradient(b.x * w, b.y * h, 0, b.x * w, b.y * h, radius)
-        g.addColorStop(0,    `hsla(${hue},92%,62%,${Math.min(alpha, 0.95).toFixed(3)})`)
-        g.addColorStop(0.40, `hsla(${hue},85%,52%,${(alpha * 0.22).toFixed(3)})`)
-        g.addColorStop(1,    `hsla(${hue},80%,40%,0)`)
-        ctx.fillStyle = g
-        ctx.fillRect(0, 0, w, h)
-      })
-      ctx.globalCompositeOperation = 'source-over'
-      raf = requestAnimationFrame(draw)
-    }
-    const resize = () => {
-      const dpr = Math.min(devicePixelRatio, 2)
-      canvas.width  = Math.round(canvas.offsetWidth  * dpr)
-      canvas.height = Math.round(canvas.offsetHeight * dpr)
-      ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
-    }
-    resize()
-    raf = requestAnimationFrame(draw)
-    const ro = new ResizeObserver(resize)
-    ro.observe(canvas)
-    window.addEventListener('resize', resize)
-    return () => { cancelAnimationFrame(raf); ro.disconnect(); window.removeEventListener('resize', resize) }
-  }, [])
-
-  // ─── Connect audio element to visualizer (best-effort, CORS) ─────────────
-  const connectViz = useCallback(async () => {
-    const audio = audioRef.current
-    const am    = audioMotionRef.current
-    if (!audio || !am || vizSrcRef.current) return
-    try {
-      const amCtx = am.audioCtx
-      if (amCtx.state === 'suspended') await amCtx.resume()
-      const src = amCtx.createMediaElementSource(audio)
-      src.connect(amCtx.destination)  // audio output
-      am.connectInput(src)            // visualizer input
-      vizSrcRef.current = src
-      setVizConnected(true)
-    } catch {
-      // CORS or security — viz shows idle, audio plays normally
-      setVizConnected(false)
+    return () => {
+      unsubConnected()
+      unsubCount()
+      if (myPresenceRef) remove(myPresenceRef)
     }
   }, [])
 
@@ -275,29 +157,42 @@ export default function RadioPWA() {
     const urls = station.streamCandidates || [station.url]
     const url  = urls[urlIdx] || urls[0]
     if (!url) return
+    clearTimeout(stallTimerRef.current)
     setIsBuffering(true)
     setCurrentStation(station)
     setStreamIdx(urlIdx)
     setNowPlaying('')
+    currentSrcRef.current = url
     audio.src = url
-    audio.volume = volumePct / 100
     try {
       await audio.play()
-      await connectViz()
       localStorage.setItem('pwa-radio-last-id', station.id)
     } catch {
       setIsBuffering(false)
     }
-  }, [volumePct, connectViz])
+  }, [])
 
   // ─── Audio element events ─────────────────────────────────────────────────
   useEffect(() => {
     const audio = audioRef.current
     if (!audio) return
-    const onPlay    = () => { setIsPlaying(true);  setIsBuffering(false) }
+    const onPlay    = () => { setIsPlaying(true);  setIsBuffering(false); clearTimeout(stallTimerRef.current) }
     const onPause   = () => setIsPlaying(false)
-    const onWaiting = () => setIsBuffering(true)
-    const onPlaying = () => { setIsPlaying(true);  setIsBuffering(false) }
+    const onWaiting = () => {
+      setIsBuffering(true)
+      clearTimeout(stallTimerRef.current)
+      stallTimerRef.current = setTimeout(() => {
+        // Still stalled after 12s — force reconnect
+        if (!isPlayingRef.current && !currentSrcRef.current) return
+        const src = currentSrcRef.current
+        if (!src || !isPlayingRef.current) return
+        audio.src = ''
+        audio.load()
+        audio.src = src
+        audio.play().catch(() => {})
+      }, 12000)
+    }
+    const onPlaying = () => { setIsPlaying(true);  setIsBuffering(false); clearTimeout(stallTimerRef.current) }
     const onError   = () => {
       const s = currentStation                                 // snapshot via ref below
       if (!s) return
@@ -384,9 +279,6 @@ export default function RadioPWA() {
     if (!audio) return
     if (isPlayingRef.current) { audio.pause() }
     else if (currentStationRef.current) {
-      if (audioMotionRef.current?.audioCtx?.state === 'suspended') {
-        audioMotionRef.current.audioCtx.resume().catch(() => {})
-      }
       audio.play().catch(() => {})
     }
   }, [])
@@ -419,10 +311,11 @@ export default function RadioPWA() {
     if (loadingApi) return
     setLoadingApi(true)
     const genre = GENRES.find(g => g.id === genreId)
-    const tagList = genre?.tags?.join(',') || 'pop'
+    const tagList = (genre?.tags ?? []).join(',')
+    const limit    = polandOnly ? 40 : 60
     for (const base of API_BASES) {
       try {
-        const data = await fetchFromApi(base, tagList, 60, polandOnly ? 'PL' : '')
+        const data = await fetchFromApi(base, tagList, limit, polandOnly ? 'PL' : '')
         if (!Array.isArray(data)) continue
         setExtraStations(prev => {
           const existing = new Set([...CURATED, ...prev].map(s => s.url))
@@ -468,9 +361,6 @@ export default function RadioPWA() {
         case 'MediaPlayPause': e.preventDefault(); togglePlay(); break
         case 'ArrowRight': case 'MediaTrackNext': e.preventDefault(); goNext(); break
         case 'ArrowLeft': case 'MediaTrackPrevious': e.preventDefault(); goPrev(); break
-        case 'ArrowUp': e.preventDefault(); setVolumePct(v => Math.min(100, v + 5)); break
-        case 'ArrowDown': e.preventDefault(); setVolumePct(v => Math.max(0, v - 5)); break
-        case 'm': case 'M': setVolumePct(v => v > 0 ? 0 : 60); break
       }
     }
     window.addEventListener('keydown', onKey)
@@ -504,66 +394,35 @@ export default function RadioPWA() {
     }
   }, [])
 
-  // ─── Visibility / FPS adaptation ─────────────────────────────────────────
-  useEffect(() => {
-    const update = () => {
-      fpsRef.current = document.visibilityState === 'hidden' ? 6 : document.hasFocus() ? 45 : 20
-    }
-    document.addEventListener('visibilitychange', update)
-    window.addEventListener('focus', update)
-    window.addEventListener('blur',  update)
-    return () => {
-      document.removeEventListener('visibilitychange', update)
-      window.removeEventListener('focus', update)
-      window.removeEventListener('blur',  update)
-    }
-  }, [])
 
   // ─── Derived ─────────────────────────────────────────────────────────────
   const art = currentStation
     ? (currentStation.favicon || stationGradientArt(currentStation.name))
     : null
 
+  const activeFilters = (genreId !== 'all' ? 1 : 0) + (polandOnly ? 1 : 0)
+
   return (
     <div className="pwa-shell">
-      {/* Background layers */}
-      <canvas ref={bgCanvasRef} className="pwa-bg" aria-hidden="true" />
-      <div className="pwa-bg-dark" aria-hidden="true" />
-      <div ref={vizContainerRef} className="pwa-viz" style={{ opacity: 0, pointerEvents: 'none' }} aria-hidden="true" />
-
       {/* Main layout */}
       <div className="pwa-layout">
 
         {/* Header */}
         <header className="pwa-header">
           <div className="pwa-brand">
-            <svg viewBox="0 0 24 24" fill="none" className="pwa-brand-icon" aria-hidden="true">
-              <path d="M13 3L4 14h7l-1 7 9-11h-7l1-7z" fill="url(#bolt)" stroke="none"/>
-              <defs><linearGradient id="bolt" x1="4" y1="3" x2="13" y2="21" gradientUnits="userSpaceOnUse"><stop stopColor="#ff6b2b"/><stop offset="1" stopColor="#ffac50"/></linearGradient></defs>
-            </svg>
-            <span className="pwa-brand-text">Music Radio</span>
+            <img src="/branding/appicon.png" alt="" className="pwa-brand-logo" />
+            <div className="pwa-brand-titles">
+              <span className="pwa-brand-text">Music Radio</span>
+              <span className="pwa-brand-sub">Powered by MrPerru.</span>
+            </div>
           </div>
 
           <div className="pwa-header-right">
-            {/* Volume control */}
-            <button
-              className="pwa-vol-btn"
-              onClick={() => setShowVolSlider(v => !v)}
-              aria-label={`Głośność ${volumePct}%`}
-            >
-              {volumePct === 0 ? '🔇' : volumePct < 40 ? '🔈' : volumePct < 70 ? '🔉' : '🔊'}
-              <span className="pwa-vol-pct">{volumePct}</span>
-            </button>
-            {showVolSlider && (
-              <div className="pwa-vol-popup">
-                <input
-                  type="range" min="0" max="100" value={volumePct}
-                  onChange={e => setVolumePct(+e.target.value)}
-                  className="pwa-vol-slider"
-                  aria-label="Głośność"
-                />
-              </div>
-            )}
+            <div className="pwa-online" aria-label={`${onlineCount} użytkowników online`}>
+              <span className="pwa-online-dot" />
+              <span className="pwa-online-count">{onlineCount}</span>
+              <span className="pwa-online-label">online</span>
+            </div>
           </div>
         </header>
 
@@ -611,30 +470,7 @@ export default function RadioPWA() {
           </nav>
         </section>
 
-        {/* Genre tabs */}
-        <div className="pwa-genre-tabs" role="tablist" aria-label="Gatunki">
-          <button
-            className={`filter-chip${polandOnly ? ' active' : ''}`}
-            onClick={() => setPolandOnly(v => !v)}
-            aria-pressed={polandOnly}
-          >
-            🇵🇱 Polska
-          </button>
-          <span className="pwa-chips-sep" aria-hidden="true" />
-          {GENRES.map(g => (
-            <button
-              key={g.id}
-              role="tab"
-              aria-selected={genreId === g.id}
-              className={`filter-chip${genreId === g.id ? ' active' : ''}`}
-              onClick={() => setGenreId(g.id)}
-            >
-              {g.label}
-            </button>
-          ))}
-        </div>
-
-        {/* Search bar */}
+        {/* Search bar + filter button */}
         <div className="pwa-search-bar">
           <svg className="pwa-search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
             <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
@@ -650,6 +486,16 @@ export default function RadioPWA() {
           {searchQuery && (
             <button className="pwa-search-clear" onClick={() => setSearchQuery('')} aria-label="Wyczyść">✕</button>
           )}
+          <button
+            className={`pwa-filter-btn${activeFilters > 0 ? ' has-active' : ''}`}
+            onClick={() => setShowFilterPanel(v => !v)}
+            aria-label="Filtry"
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <line x1="4" y1="6" x2="20" y2="6"/><line x1="8" y1="12" x2="16" y2="12"/><line x1="11" y1="18" x2="13" y2="18"/>
+            </svg>
+            {activeFilters > 0 && <span className="pwa-filter-badge">{activeFilters}</span>}
+          </button>
         </div>
 
         {/* Station list */}
@@ -671,7 +517,10 @@ export default function RadioPWA() {
                   className="pwa-row-art"
                   onError={e => { e.currentTarget.src = stationGradientArt(s.name) }}
                 />
-                <span className="pwa-row-name">{s.name}</span>
+                <div className="pwa-row-info">
+                  <span className="pwa-row-name">{s.name}</span>
+                  {s.countrycode && <span className="pwa-row-country">{s.countrycode}</span>}
+                </div>
                 {isActive && isPlaying && (
                   <span className="pwa-card-eq" aria-hidden="true">
                     <span/><span/><span/><span/>
@@ -686,11 +535,54 @@ export default function RadioPWA() {
 
           {/* Load more button */}
           <button className="pwa-load-more" onClick={loadMore} disabled={loadingApi}>
-            {loadingApi ? '⌛ Ładowanie...' : '+ Załaduj więcej ze świata'}
+            {loadingApi ? '⌛ Ładowanie...' : `+ Załaduj więcej${genreId !== 'all' ? ` (${GENRES.find(g=>g.id===genreId)?.label || ''})` : ''}`}
           </button>
         </div>
 
       </div>
+
+      {/* Filter panel — bottom sheet */}
+      {showFilterPanel && (
+        <div className="pwa-filter-overlay" onClick={() => setShowFilterPanel(false)}>
+          <div className="pwa-filter-panel" onClick={e => e.stopPropagation()}>
+            <div className="pwa-filter-handle" />
+            <p className="pwa-filter-title">Filtry</p>
+
+            <p className="pwa-filter-section">Kraj</p>
+            <div className="pwa-filter-chips">
+              <button
+                className={`filter-chip${polandOnly ? ' active' : ''}`}
+                onClick={() => setPolandOnly(v => !v)}
+              >
+                🇵🇱 Polska
+              </button>
+              <button
+                className={`filter-chip${!polandOnly ? ' active' : ''}`}
+                onClick={() => setPolandOnly(false)}
+              >
+                🌐 Cały świat
+              </button>
+            </div>
+
+            <p className="pwa-filter-section">Gatunek</p>
+            <div className="pwa-filter-chips">
+              {GENRES.map(g => (
+                <button
+                  key={g.id}
+                  className={`filter-chip${genreId === g.id ? ' active' : ''}`}
+                  onClick={() => { setGenreId(g.id); setShowFilterPanel(false) }}
+                >
+                  {g.label}
+                </button>
+              ))}
+            </div>
+
+            <button className="pwa-filter-close" onClick={() => setShowFilterPanel(false)}>
+              Zamknij
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

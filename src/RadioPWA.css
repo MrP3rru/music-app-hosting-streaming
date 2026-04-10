@@ -33,68 +33,7 @@ html, body, #root {
 }
 
 /* ─── Background canvas ───────────────────────────────────────────────────────── */
-.pwa-bg {
-  position: fixed;
-  inset: 0;
-  width: 100%; height: 100%;
-  pointer-events: none;
-  z-index: 0;
-}
-
-.pwa-bg-dark {
-  position: fixed;
-  inset: 0;
-  background: radial-gradient(ellipse 80% 80% at 50% 50%, rgba(6,14,26,0.55) 0%, rgba(4,8,16,0.88) 100%);
-  pointer-events: none;
-  z-index: 1;
-}
-
-/* ─── AudioMotion visualizer ─────────────────────────────────────────────────── */
-.pwa-viz {
-  position: fixed;
-  inset: 0;
-  width: 100%; height: 100%;
-  pointer-events: none;
-  z-index: 2;
-  opacity: 0.55;
-}
-
-/* ─── Idle animated bars ─────────────────────────────────────────────────────── */
-.pwa-idle-bars {
-  position: fixed;
-  bottom: 0;
-  left: 0; right: 0;
-  height: 40%;
-  display: flex;
-  align-items: flex-end;
-  justify-content: center;
-  gap: 3px;
-  padding: 0 4px;
-  pointer-events: none;
-  z-index: 3;
-  opacity: 0.28;
-}
-
-.pwa-idle-bars span {
-  flex: 1;
-  max-width: 14px;
-  min-height: 4px;
-  border-radius: 3px 3px 0 0;
-  background: linear-gradient(180deg, var(--accent-pale) 0%, var(--accent) 60%, #ff3300 100%);
-  height: calc(var(--h) * 1px);
-  animation: idle-bar 1.4s ease-in-out infinite;
-  animation-delay: calc(var(--i) * 0.028s);
-}
-
-.pwa-idle-bars.buffering span {
-  animation-duration: 0.5s;
-  opacity: 0.6;
-}
-
-@keyframes idle-bar {
-  0%, 100% { transform: scaleY(0.18); }
-  50%       { transform: scaleY(1); }
-}
+/* (removed — using CSS gradient instead) */
 
 /* ─── Shell layout ───────────────────────────────────────────────────────────── */
 .pwa-shell {
@@ -102,6 +41,10 @@ html, body, #root {
   width: 100vw;
   height: 100dvh;
   overflow: hidden;
+  background:
+    radial-gradient(ellipse 120% 60% at 10% 100%, rgba(255, 107, 43, 0.22) 0%, transparent 55%),
+    radial-gradient(ellipse 80% 50% at 90% 0%, rgba(80, 40, 180, 0.18) 0%, transparent 55%),
+    radial-gradient(ellipse 100% 70% at 50% 50%, rgba(10, 20, 50, 0.90) 0%, rgba(4, 8, 18, 1) 100%);
 }
 
 .pwa-layout {
@@ -131,23 +74,40 @@ html, body, #root {
 .pwa-brand {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
 }
 
-.pwa-brand-icon {
-  width: 28px;
-  height: 28px;
+.pwa-brand-logo {
+  width: clamp(28px, 4vw, 40px);
+  height: clamp(28px, 4vw, 40px);
+  border-radius: 10px;
   flex-shrink: 0;
+  object-fit: cover;
+}
+
+.pwa-brand-titles {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
 }
 
 .pwa-brand-text {
-  font-size: clamp(0.9rem, 2vw, 1.2rem);
+  font-size: clamp(0.85rem, 1.8vw, 1.1rem);
   font-weight: 700;
   letter-spacing: 0.04em;
   background: linear-gradient(90deg, var(--accent), var(--accent-light));
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
+  line-height: 1.15;
+}
+
+.pwa-brand-sub {
+  font-size: clamp(0.56rem, 1vw, 0.68rem);
+  color: rgba(242,245,247,0.38);
+  font-weight: 400;
+  letter-spacing: 0.02em;
+  line-height: 1;
 }
 
 .pwa-header-right {
@@ -157,73 +117,40 @@ html, body, #root {
   gap: 10px;
 }
 
-.pwa-vol-btn {
+/* ─── Online counter ─────────────────────────────────────────────────────────── */
+.pwa-online {
   display: flex;
   align-items: center;
-  gap: 6px;
-  padding: 6px 14px;
+  gap: 5px;
+  padding: 5px 12px;
   border-radius: var(--radius-pill);
-  border: 1px solid var(--border);
-  background: rgba(255,255,255,0.06);
-  color: var(--text);
-  cursor: pointer;
-  font-size: 1rem;
-  transition: background 140ms;
-  min-height: 40px;
+  border: 1px solid rgba(255,255,255,0.10);
+  background: rgba(255,255,255,0.04);
+  font-size: clamp(0.68rem, 1.1vw, 0.80rem);
 }
 
-.pwa-vol-btn:hover, .pwa-vol-btn:focus-visible {
-  background: rgba(255,255,255,0.12);
-  outline: 2px solid var(--accent);
-  outline-offset: 2px;
-}
-
-.pwa-vol-pct {
-  font-size: 0.78rem;
-  font-weight: 600;
-  color: var(--text-dim);
-}
-
-.pwa-vol-popup {
-  position: absolute;
-  top: calc(100% + 8px);
-  right: 0;
-  background: rgba(8, 18, 34, 0.95);
-  border: 1px solid var(--border);
-  border-radius: 14px;
-  padding: 12px 16px;
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  z-index: 100;
-}
-
-.pwa-vol-slider {
-  -webkit-appearance: none;
-  appearance: none;
-  width: clamp(160px, 22vw, 260px);
-  height: 6px;
-  border-radius: 3px;
-  background: var(--border);
-  outline: none;
-  cursor: pointer;
-}
-
-.pwa-vol-slider::-webkit-slider-thumb {
-  -webkit-appearance: none;
-  appearance: none;
-  width: 20px; height: 20px;
+.pwa-online-dot {
+  width: 7px;
+  height: 7px;
   border-radius: 50%;
-  background: linear-gradient(135deg, var(--accent), var(--accent-light));
-  cursor: pointer;
-  box-shadow: 0 0 8px rgba(255, 107, 43, 0.5);
+  background: #4ade80;
+  flex-shrink: 0;
+  box-shadow: 0 0 6px #4ade80;
+  animation: online-pulse 2.4s ease-in-out infinite;
 }
 
-.pwa-vol-slider::-moz-range-thumb {
-  width: 20px; height: 20px;
-  border: none;
-  border-radius: 50%;
-  background: linear-gradient(135deg, var(--accent), var(--accent-light));
-  cursor: pointer;
+@keyframes online-pulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.4; }
+}
+
+.pwa-online-count {
+  font-weight: 700;
+  color: rgba(242,245,247,0.92);
+}
+
+.pwa-online-label {
+  color: rgba(242,245,247,0.45);
 }
 
 /* ─── Now Playing ─────────────────────────────────────────────────────────────── */
@@ -530,7 +457,147 @@ html, body, #root {
   color: #ffb05c;
 }
 
+/* ─── Filter button ─────────────────────────────────────────────────────────── */
+.pwa-filter-btn {
+  position: relative;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 1px solid rgba(255,255,255,0.12);
+  background: rgba(255,255,255,0.06);
+  color: rgba(242,245,247,0.60);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: background 120ms, border-color 120ms, color 120ms;
+}
+
+.pwa-filter-btn svg { width: 17px; height: 17px; }
+
+.pwa-filter-btn:hover, .pwa-filter-btn:focus-visible {
+  background: rgba(255,255,255,0.10);
+  color: rgba(242,245,247,0.90);
+  outline: none;
+}
+
+.pwa-filter-btn.has-active {
+  background: rgba(255,107,43,0.18);
+  border-color: rgba(255,107,43,0.5);
+  color: #ffb05c;
+}
+
+.pwa-filter-badge {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: #fff;
+  font-size: 0.62rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+
+/* ─── Filter panel (bottom sheet) ───────────────────────────────────────────── */
+.pwa-filter-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+  z-index: 200;
+  display: flex;
+  align-items: flex-end;
+  backdrop-filter: blur(2px);
+  -webkit-backdrop-filter: blur(2px);
+  animation: fade-in 0.15s ease;
+}
+
+@keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
+
+.pwa-filter-panel {
+  width: 100%;
+  background: linear-gradient(180deg, rgba(14,24,48,0.98) 0%, rgba(6,12,28,0.99) 100%);
+  border-top: 1px solid rgba(255,255,255,0.12);
+  border-radius: 24px 24px 0 0;
+  padding: 12px 24px 32px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  animation: slide-up 0.22s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+}
+
+@keyframes slide-up {
+  from { transform: translateY(100%); }
+  to   { transform: translateY(0); }
+}
+
+.pwa-filter-handle {
+  width: 40px;
+  height: 4px;
+  border-radius: 2px;
+  background: rgba(255,255,255,0.20);
+  margin: 0 auto 4px;
+}
+
+.pwa-filter-title {
+  font-size: 1rem;
+  font-weight: 700;
+  color: rgba(242,245,247,0.90);
+  letter-spacing: 0.02em;
+}
+
+.pwa-filter-section {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: rgba(242,245,247,0.40);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-top: 4px;
+}
+
+.pwa-filter-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.pwa-filter-close {
+  margin-top: 8px;
+  padding: 12px;
+  border-radius: 14px;
+  border: 1px solid rgba(255,255,255,0.12);
+  background: rgba(255,255,255,0.06);
+  color: rgba(242,245,247,0.70);
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  width: 100%;
+  transition: background 120ms;
+}
+
 /* ─── Station list — row style (like desktop app) ───────────────────────────── */
+.pwa-station-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: clamp(6px, 1vh, 10px) clamp(12px, 2.5vw, 24px);
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255,255,255,0.12) transparent;
+}
+
+.pwa-station-list::-webkit-scrollbar        { width: 4px; }
+.pwa-station-list::-webkit-scrollbar-track  { background: transparent; }
+.pwa-station-list::-webkit-scrollbar-thumb  { background: rgba(255,255,255,0.12); border-radius: 2px; }
 .pwa-station-list {
   display: flex;
   flex-direction: column;
@@ -589,15 +656,29 @@ html, body, #root {
   flex-shrink: 0;
 }
 
-.pwa-row-name {
+.pwa-row-info {
   flex: 1;
   min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.pwa-row-name {
   font-size: clamp(0.78rem, 1.3vw, 0.92rem);
   font-weight: 600;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
   color: rgba(242, 245, 248, 0.88);
+}
+
+.pwa-row-country {
+  font-size: 0.62rem;
+  font-weight: 500;
+  color: rgba(242,245,247,0.35);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
 }
 
 .pwa-station-row.active .pwa-row-name {
