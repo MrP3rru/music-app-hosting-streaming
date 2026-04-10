@@ -111,7 +111,7 @@ export default function TvCastPanel({ isOpen, onClose, currentStation, currentSt
               }
             </div>
             <div className="tvcp-qr-text">
-              <p className="tvcp-qr-hint">Zeskanuj telefonem QR kod lub wpisz adres w przeglądarce TV:<br/><small style={{opacity:.6}}>Ta metoda pokazuje pełny wizualizator na ekranie TV.</small></p>
+              <p className="tvcp-qr-hint">Zeskanuj telefonem QR kod lub wpisz adres w przeglądarce TV:<br/><small style={{opacity:.6}}>Ta metoda uruchamia muzykę LOKALNIE! na ekranie TV/Telefon.</small></p>
               <code className="tvcp-url">{radioUrl || '⌛ Wykrywam adres...'}</code>
               <button className={`tvcp-copy${copiedUrl ? ' done' : ''}`} onClick={copyUrl}>
                 {copiedUrl ? '✓ Skopiowano!' : '📋 Kopiuj'}

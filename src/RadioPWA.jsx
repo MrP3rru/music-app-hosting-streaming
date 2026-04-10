@@ -99,8 +99,11 @@ export default function RadioPWA() {
   })
   const [searchApiResults, setSearchApiResults] = useState([])
   const [initialLoading, setInitialLoading]   = useState(false)
+  const [listScrollTop, setListScrollTop]     = useState(0)
+  const [listHeight, setListHeight]           = useState(400)
 
   const audioRef           = useRef(null)
+  const listRef            = useRef(null)
   const failedUrls         = useRef(new Set())
   const nowPlayingTimerRef = useRef(null)
   const isPlayingRef       = useRef(false)
@@ -395,6 +398,15 @@ export default function RadioPWA() {
     setLoadingApi(false)
   }, [genreId, loadingApi, polandOnly])
 
+  // ─── Track list container height (for virtual scroll calculations) ────────
+  useEffect(() => {
+    const el = listRef.current
+    if (!el) return
+    const ro = new ResizeObserver(([entry]) => setListHeight(entry.contentRect.height))
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [])
+
   // ─── Live API search for unloaded stations ─────────────────────────────────
   const extraStationsRef = useRef(extraStations)
   useEffect(() => { extraStationsRef.current = extraStations }, [extraStations])
@@ -497,6 +509,15 @@ export default function RadioPWA() {
     : null
 
   const activeFilters = (genreId !== 'all' ? 1 : 0) + (polandOnly ? 1 : 0)
+
+  // ─── Virtual scroll window ────────────────────────────────────────────────
+  const ROW_HEIGHT = 64
+  const OVERSCAN   = 5
+  const totalRows  = filteredStations.length
+  const startIdx   = Math.max(0, Math.floor(listScrollTop / ROW_HEIGHT) - OVERSCAN)
+  const endIdx     = Math.min(totalRows, Math.ceil((listScrollTop + listHeight) / ROW_HEIGHT) + OVERSCAN)
+  const spacerTop  = startIdx * ROW_HEIGHT
+  const spacerBot  = Math.max(0, (totalRows - endIdx) * ROW_HEIGHT)
 
   return (
     <div className="pwa-shell">
@@ -625,8 +646,9 @@ export default function RadioPWA() {
         </div>
 
         {/* Station list */}
-        <div className="pwa-station-list" role="list">
-          {filteredStations.map(s => {
+        <div className="pwa-station-list" role="list" ref={listRef} onScroll={e => setListScrollTop(e.currentTarget.scrollTop)}>
+          {spacerTop > 0 && <div style={{height: spacerTop, flexShrink: 0}} aria-hidden="true" />}
+          {filteredStations.slice(startIdx, endIdx).map(s => {
             const isActive = currentStation?.id === s.id
             const imgSrc   = s.favicon || stationGradientArt(s.name)
             const isFav    = favorites.has(s.id)
@@ -672,6 +694,7 @@ export default function RadioPWA() {
             )
           })}
 
+          {spacerBot > 0 && <div style={{height: spacerBot, flexShrink: 0}} aria-hidden="true" />}
           {/* Load more / loading indicator */}
           {activeTab !== 'fav' && (
             initialLoading
