@@ -6,6 +6,13 @@
 [build.environment]
   NODE_VERSION = "20"
 
+# sw.js nigdy nie może być cache'owany przez CDN — musi zawsze być świeży
+[[headers]]
+  for = "/sw.js"
+  [headers.values]
+    Cache-Control = "no-cache, no-store, must-revalidate"
+    Pragma        = "no-cache"
+
 # Przekieruj / → /radio.html (strona główna = radio)
 [[redirects]]
   from   = "/"

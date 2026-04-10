@@ -1597,6 +1597,7 @@ function App() {
       if (myPresenceRef) remove(myPresenceRef)
     }
   }, [])
+
   // Przywracanie ostatniej stacji po starcie aplikacji
 
   useEffect(() => {

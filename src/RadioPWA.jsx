@@ -97,6 +97,13 @@ export default function RadioPWA() {
     try { return new Set(JSON.parse(localStorage.getItem('pwa-favs') || '[]')) }
     catch { return new Set() }
   })
+  // Full station objects stored for favorites — survive cache expiry
+  const [favStations, setFavStations]         = useState(() => {
+    try {
+      const arr = JSON.parse(localStorage.getItem('pwa-favs-data') || '[]')
+      return new Map(arr.map(s => [s.id, s]))
+    } catch { return new Map() }
+  })
   const [searchApiResults, setSearchApiResults] = useState([])
   const [initialLoading, setInitialLoading]   = useState(false)
   const [listScrollTop, setListScrollTop]     = useState(0)
@@ -146,9 +153,9 @@ export default function RadioPWA() {
   useEffect(() => {
     const CACHE_KEY = 'pwa-pl-cache'
     const CACHE_TS  = 'pwa-pl-cache-ts'
-    const cached = sessionStorage.getItem(CACHE_KEY)
-    const ts     = Number(sessionStorage.getItem(CACHE_TS) || 0)
-    if (cached && Date.now() - ts < 86400000) {
+    const cached = localStorage.getItem(CACHE_KEY)
+    const ts     = Number(localStorage.getItem(CACHE_TS) || 0)
+    if (cached && Date.now() - ts < 7 * 86400000) {
       try { setExtraStations(JSON.parse(cached)); return } catch {}
     }
     setInitialLoading(true)
@@ -178,8 +185,8 @@ export default function RadioPWA() {
             }))
             .filter(s => s.streamCandidates.length > 0)
           setExtraStations(fresh)
-          sessionStorage.setItem(CACHE_KEY, JSON.stringify(fresh))
-          sessionStorage.setItem(CACHE_TS, String(Date.now()))
+          localStorage.setItem(CACHE_KEY, JSON.stringify(fresh))
+          localStorage.setItem(CACHE_TS, String(Date.now()))
           break
         } catch {}
       }
@@ -210,13 +217,21 @@ export default function RadioPWA() {
   }, [])
 
   // ─── Toggle favorite ──────────────────────────────────────────────────────
-  const toggleFavorite = useCallback((stationId, e) => {
+  const toggleFavorite = useCallback((station, e) => {
     e.stopPropagation()
+    const stationId = station.id
     setFavorites(prev => {
       const next = new Set(prev)
       if (next.has(stationId)) next.delete(stationId)
       else next.add(stationId)
       localStorage.setItem('pwa-favs', JSON.stringify([...next]))
+      return next
+    })
+    setFavStations(prev => {
+      const next = new Map(prev)
+      if (next.has(stationId)) next.delete(stationId)
+      else next.set(stationId, station)
+      localStorage.setItem('pwa-favs-data', JSON.stringify([...next.values()]))
       return next
     })
   }, [])
@@ -318,7 +333,7 @@ export default function RadioPWA() {
         } catch {}
       }
     }
-    nowPlayingTimerRef.current = setInterval(poll, 20000)
+    nowPlayingTimerRef.current = setInterval(poll, 60000)
     return () => clearInterval(nowPlayingTimerRef.current)
   }, [currentStation, isPlaying])
 
@@ -344,9 +359,9 @@ export default function RadioPWA() {
   }, [extraStations, searchApiResults])
 
   const filteredStations = useMemo(() => {
-    // Favorites tab
+    // Favorites tab — merge loaded stations with stored data (so favs survive cache expiry)
     if (activeTab === 'fav') {
-      return allStations.filter(s => favorites.has(s.id))
+      return [...favorites].map(id => allStations.find(s => s.id === id) || favStations.get(id)).filter(Boolean)
     }
     // When searching — skip genre/country filters, search everything
     if (searchQuery.trim()) {
@@ -418,7 +433,7 @@ export default function RadioPWA() {
     const timer = setTimeout(async () => {
       const allLocal = [...CURATED, ...extraStationsRef.current]
       const localCount = allLocal.filter(s => s.name.toLowerCase().includes(q.toLowerCase())).length
-      if (localCount >= 8) return // enough local results, save mobile data
+      if (localCount >= 12) return // enough local results, save mobile data
       for (const base of API_BASES) {
         try {
           const params = new URLSearchParams({ name: q, hidebroken: 'true', order: 'votes', reverse: 'true', limit: '20' })
@@ -443,7 +458,7 @@ export default function RadioPWA() {
           break
         } catch {}
       }
-    }, 400)
+    }, 600)
     return () => clearTimeout(timer)
   }, [searchQuery])
 
@@ -558,7 +573,12 @@ export default function RadioPWA() {
             ) : (
               <div className="pwa-station-logo placeholder-logo">🎵</div>
             )}
-            {isBuffering && <div className="pwa-buffering-ring" aria-hidden="true" />}
+            {(isBuffering || isPlaying) && (
+              <div
+                className={`pwa-buffering-ring${isPlaying && !isBuffering ? ' playing' : ''}`}
+                aria-hidden="true"
+              />
+            )}
           </div>
 
           <div className="pwa-station-info">
@@ -685,7 +705,7 @@ export default function RadioPWA() {
                 </button>
                 <button
                   className={`pwa-fav-btn${isFav ? ' active' : ''}`}
-                  onClick={e => toggleFavorite(s.id, e)}
+                  onClick={e => toggleFavorite(s, e)}
                   aria-label={isFav ? 'Usuń z ulubionych' : 'Dodaj do ulubionych'}
                 >
                   {isFav ? '❤️' : '🤍'}

@@ -200,6 +200,11 @@ html, body, #root {
   border-right-color: var(--accent-light);
   animation: spin 0.9s linear infinite;
 }
+.pwa-buffering-ring.playing {
+  border-color: #3ddc84;
+  animation: none;
+  box-shadow: 0 0 6px 1px rgba(61, 220, 132, 0.35);
+}
 
 @keyframes spin { to { transform: rotate(360deg); } }
 
