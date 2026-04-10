@@ -18,8 +18,7 @@ const CURATED = [
   _s('vibefm',     'Vibe FM',                 'dance,electronic,hits,polskie', 128, ['https://ic2.smcdn.pl/6490-1.aac','https://ic1.smcdn.pl/6490-1.aac'], 'https://www.vibefm.pl/favicon.ico'),
   _s('meloradio',  'Meloradio',               'pop,ballads,polskie', 128, ['https://ml02.cdn.eurozet.pl/mel-wro.mp3','https://ml.cdn.eurozet.pl/mel-net.mp3'], ''),
   _s('antyradio',  'Antyradio',               'rock,polskie',        128, ['https://an03.cdn.eurozet.pl/ant-waw.mp3','https://an01.cdn.eurozet.pl/ant-waw.mp3'], 'https://www.antyradio.pl/favicon.ico'),
-  _s('voxfm',      'VOX FM',                  'pop,polskie',         128, ['https://ic2.smcdn.pl/3990-1.mp3','https://ic1.smukan.pl/3990-1.mp3'], ''),
-  _s('tokfm',      'TOK FM',                  'news,talk,polskie',   128, ['https://radiostream.pl/tuba10-1.mp3'], 'https://www.tokfm.pl/favicon.ico'),
+  _s('voxfm',      'VOX FM',                  'pop,polskie',         128, ['https://ic2.smcdn.pl/3990-1.mp3','https://ic1.smcdn.pl/3990-1.mp3'], ''),  _s('tokfm',      'TOK FM',                  'news,talk,polskie',   128, ['https://radiostream.pl/tuba10-1.mp3'], 'https://www.tokfm.pl/favicon.ico'),
   _s('radio357',   'Radio 357',               'pop,rock,polskie',    128, ['https://stream.radio357.pl'], ''),
   _s('chillizet',  'Chilli ZET',              'pop,hits,polskie',    128, ['https://ch.cdn.eurozet.pl/chi-net.mp3'], ''),
   // ─── RMF podkanały ───────────────────────────────────────────────────────
@@ -93,6 +92,13 @@ export default function RadioPWA() {
   const [polandOnly, setPolandOnly]       = useState(true)
   const [onlineCount, setOnlineCount]     = useState(0)
   const [showFilterPanel, setShowFilterPanel] = useState(false)
+  const [activeTab, setActiveTab]             = useState('all') // 'all' | 'fav'
+  const [favorites, setFavorites]             = useState(() => {
+    try { return new Set(JSON.parse(localStorage.getItem('pwa-favs') || '[]')) }
+    catch { return new Set() }
+  })
+  const [searchApiResults, setSearchApiResults] = useState([])
+  const [initialLoading, setInitialLoading]   = useState(false)
 
   const audioRef           = useRef(null)
   const failedUrls         = useRef(new Set())
@@ -133,6 +139,51 @@ export default function RadioPWA() {
     }
   }, [])
 
+  // ─── Auto-load 300 Polish stations on mount (24h sessionStorage cache) ─────
+  useEffect(() => {
+    const CACHE_KEY = 'pwa-pl-cache'
+    const CACHE_TS  = 'pwa-pl-cache-ts'
+    const cached = sessionStorage.getItem(CACHE_KEY)
+    const ts     = Number(sessionStorage.getItem(CACHE_TS) || 0)
+    if (cached && Date.now() - ts < 86400000) {
+      try { setExtraStations(JSON.parse(cached)); return } catch {}
+    }
+    setInitialLoading(true)
+    ;(async () => {
+      for (const base of API_BASES) {
+        try {
+          const r = await fetch(
+            `${base}/json/stations/search?countrycode=PL&hidebroken=true&order=votes&reverse=true&limit=300`
+          )
+          if (!r.ok) continue
+          const data = await r.json()
+          const existing = new Set(CURATED.map(s => s.url))
+          const fresh = data
+            .filter(s => {
+              const u = s.url_resolved || s.url || ''
+              return u.startsWith('https://') && !existing.has(u)
+            })
+            .map(s => ({
+              id: s.stationuuid,
+              name: s.name,
+              tags: s.tags,
+              countrycode: 'PL',
+              favicon: s.favicon || '',
+              votes: Number(s.votes) || 0,
+              streamCandidates: [s.url_resolved, s.url].filter(u => u?.startsWith('https://')),
+              url: s.url_resolved || s.url,
+            }))
+            .filter(s => s.streamCandidates.length > 0)
+          setExtraStations(fresh)
+          sessionStorage.setItem(CACHE_KEY, JSON.stringify(fresh))
+          sessionStorage.setItem(CACHE_TS, String(Date.now()))
+          break
+        } catch {}
+      }
+      setInitialLoading(false)
+    })()
+  }, [])
+
   // ─── Play a station ───────────────────────────────────────────────────────
   const playStation = useCallback(async (station, urlIdx = 0) => {
     const audio = audioRef.current
@@ -153,6 +204,18 @@ export default function RadioPWA() {
     } catch {
       setIsBuffering(false)
     }
+  }, [])
+
+  // ─── Toggle favorite ──────────────────────────────────────────────────────
+  const toggleFavorite = useCallback((stationId, e) => {
+    e.stopPropagation()
+    setFavorites(prev => {
+      const next = new Set(prev)
+      if (next.has(stationId)) next.delete(stationId)
+      else next.add(stationId)
+      localStorage.setItem('pwa-favs', JSON.stringify([...next]))
+      return next
+    })
   }, [])
 
   // ─── Audio element events ─────────────────────────────────────────────────
@@ -268,16 +331,20 @@ export default function RadioPWA() {
 
   // ─── Filtered + combined station list ────────────────────────────────────
   const allStations = useMemo(() => {
-    const all = [...CURATED, ...extraStations]
+    const all = [...CURATED, ...extraStations, ...searchApiResults]
     const seen = new Set()
     return all.filter(s => {
       const k = s.url?.toLowerCase()
       if (!k || seen.has(k)) return false
       seen.add(k); return true
     })
-  }, [extraStations])
+  }, [extraStations, searchApiResults])
 
   const filteredStations = useMemo(() => {
+    // Favorites tab
+    if (activeTab === 'fav') {
+      return allStations.filter(s => favorites.has(s.id))
+    }
     // When searching — skip genre/country filters, search everything
     if (searchQuery.trim()) {
       const q = searchQuery.trim().toLowerCase()
@@ -288,7 +355,7 @@ export default function RadioPWA() {
     const genre = GENRES.find(g => g.id === genreId)
     if (genreId !== 'all') list = list.filter(s => stationMatchesGenre(s, genre))
     return list
-  }, [allStations, genreId, polandOnly, searchQuery])
+  }, [allStations, genreId, polandOnly, searchQuery, activeTab, favorites])
 
   // ─── Load more from radio-browser API ────────────────────────────────────
   const loadMore = useCallback(async () => {
@@ -327,6 +394,46 @@ export default function RadioPWA() {
     }
     setLoadingApi(false)
   }, [genreId, loadingApi, polandOnly])
+
+  // ─── Live API search for unloaded stations ─────────────────────────────────
+  const extraStationsRef = useRef(extraStations)
+  useEffect(() => { extraStationsRef.current = extraStations }, [extraStations])
+
+  useEffect(() => {
+    const q = searchQuery.trim()
+    setSearchApiResults([])
+    if (q.length < 2) return
+    const timer = setTimeout(async () => {
+      const allLocal = [...CURATED, ...extraStationsRef.current]
+      const localCount = allLocal.filter(s => s.name.toLowerCase().includes(q.toLowerCase())).length
+      if (localCount >= 8) return // enough local results, save mobile data
+      for (const base of API_BASES) {
+        try {
+          const params = new URLSearchParams({ name: q, hidebroken: 'true', order: 'votes', reverse: 'true', limit: '20' })
+          const r = await fetch(`${base}/json/stations/search?${params}`)
+          if (!r.ok) continue
+          const data = await r.json()
+          const existingUrls = new Set(allLocal.map(s => s.url))
+          const fresh = data
+            .filter(s => {
+              const u = s.url_resolved || s.url || ''
+              return u.startsWith('https://') && !existingUrls.has(u)
+            })
+            .map(s => ({
+              id: s.stationuuid, name: s.name, tags: s.tags,
+              countrycode: (s.countrycode || '').toUpperCase(),
+              favicon: s.favicon || '', votes: Number(s.votes) || 0,
+              streamCandidates: [s.url_resolved, s.url].filter(u => u?.startsWith('https://')),
+              url: s.url_resolved || s.url,
+            }))
+            .filter(s => s.streamCandidates.length > 0)
+          setSearchApiResults(fresh)
+          break
+        } catch {}
+      }
+    }, 400)
+    return () => clearTimeout(timer)
+  }, [searchQuery])
 
   // ─── Prev / Next station ──────────────────────────────────────────────────
   const goNext = useCallback(() => {
@@ -495,45 +602,87 @@ export default function RadioPWA() {
           </button>
         </div>
 
+        {/* Tabs: Stacje / Ulubione */}
+        <div className="pwa-tabs" role="tablist">
+          <button
+            role="tab"
+            className={`pwa-tab${activeTab === 'all' ? ' active' : ''}`}
+            onClick={() => setActiveTab('all')}
+            aria-selected={activeTab === 'all'}
+          >
+            🎵 Stacje
+            {initialLoading && <span className="pwa-tab-spinner" aria-hidden="true" />}
+          </button>
+          <button
+            role="tab"
+            className={`pwa-tab${activeTab === 'fav' ? ' active' : ''}`}
+            onClick={() => setActiveTab('fav')}
+            aria-selected={activeTab === 'fav'}
+          >
+            ❤️ Ulubione
+            {favorites.size > 0 && <span className="pwa-tab-badge">{favorites.size}</span>}
+          </button>
+        </div>
+
         {/* Station list */}
         <div className="pwa-station-list" role="list">
           {filteredStations.map(s => {
             const isActive = currentStation?.id === s.id
             const imgSrc   = s.favicon || stationGradientArt(s.name)
+            const isFav    = favorites.has(s.id)
             return (
-              <button
+              <div
                 key={s.id}
                 role="listitem"
                 className={`pwa-station-row${isActive ? ' active' : ''}`}
-                onClick={() => playStation(s)}
-                aria-pressed={isActive}
-                aria-label={s.name}
               >
-                <img
-                  src={imgSrc} alt=""
-                  className="pwa-row-art"
-                  onError={e => { e.currentTarget.src = stationGradientArt(s.name) }}
-                />
-                <div className="pwa-row-info">
-                  <span className="pwa-row-name">{s.name}</span>
-                  {s.countrycode && <span className="pwa-row-country">{s.countrycode}</span>}
-                </div>
-                {isActive && isPlaying && (
-                  <span className="pwa-card-eq" aria-hidden="true">
-                    <span/><span/><span/><span/>
-                  </span>
-                )}
-                {isActive && isBuffering && !isPlaying && (
-                  <span className="pwa-row-dot buffering" aria-hidden="true" />
-                )}
-              </button>
+                <button
+                  className="pwa-station-btn"
+                  onClick={() => playStation(s)}
+                  aria-pressed={isActive}
+                  aria-label={`Odtwórz ${s.name}`}
+                >
+                  <img
+                    src={imgSrc} alt=""
+                    className="pwa-row-art"
+                    loading="lazy"
+                    onError={e => { e.currentTarget.src = stationGradientArt(s.name) }}
+                  />
+                  <div className="pwa-row-info">
+                    <span className="pwa-row-name">{s.name}</span>
+                    {s.countrycode && <span className="pwa-row-country">{s.countrycode}</span>}
+                  </div>
+                  {isActive && isPlaying && (
+                    <span className="pwa-card-eq" aria-hidden="true">
+                      <span/><span/><span/><span/>
+                    </span>
+                  )}
+                  {isActive && isBuffering && !isPlaying && (
+                    <span className="pwa-row-dot buffering" aria-hidden="true" />
+                  )}
+                </button>
+                <button
+                  className={`pwa-fav-btn${isFav ? ' active' : ''}`}
+                  onClick={e => toggleFavorite(s.id, e)}
+                  aria-label={isFav ? 'Usuń z ulubionych' : 'Dodaj do ulubionych'}
+                >
+                  {isFav ? '❤️' : '🤍'}
+                </button>
+              </div>
             )
           })}
 
-          {/* Load more button */}
-          <button className="pwa-load-more" onClick={loadMore} disabled={loadingApi}>
-            {loadingApi ? '⌛ Ładowanie...' : `+ Załaduj więcej${genreId !== 'all' ? ` (${GENRES.find(g=>g.id===genreId)?.label || ''})` : ''}`}
-          </button>
+          {/* Load more / loading indicator */}
+          {activeTab !== 'fav' && (
+            initialLoading
+              ? <div className="pwa-loading-hint">⌛️ Ładowanie stacji polskich...</div>
+              : <button className="pwa-load-more" onClick={loadMore} disabled={loadingApi}>
+                  {loadingApi ? '⌛️ Ładowanie...' : `+ Załaduj więcej${genreId !== 'all' ? ` (${GENRES.find(g=>g.id===genreId)?.label || ''})` : ''}`}
+                </button>
+          )}
+          {activeTab === 'fav' && favorites.size === 0 && (
+            <div className="pwa-loading-hint">Brak ulubionych — naciśnij 🤍 przy stacji aby dodać.</div>
+          )}
         </div>
 
       </div>
