@@ -1,7 +1,24 @@
 {
-  "version": "3.1.7",
-  "changelog": "Duży pakiet poprawek: Discord Presence (radio/player/TV), synchronizacja czasu i seek, przywrócone obrazki stacji/utworów, stabilniejszy start playera, rozszerzone polskie źródła TV i lepsze filtrowanie krajów.",
+  "version": "4.0.1",
+  "changelog": "PWA i TV Cast: trwałe ulubione, mocne oszczędzanie transferu, cache offline i nowy modal QR (Local/Online/Netlify) z domyślnym trybem Online.",
   "history": [
+    {
+      "version": "4.0.1",
+      "date": "2026-04-10",
+      "changes": [
+        "Radio PWA — ulubione są teraz trwałe i nie znikają po odświeżeniu: zapis ID + pełnych danych stacji (fallback z localStorage)",
+        "Radio PWA — cache polskich stacji przeniesiony z sessionStorage do localStorage (TTL 7 dni), więc lista nie pobiera się ponownie przy każdym wejściu",
+        "Radio PWA — mniejsze zużycie danych komórkowych: polling metadanych 20s → 60s, debounce wyszukiwania 400ms → 600ms, wyższy próg wyników lokalnych przed odpytywaniem API (8 → 12)",
+        "Radio PWA — wskaźnik ładowania przy logo: podczas buforowania obraca się jak wcześniej, a podczas grania pokazuje zielony, statyczny ring",
+        "PWA/Netlify — dodany Service Worker (cache-first dla JS/CSS/obrazków, network-first dla HTML) oraz rejestracja SW w radio.html",
+        "PWA/Netlify — po pierwszym wejściu większość zasobów ładuje się z cache, co mocno ogranicza kolejne requesty do Netlify",
+        "PWA/Netlify — dodane nagłówki no-cache dla /sw.js, aby aktualizacje Service Workera były pobierane poprawnie",
+        "Desktop TV Cast — ikona przycisku otwierającego panel zmieniona z 📺 na ᯤ",
+        "Desktop TV Cast — sekcja QR w modalu rozbudowana o przełącznik 3 trybów: Lokalna, Online (mrperru.pl), Backup (Netlify)",
+        "Desktop TV Cast — przełącznik jest wyśrodkowany nad sekcją QR i dynamicznie zmienia kod QR, opis, adres oraz przycisk kopiowania",
+        "Desktop TV Cast — domyślny tryb po otwarciu modalu ustawiony na Online (mrperru.pl)"
+      ]
+    },
     {
       "version": "3.1.7",
       "date": "2026-04-05",

@@ -2,37 +2,54 @@ import { useState, useEffect, useCallback } from 'react'
 import QRCode from 'qrcode'
 import './TvCastPanel.css'
 
+const ONLINE_URL  = 'https://mrperru.pl'
+const NETLIFY_URL = 'https://mrperru.netlify.app'
+
+const QR_MODES = [
+  { id: 'local',   label: '🏠 Lokalna',  hint: 'Działa tylko gdy TV/telefon jest w tej samej sieci WiFi co komputer.', badge: 'WiFi' },
+  { id: 'online',  label: '🌐 Online',   hint: 'Publiczny adres — działa z każdej sieci, telefonu, telewizora.', badge: 'mrperru.pl' },
+  { id: 'netlify', label: '☁️ Backup',   hint: 'Kopia zapasowa na Netlify — działa zawsze, niezależnie od domeny.', badge: 'netlify' },
+]
+
+async function makeQr(url) {
+  return QRCode.toDataURL(url, {
+    width: 192, margin: 1,
+    color: { dark: '#ffe8c0', light: '#06101a' },
+    errorCorrectionLevel: 'M',
+  })
+}
+
 export default function TvCastPanel({ isOpen, onClose, currentStation, currentStreamUrl, onCastSuccess, radioNowPlaying, tvActiveDevice }) {
   const [radioUrl, setRadioUrl]       = useState('')
-  const [qrDataUrl, setQrDataUrl]     = useState('')
+  const [qrMode, setQrMode]           = useState('online')
+  const [qrUrls, setQrUrls]           = useState({ local: '', online: '', netlify: '' })
   const [copiedUrl, setCopiedUrl]     = useState(false)
   const [devices, setDevices]         = useState([])
   const [discovering, setDiscovering] = useState(false)
   const [castingId, setCastingId]     = useState(null)
   const [castResults, setCastResults] = useState({}) // id → 'ok'|'err'
 
-  // On open: fetch local URL + generate QR
+  // On open: fetch local URL + generate all 3 QR codes
   useEffect(() => {
     if (!isOpen) return
+    // Pre-generate online + netlify QRs immediately
+    makeQr(ONLINE_URL).then(d => setQrUrls(prev => ({ ...prev, online: d }))).catch(() => {})
+    makeQr(NETLIFY_URL).then(d => setQrUrls(prev => ({ ...prev, netlify: d }))).catch(() => {})
     window.playerBridge?.tvGetUrl?.().then(url => {
       if (!url) return
       setRadioUrl(url)
-      QRCode.toDataURL(url, {
-        width: 192,
-        margin: 1,
-        color: { dark: '#ffe8c0', light: '#06101a' },
-        errorCorrectionLevel: 'M',
-      }).then(setQrDataUrl).catch(() => {})
+      makeQr(url).then(d => setQrUrls(prev => ({ ...prev, local: d }))).catch(() => {})
     })
   }, [isOpen])
 
-  // Copy URL to clipboard
+  // Copy current mode URL to clipboard
+  const activeUrl = qrMode === 'local' ? radioUrl : qrMode === 'online' ? ONLINE_URL : NETLIFY_URL
   const copyUrl = useCallback(() => {
-    if (!radioUrl) return
-    navigator.clipboard?.writeText(radioUrl)
+    if (!activeUrl) return
+    navigator.clipboard?.writeText(activeUrl)
     setCopiedUrl(true)
     setTimeout(() => setCopiedUrl(false), 2200)
-  }, [radioUrl])
+  }, [activeUrl])
 
   // Discover Chromecast devices
   const discover = useCallback(async () => {
@@ -103,16 +120,39 @@ export default function TvCastPanel({ isOpen, onClose, currentStation, currentSt
         {/* ── Section 1: QR / URL ────────────────────── */}
         <div className="tvcp-section">
           <p className="tvcp-section-label">Telefon / Przeglądarka TV</p>
+
+          {/* Mode switcher */}
+          <div className="tvcp-qr-tabs">
+            {QR_MODES.map(m => (
+              <button
+                key={m.id}
+                className={`tvcp-qr-tab${qrMode === m.id ? ' active' : ''}`}
+                onClick={() => { setQrMode(m.id); setCopiedUrl(false) }}
+              >
+                {m.label}
+              </button>
+            ))}
+          </div>
+
           <div className="tvcp-qr-row">
             <div className="tvcp-qr-wrap">
-              {qrDataUrl
-                ? <img src={qrDataUrl} alt="QR Code z adresem radia" className="tvcp-qr-img" />
+              {qrUrls[qrMode]
+                ? <img src={qrUrls[qrMode]} alt="QR Code" className="tvcp-qr-img" />
                 : <div className="tvcp-qr-placeholder">⌛</div>
               }
             </div>
             <div className="tvcp-qr-text">
-              <p className="tvcp-qr-hint">Zeskanuj telefonem QR kod lub wpisz adres w przeglądarce TV:<br/><small style={{opacity:.6}}>Ta metoda uruchamia muzykę LOKALNIE! na ekranie TV/Telefon.</small></p>
-              <code className="tvcp-url">{radioUrl || '⌛ Wykrywam adres...'}</code>
+              <p className="tvcp-qr-hint">
+                Zeskanuj telefonem QR kod lub wpisz adres w przeglądarce TV:
+                <br/>
+                <small style={{opacity:.6}}>{QR_MODES.find(m => m.id === qrMode)?.hint}</small>
+              </p>
+              <code className="tvcp-url">
+                {qrMode === 'local'
+                  ? (radioUrl || '⌛ Wykrywam adres...')
+                  : qrMode === 'online' ? ONLINE_URL : NETLIFY_URL
+                }
+              </code>
               <button className={`tvcp-copy${copiedUrl ? ' done' : ''}`} onClick={copyUrl}>
                 {copiedUrl ? '✓ Skopiowano!' : '📋 Kopiuj'}
               </button>

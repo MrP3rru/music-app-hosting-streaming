@@ -4384,7 +4384,7 @@ function App() {
               className={`together-btn${tvActiveDevice ? ' casting' : tvCastOpen ? ' active' : ''}`}
               onClick={() => setTvCastOpen(v => !v)}
               title={tvActiveDevice ? `Na żywo: ${tvActiveDevice.name}` : 'Otwórz Radio na TV'}
-            >📺{tvActiveDevice && <span className="together-count casting-dot">●</span>}</button>
+            >ᯤ{tvActiveDevice && <span className="together-count casting-dot">●</span>}</button>
           )}
         </div>
       </header>

@@ -137,6 +137,38 @@
   margin-bottom: 12px;
 }
 
+/* ── QR mode tabs ─────────────────────────────────────────────────────────── */
+.tvcp-qr-tabs {
+  display: flex;
+  justify-content: center;
+  gap: 6px;
+  margin-bottom: 14px;
+}
+
+.tvcp-qr-tab {
+  padding: 6px 14px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.05);
+  color: rgba(242, 245, 248, 0.55);
+  font-size: 0.76rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 120ms, border-color 120ms, color 120ms;
+  white-space: nowrap;
+}
+
+.tvcp-qr-tab:hover {
+  background: rgba(255, 255, 255, 0.10);
+  color: rgba(242, 245, 248, 0.85);
+}
+
+.tvcp-qr-tab.active {
+  background: linear-gradient(135deg, rgba(255, 172, 80, 0.22), rgba(255, 172, 80, 0.10));
+  border-color: rgba(255, 172, 80, 0.45);
+  color: #ffac50;
+}
+
 /* ── QR row ───────────────────────────────────────────────────────────────── */
 .tvcp-qr-row {
   display: flex;
