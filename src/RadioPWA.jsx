@@ -13,7 +13,7 @@ const CURATED = [
   // ─── Główne ───────────────────────────────────────────────────────────────
   _s('rmffm',      'RMF FM',                  'pop,hits,polskie',   128, ['https://rs9-krk2.rmfstream.pl/RMFFM48','https://rs6-krk2.rmfstream.pl/RMFFM48'], 'https://www.rmf.fm/favicon.ico'),
   _s('radiozet',   'Radio ZET',               'pop,hits,polskie',   128, ['https://n-4-6.dcs.redcdn.pl/sc/o2/Eurozet/live/audio.livx','https://n-1-6.dcs.redcdn.pl/sc/o2/Eurozet/live/audio.livx'], 'https://www.radiozet.pl/favicon.ico'),
-  _s('vibefm',     'Vibe FM',                 'dance,electronic,hits,polskie', 128, ['https://n-9-6.dcs.redcdn.pl/sc/o2/Eurozet/live/vibefm.livx','https://n-4-6.dcs.redcdn.pl/sc/o2/Eurozet/live/vibefm.livx'], 'https://www.vibefm.pl/favicon.ico'),
+  _s('vibefm',     'Vibe FM',                 'dance,electronic,hits,polskie', 128, ['https://ic2.smukan.pl/6490-1.aac'], 'https://radioplayer.myradioonline.pl/public/uploads/radio_img/vibe-fm/play_250_250.jpg'),
   _s('meloradio',  'Meloradio',               'pop,ballads,polskie',128, ['https://ml02.cdn.eurozet.pl/mel-wro.mp3','https://ml.cdn.eurozet.pl/mel-net.mp3','https://ml03.cdn.eurozet.pl/mel-poz.mp3'], ''),
   _s('antyradio',  'Antyradio',               'rock,polskie',       128, ['https://an03.cdn.eurozet.pl/ant-waw.mp3','https://an01.cdn.eurozet.pl/ant-waw.mp3'], 'https://www.antyradio.pl/favicon.ico'),
   _s('voxfm',      'VOX FM',                  'pop,polskie',        128, ['https://rs101-krk2.rmfstream.pl/VOXFM48','https://rs104-krk2.rmfstream.pl/VOXFM48'], ''),

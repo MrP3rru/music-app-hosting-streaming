@@ -417,11 +417,12 @@ html, body, #root {
   border: 1px solid rgba(255,255,255,0.10);
   border-radius: 999px;
   color: var(--text);
-  font-size: 0.82rem;
+  font-size: 16px; /* prevents iOS Safari zoom on focus — must be >= 16px */
   padding: 6px 14px;
   outline: none;
   transition: border-color 120ms, background 120ms;
   -webkit-appearance: none;
+  touch-action: manipulation;
 }
 
 .pwa-search-input::placeholder {
