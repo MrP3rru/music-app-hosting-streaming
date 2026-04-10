@@ -77,8 +77,9 @@ function stationMatchesGenre(station, genre) {
   return genre.tags.some(t => tags.includes(t))
 }
 
-async function fetchFromApi(base, tagList, limit = 40) {
+async function fetchFromApi(base, tagList, limit = 40, country = '') {
   const params = new URLSearchParams({ hidebroken: 'true', order: 'votes', reverse: 'true', limit: String(limit), tagList })
+  if (country) params.set('countrycode', country)
   const r = await fetch(`${base}/json/stations/search?${params}`)
   if (!r.ok) throw new Error(`radio-browser ${r.status}`)
   return r.json()
@@ -107,6 +108,8 @@ export default function RadioPWA() {
   const [loadingApi, setLoadingApi] = useState(false)
   const [vizConnected, setVizConnected] = useState(false)
   const [showVolSlider, setShowVolSlider] = useState(false)
+  const [searchQuery, setSearchQuery]     = useState('')
+  const [polandOnly, setPolandOnly]       = useState(false)
 
   const audioRef       = useRef(null)
   const audioMotionRef = useRef(null)
@@ -172,13 +175,36 @@ export default function RadioPWA() {
     if (!canvas) return
     const ctx = canvas.getContext('2d')
     const blobs = [
-      { x: 0.12, y: 0.72, vx: 0.00028, vy: -0.00019, hue: 20,  sz: 0.38 },
-      { x: 0.82, y: 0.26, vx: -0.00022, vy: 0.00031, hue: 200, sz: 0.32 },
-      { x: 0.50, y: 0.50, vx: 0.00015, vy: 0.00022,  hue: 280, sz: 0.28 },
-      { x: 0.32, y: 0.14, vx: 0.00018, vy: 0.00020,  hue: 140, sz: 0.22 },
-      { x: 0.70, y: 0.85, vx: -0.00019, vy: -0.00015, hue: 350, sz: 0.20 },
+      // — ciepłe pomarańcze (identyczne jak App.jsx) —
+      { x: 0.10, y: 0.08, vx:  0.00030, vy:  0.00020, hue: 20,  hs:  0.008, sz: 0.22 },
+      { x: 0.50, y: 0.05, vx: -0.00025, vy:  0.00015, hue: 35,  hs: -0.006, sz: 0.17 },
+      { x: 0.90, y: 0.12, vx: -0.00028, vy:  0.00022, hue: 25,  hs:  0.010, sz: 0.19 },
+      { x: 0.20, y: 0.30, vx:  0.00022, vy: -0.00018, hue: 15,  hs: -0.007, sz: 0.24 },
+      { x: 0.65, y: 0.28, vx: -0.00020, vy:  0.00025, hue: 30,  hs:  0.009, sz: 0.18 },
+      { x: 0.85, y: 0.40, vx:  0.00018, vy: -0.00015, hue: 22,  hs: -0.008, sz: 0.20 },
+      { x: 0.05, y: 0.52, vx:  0.00026, vy:  0.00012, hue: 28,  hs:  0.007, sz: 0.21 },
+      { x: 0.38, y: 0.50, vx: -0.00015, vy: -0.00020, hue: 18,  hs: -0.009, sz: 0.26 },
+      { x: 0.72, y: 0.55, vx:  0.00020, vy:  0.00018, hue: 32,  hs:  0.006, sz: 0.19 },
+      { x: 0.95, y: 0.62, vx: -0.00024, vy: -0.00016, hue: 14,  hs: -0.007, sz: 0.16 },
+      { x: 0.15, y: 0.72, vx:  0.00019, vy: -0.00022, hue: 26,  hs:  0.010, sz: 0.21 },
+      { x: 0.48, y: 0.78, vx: -0.00022, vy:  0.00017, hue: 20,  hs: -0.008, sz: 0.23 },
+      { x: 0.78, y: 0.75, vx:  0.00025, vy: -0.00019, hue: 33,  hs:  0.008, sz: 0.18 },
+      { x: 0.30, y: 0.92, vx:  0.00021, vy: -0.00024, hue: 17,  hs: -0.006, sz: 0.20 },
+      { x: 0.62, y: 0.95, vx: -0.00018, vy: -0.00020, hue: 24,  hs:  0.009, sz: 0.17 },
+      { x: 0.92, y: 0.88, vx: -0.00020, vy: -0.00015, hue: 28,  hs: -0.007, sz: 0.19 },
+      // — dodatkowe kolory rozsiane po kole barw —
+      { x: 0.35, y: 0.15, vx:  0.00017, vy:  0.00023, hue: 80,  hs:  0.008, sz: 0.18 },
+      { x: 0.74, y: 0.08, vx: -0.00022, vy:  0.00018, hue: 140, hs: -0.007, sz: 0.20 },
+      { x: 0.08, y: 0.35, vx:  0.00025, vy:  0.00014, hue: 170, hs:  0.009, sz: 0.17 },
+      { x: 0.55, y: 0.38, vx: -0.00019, vy: -0.00021, hue: 195, hs: -0.008, sz: 0.21 },
+      { x: 0.83, y: 0.22, vx:  0.00021, vy:  0.00016, hue: 220, hs:  0.006, sz: 0.19 },
+      { x: 0.25, y: 0.60, vx: -0.00016, vy:  0.00024, hue: 245, hs: -0.009, sz: 0.22 },
+      { x: 0.58, y: 0.68, vx:  0.00023, vy: -0.00017, hue: 270, hs:  0.010, sz: 0.18 },
+      { x: 0.42, y: 0.88, vx: -0.00020, vy: -0.00022, hue: 300, hs: -0.007, sz: 0.20 },
+      { x: 0.70, y: 0.85, vx:  0.00018, vy:  0.00019, hue: 325, hs:  0.008, sz: 0.17 },
+      { x: 0.12, y: 0.90, vx:  0.00024, vy: -0.00013, hue: 350, hs: -0.006, sz: 0.19 },
     ]
-    let smooth = 0; let raf; let lastFrame = 0
+    let smooth = 0; let beat = 0; let raf; let lastFrame = 0
     const draw = (ts = 0) => {
       const interval = 1000 / fpsRef.current
       if (ts - lastFrame < interval) { raf = requestAnimationFrame(draw); return }
@@ -187,19 +213,22 @@ export default function RadioPWA() {
       ctx.clearRect(0, 0, w, h)
       const idlePulse = isPlayingRef.current ? 0 : 0.12 + 0.08 * Math.sin(ts / 800)
       const raw = energyRef.current > 0.02 ? energyRef.current : idlePulse
-      smooth += (raw - smooth) * 0.055
+      smooth += (raw - smooth) * (raw > smooth ? 0.10 : 0.04)
+      beat   += (raw - beat)   * (raw > beat   ? 0.45 : 0.07)
       ctx.globalCompositeOperation = 'screen'
+      const speedMul = 1 + smooth * 3.5
       blobs.forEach(b => {
-        b.x += b.vx * (1 + smooth * 3.5); b.y += b.vy * (1 + smooth * 3.5)
-        if (b.x < -0.1 || b.x > 1.1) b.vx *= -1
-        if (b.y < -0.1 || b.y > 1.1) b.vy *= -1
-        b.hue = (b.hue + 0.07) % 360
-        const radius = Math.min(w, h) * (b.sz + smooth * 0.26)
-        const alpha  = 0.07 + smooth * 0.38
+        b.x += b.vx * speedMul; b.y += b.vy * speedMul
+        if (b.x < -0.12 || b.x > 1.12) b.vx *= -1
+        if (b.y < -0.12 || b.y > 1.12) b.vy *= -1
+        b.hue = ((b.hue + b.hs + 360) % 360)
+        const hue    = ((b.hue - smooth * 90 + 360) % 360)
+        const radius = Math.min(w, h) * (b.sz + smooth * 0.18 + beat * 0.14)
+        const alpha  = 0.06 + smooth * 0.38 + beat * 0.28
         const g = ctx.createRadialGradient(b.x * w, b.y * h, 0, b.x * w, b.y * h, radius)
-        g.addColorStop(0,    `hsla(${b.hue},88%,62%,${Math.min(alpha, 0.9).toFixed(3)})`)
-        g.addColorStop(0.45, `hsla(${b.hue},82%,52%,${(alpha * 0.2).toFixed(3)})`)
-        g.addColorStop(1,    `hsla(${b.hue},78%,42%,0)`)
+        g.addColorStop(0,    `hsla(${hue},92%,62%,${Math.min(alpha, 0.95).toFixed(3)})`)
+        g.addColorStop(0.40, `hsla(${hue},85%,52%,${(alpha * 0.22).toFixed(3)})`)
+        g.addColorStop(1,    `hsla(${hue},80%,40%,0)`)
         ctx.fillStyle = g
         ctx.fillRect(0, 0, w, h)
       })
@@ -374,10 +403,16 @@ export default function RadioPWA() {
   }, [extraStations])
 
   const filteredStations = useMemo(() => {
+    let list = allStations
+    if (polandOnly) list = list.filter(s => s.id.startsWith('pw-') || s.countrycode === 'PL')
     const genre = GENRES.find(g => g.id === genreId)
-    if (genreId === 'all') return allStations
-    return allStations.filter(s => stationMatchesGenre(s, genre))
-  }, [allStations, genreId])
+    if (genreId !== 'all') list = list.filter(s => stationMatchesGenre(s, genre))
+    if (searchQuery.trim()) {
+      const q = searchQuery.trim().toLowerCase()
+      list = list.filter(s => s.name.toLowerCase().includes(q))
+    }
+    return list
+  }, [allStations, genreId, polandOnly, searchQuery])
 
   // ─── Load more from radio-browser API ────────────────────────────────────
   const loadMore = useCallback(async () => {
@@ -387,7 +422,7 @@ export default function RadioPWA() {
     const tagList = genre?.tags?.join(',') || 'pop'
     for (const base of API_BASES) {
       try {
-        const data = await fetchFromApi(base, tagList, 60)
+        const data = await fetchFromApi(base, tagList, 60, polandOnly ? 'PL' : '')
         if (!Array.isArray(data)) continue
         setExtraStations(prev => {
           const existing = new Set([...CURATED, ...prev].map(s => s.url))
@@ -397,6 +432,7 @@ export default function RadioPWA() {
               id: s.stationuuid,
               name: s.name,
               tags: s.tags,
+              countrycode: (s.countrycode || '').toUpperCase(),
               favicon: s.favicon || '',
               votes: Number(s.votes) || 0,
               streamCandidates: [s.url_resolved, s.url].filter(Boolean),
@@ -408,7 +444,7 @@ export default function RadioPWA() {
       } catch {}
     }
     setLoadingApi(false)
-  }, [genreId, loadingApi])
+  }, [genreId, loadingApi, polandOnly])
 
   // ─── Prev / Next station ──────────────────────────────────────────────────
   const goNext = useCallback(() => {
@@ -493,16 +529,7 @@ export default function RadioPWA() {
       {/* Background layers */}
       <canvas ref={bgCanvasRef} className="pwa-bg" aria-hidden="true" />
       <div className="pwa-bg-dark" aria-hidden="true" />
-      <div ref={vizContainerRef} className="pwa-viz" aria-hidden="true" />
-
-      {/* Idle bars shown when visualizer is not connected */}
-      {!vizConnected && (
-        <div className={`pwa-idle-bars${isBuffering ? ' buffering' : ''}`} aria-hidden="true">
-          {IDLE_BARS.map((h, i) => (
-            <span key={i} style={{ '--i': i, '--h': h }} />
-          ))}
-        </div>
-      )}
+      <div ref={vizContainerRef} className="pwa-viz" style={{ opacity: 0, pointerEvents: 'none' }} aria-hidden="true" />
 
       {/* Main layout */}
       <div className="pwa-layout">
@@ -586,6 +613,14 @@ export default function RadioPWA() {
 
         {/* Genre tabs */}
         <div className="pwa-genre-tabs" role="tablist" aria-label="Gatunki">
+          <button
+            className={`filter-chip${polandOnly ? ' active' : ''}`}
+            onClick={() => setPolandOnly(v => !v)}
+            aria-pressed={polandOnly}
+          >
+            🇵🇱 Polska
+          </button>
+          <span className="pwa-chips-sep" aria-hidden="true" />
           {GENRES.map(g => (
             <button
               key={g.id}
@@ -597,6 +632,24 @@ export default function RadioPWA() {
               {g.label}
             </button>
           ))}
+        </div>
+
+        {/* Search bar */}
+        <div className="pwa-search-bar">
+          <svg className="pwa-search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+          </svg>
+          <input
+            type="search"
+            className="pwa-search-input"
+            placeholder="Szukaj stacji..."
+            value={searchQuery}
+            onChange={e => setSearchQuery(e.target.value)}
+            aria-label="Szukaj stacji"
+          />
+          {searchQuery && (
+            <button className="pwa-search-clear" onClick={() => setSearchQuery('')} aria-label="Wyczyść">✕</button>
+          )}
         </div>
 
         {/* Station list */}
