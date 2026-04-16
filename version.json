@@ -1,7 +1,18 @@
 {
-  "version": "4.0.1",
-  "changelog": "PWA i TV Cast: trwałe ulubione, mocne oszczędzanie transferu, cache offline i nowy modal QR (Local/Online/Netlify) z domyślnym trybem Online.",
+  "version": "4.0.2",
+  "changelog": "TV Cast: stabilność discovery, pilot rozłączania, obsługa błędów serwera remote.",
   "history": [
+    {
+      "version": "4.0.2",
+      "date": "2026-04-16",
+      "changes": [
+        "TV Cast — naprawiono zawieszanie się discovery (przycisk 'Szukam' nie kończył się) spowodowane błędem serwera WebSocket na porcie 7331",
+        "TV Cast — dodano obsługę błędu EADDRINUSE dla serwera remote control, dzięki czemu zajęty port nie crashuje całego modułu TV Cast",
+        "TV Cast — przycisk rozłączania zastąpiony ładniejszym pill-buttonem '⏹ Rozłącz' z czerwonym akcentem",
+        "TV Cast — po zakończeniu discovery bez wyników pojawia się komunikat z przyciskiem 'Spróbuj ponownie'",
+        "TV Cast — usunięto z paska aktywnego castowania przyciski Poprzedni/Następny (zostawiono tylko rozłączanie)"
+      ]
+    },
     {
       "version": "4.0.1",
       "date": "2026-04-10",
