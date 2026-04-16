@@ -1,4 +1,4 @@
-﻿/* ÔöÇÔöÇ Tryb t┼éa ÔÇö pausuj TYLKO ci─Ö┼╝kie animacje wizualne, nie tre┼Ťciowe ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ */
+/* ── Tryb tła — pausuj TYLKO ciężkie animacje wizualne, nie treściowe ────────── */
 html.app-background .title-track,
 html.app-background .marquee-track,
 html.app-background .player-viz-bars span,
@@ -9,7 +9,7 @@ html.app-background .eq-bar {
   animation-play-state: paused !important;
 }
 
-/* ÔöÇÔöÇ Okno ca┼ékowicie ukryte ÔÇö pausuj wszystko ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ */
+/* ── Okno całkowicie ukryte — pausuj wszystko ────────────────────────────────── */
 html.page-hidden *,
 html.page-hidden *::before,
 html.page-hidden *::after {
@@ -17,7 +17,7 @@ html.page-hidden *::after {
   transition: none !important;
 }
 
-/* ÔöÇÔöÇ Splash screen ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ */
+/* ── Splash screen ─────────────────────────────── */
 .splash-screen {
   position: fixed;
   inset: 0;
@@ -107,7 +107,7 @@ html.page-hidden *::after {
   gap: 10px 16px;
   align-items: start;
   overflow: hidden;
-  -webkit-app-region: drag; /* przeci─ůganie okna */
+  -webkit-app-region: drag; /* przeciąganie okna */
   background:
     linear-gradient(180deg, rgba(255, 130, 55, 0.09) 0%, transparent 44%),
     linear-gradient(135deg, rgba(255, 80, 20, 0.04) 0%, transparent 55%),
@@ -196,7 +196,7 @@ html.page-hidden *::after {
   color: #ffbb62;
 }
 
-/* Przyciski i interaktywne elementy w topbarze ÔÇö nie przeci─ůgaj─ů okna */
+/* Przyciski i interaktywne elementy w topbarze — nie przeciągają okna */
 .topbar button,
 .topbar a,
 .topbar input,
@@ -205,7 +205,7 @@ html.page-hidden *::after {
   -webkit-app-region: no-drag;
 }
 
-/* ÔöÇÔöÇ Custom titlebar buttons ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ */
+/* ── Custom titlebar buttons ─────────────────────────────────────────────── */
 .win-controls {
   position: absolute;
   top: 8px;
@@ -1045,7 +1045,7 @@ html.page-hidden *::after {
   overflow: visible;
 }
 
-/* wype┼énienie ÔÇö gra */
+/* wypełnienie — gra */
 .live-progress.playing .live-progress-fill {
   width: calc(100% - 12px);
   height: 100%;
@@ -1055,7 +1055,7 @@ html.page-hidden *::after {
   animation: live-pulse-fill 2.4s ease-in-out infinite;
 }
 
-/* wype┼énienie ÔÇö pauza */
+/* wypełnienie — pauza */
 .live-progress.paused .live-progress-fill {
   width: calc(100% - 12px);
   height: 100%;
@@ -1070,7 +1070,7 @@ html.page-hidden *::after {
   50%       { opacity: 0.8; box-shadow: 0 0 22px rgba(255,69,93,0.7); }
 }
 
-/* kropka ÔÇö gra */
+/* kropka — gra */
 .live-progress.playing .live-progress-dot {
   position: absolute;
   top: 50%;
@@ -1084,7 +1084,7 @@ html.page-hidden *::after {
   animation: live-dot-ping 1.6s ease-in-out infinite;
 }
 
-/* kropka ÔÇö pauza */
+/* kropka — pauza */
 .live-progress.paused .live-progress-dot {
   position: absolute;
   top: 50%;
@@ -1102,7 +1102,7 @@ html.page-hidden *::after {
   50%       { box-shadow: 0 0 0 6px rgba(255,75,99,0); }
 }
 
-/* pill ÔÇö gra */
+/* pill — gra */
 .live-progress.playing .live-pill {
   display: inline-flex;
   align-items: center;
@@ -1123,7 +1123,7 @@ html.page-hidden *::after {
   box-shadow: 0 0 10px rgba(255,60,90,0.2);
 }
 
-/* pill ÔÇö pauza */
+/* pill — pauza */
 .live-progress.paused .live-pill {
   display: inline-flex;
   align-items: center;
@@ -1422,7 +1422,7 @@ html.page-hidden *::after {
   border-radius: 999px;
 }
 
-/* ÔöÇÔöÇÔöÇ Panel filtr├│w ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ */
+/* ─── Panel filtrów ──────────────────────────────────────── */
 .filters-toggle {
   display: flex;
   align-items: center;
@@ -1719,7 +1719,7 @@ html.page-hidden *::after {
   opacity: 0.7;
 }
 
-/* ÔöÇÔöÇ Skeleton loader ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ */
+/* ── Skeleton loader ─────────────────────────────────────────── */
 @keyframes shimmer {
   0%   { background-position: -400px 0; }
   100% { background-position:  400px 0; }
@@ -2007,7 +2007,7 @@ html.page-hidden *::after {
   color: rgba(242, 245, 247, 0.76);
 }
 
-/* ÔöÇÔöÇ Custom track slider ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ */
+/* ── Custom track slider ─────────────────────────────────────── */
 .track-slider-wrap {
   position: relative;
   flex: 1;
@@ -2135,7 +2135,7 @@ html.page-hidden *::after {
   color: #09111b;
 }
 
-/* ÔöÇÔöÇ Custom volume slider ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ */
+/* ── Custom volume slider ─────────────────────────────────────── */
 .volume-slider-wrap {
   position: relative;
   flex: 1;
@@ -2332,7 +2332,7 @@ html.page-hidden *::after {
 }
 
 
-/* ÔöÇÔöÇ S┼éuchaj razem ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ */
+/* ── Słuchaj razem ───────────────────────────────────────────── */
 .together-btn {
   display: flex;
   align-items: center;
@@ -2394,7 +2394,7 @@ html.page-hidden *::after {
 }
 .game-btn { font-size: 1rem; }
 
-/* ÔöÇÔöÇ Cast STREAMING overlay on visualizer ÔöÇÔöÇ */
+/* ── Cast STREAMING overlay on visualizer ── */
 .cast-streaming-overlay {
   position: absolute;
   bottom: 14px;
@@ -2429,7 +2429,7 @@ html.page-hidden *::after {
   box-shadow: 0 0 6px #ff4040;
 }
 
-/* ÔöÇÔöÇ Color pick screen ÔöÇÔöÇ */
+/* ── Color pick screen ── */
 .mono-color-pick-panel {
   background: rgba(10,14,28,0.97);
   border: 1.5px solid rgba(255,176,92,0.3);
@@ -2468,7 +2468,7 @@ html.page-hidden *::after {
   color: #44cc44; font-size: 0.95rem; font-weight: 600; padding: 8px 0;
 }
 
-/* ÔöÇÔöÇ Game Lobby ÔöÇÔöÇ */
+/* ── Game Lobby ── */
 .game-lobby-overlay {
   position: fixed;
   inset: 0;
@@ -2633,7 +2633,7 @@ html.page-hidden *::after {
 .game-lobby-btn.start { background: #ffb05c; color: #111; }
 .game-lobby-btn.resume { background: rgba(100,200,120,0.15); color: rgba(100,220,130,0.9); border: 1.5px solid rgba(100,200,120,0.25); }
 
-/* ÔöÇÔöÇ Sugestie ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ */
+/* ── Sugestie ─────────────────────────────────────────────────── */
 .suggested-tab {
   position: relative;
 }
@@ -3010,7 +3010,7 @@ html.page-hidden *::after {
   to   { opacity: 1; transform: translateX(-50%) translateY(0); }
 }
 
-/* ÔöÇÔöÇ Auto-updater modal ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ */
+/* ── Auto-updater modal ─────────────────────────── */
 .update-overlay {
   position: fixed;
   inset: 0;
@@ -3172,7 +3172,7 @@ html.page-hidden *::after {
 .update-error { display: flex; flex-direction: column; gap: 10px; }
 .update-error-text { color: #e05a5a; font-size: 13px; margin: 0; }
 
-/* ÔöÇÔöÇ Version badge ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ */
+/* ── Version badge ───────────────────────────────── */
 .app-version-badge {
   position: fixed;
   bottom: 5px;
@@ -3195,7 +3195,7 @@ html.page-hidden *::after {
   background: rgba(146, 146, 146, 0.411);
 }
 
-/* ÔöÇÔöÇ Ping badge ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ */
+/* ── Ping badge ──────────────────────────────────── */
 @keyframes ping-dot-pulse {
   0%, 100% { opacity: 1; transform: scale(1); }
   50%       { opacity: 0.5; transform: scale(0.7); }
@@ -3288,7 +3288,7 @@ html.page-hidden *::after {
 .ping-paused  { border-color: rgba(255,255,255,0.05); background: rgba(0,0,0,0.3); }
 .ping-loading { border-color: rgba(255,255,255,0.15); background: rgba(0,0,0,0.4); }
 
-/* ÔöÇÔöÇ Session ended modal ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ */
+/* ── Session ended modal ─────────────────────────── */
 .session-ended-overlay {
   position: fixed;
   inset: 0;
@@ -3387,7 +3387,7 @@ html.page-hidden *::after {
   background: rgba(255, 255, 255, 0.14);
 }
 
-/* ÔöÇÔöÇ Chat ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ */
+/* ── Chat ────────────────────────────────────────── */
 .chat-tab {
   position: relative;
 }
@@ -3816,7 +3816,7 @@ html.page-hidden *::after {
   cursor: default;
 }
 
-/* ÔöÇÔöÇ Version history popup ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ */
+/* ── Version history popup ───────────────────────── */
 .vp-overlay {
   position: fixed;
   inset: 0;
@@ -3923,7 +3923,7 @@ html.page-hidden *::after {
   line-height: 1.5;
 }
 
-/* ÔöÇÔöÇ Radio Garden ÔöÇÔöÇ */
+/* ── Radio Garden ── */
 .rg-globe-btn {
   position: fixed;
   bottom: 44px;
@@ -4026,7 +4026,7 @@ html.page-hidden *::after {
 }
 
 
-/* ÔöÇÔöÇ Monopoly Game ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ */
+/* ── Monopoly Game ─────────────────────────────────────────────────────────── */
 .mono-overlay {
   position: fixed; inset: 0; z-index: 1000;
   background: #07090f;
@@ -4039,7 +4039,7 @@ html.page-hidden *::after {
 }
 .mono-loading { padding: 60px; text-align: center; color: rgba(255,255,255,0.4); font-size: 1rem; }
 
-/* ÔöÇÔöÇ Pasek graczy ÔÇö overlay na planszy ÔöÇÔöÇ */
+/* ── Pasek graczy — overlay na planszy ── */
 .mono-players-bar {
   position: absolute; top: 0; left: 0; right: 0; z-index: 20;
   display: flex; align-items: center; gap: 8px;
@@ -4110,13 +4110,13 @@ html.page-hidden *::after {
 }
 .mono-close-btn:hover { color: #fff; background: rgba(255,255,255,0.1); }
 
-/* ÔöÇÔöÇ Plansza ÔÇö pe┼ény ekran ÔöÇÔöÇ */
+/* ── Plansza — pełny ekran ── */
 .mono-board-wrap {
   position: absolute; inset: 0; overflow: hidden;
 }
 .mono-board-wrap canvas { width: 100% !important; height: 100% !important; display: block; }
 
-/* ÔöÇÔöÇ ┼Ürodkowy overlay ÔöÇÔöÇ */
+/* ── Środkowy overlay ── */
 .mono-center-overlay {
   position: absolute; top: 50%; left: 50%;
   transform: translate(-50%, -50%);
@@ -4148,7 +4148,7 @@ html.page-hidden *::after {
   text-shadow: 0 0 20px rgba(255,255,255,0.4);
 }
 
-/* ÔöÇÔöÇ 3D CSS Dice ÔöÇÔöÇ */
+/* ── 3D CSS Dice ── */
 .die3d-wrap { width: 56px; height: 56px; perspective: 160px; }
 .die3d-wrap.die3d-idle .die3d-inner { transform: rotateY(0deg) rotateX(0deg); }
 .die3d-inner {
@@ -4185,7 +4185,7 @@ html.page-hidden *::after {
   box-shadow: 0 1px 2px rgba(0,0,0,0.5);
 }
 
-/* ÔöÇÔöÇ Buttons ÔöÇÔöÇ */
+/* ── Buttons ── */
 .mono-btn-center {
   padding: 12px 30px; border-radius: 30px; border: none;
   font-size: 0.95rem; font-weight: 800; cursor: pointer;
@@ -4209,7 +4209,7 @@ html.page-hidden *::after {
   box-shadow: none;
 }
 
-/* ÔöÇÔöÇ Action popups ÔöÇÔöÇ */
+/* ── Action popups ── */
 .mono-buy-popup {
   background: rgba(8,10,20,0.95);
   border: 1px solid rgba(255,255,255,0.1);
@@ -4247,7 +4247,7 @@ html.page-hidden *::after {
   letter-spacing: -0.02em;
 }
 
-/* ÔöÇÔöÇ Nieruchomo┼Ťci w rogu ÔöÇÔöÇ */
+/* ── Nieruchomości w rogu ── */
 .mono-props-corner {
   position: absolute; bottom: 14px; left: 14px; z-index: 15;
   background: rgba(8,10,20,0.88);
@@ -4269,7 +4269,7 @@ html.page-hidden *::after {
 }
 .mono-prop-dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
 
-/* ÔöÇÔöÇ Monopoly Pixi Board ÔöÇÔöÇ */
+/* ── Monopoly Pixi Board ── */
 .mono-board-pixi {
   position: relative;
   flex-shrink: 0;
@@ -4321,7 +4321,7 @@ html.page-hidden *::after {
   border: 1.5px solid #ffb05c;
 }
 
-/* ÔöÇÔöÇ Lyrics Overlay ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ */
+/* ── Lyrics Overlay ──────────────────────────────────────────────────────────── */
 .lyrics-overlay {
   position: absolute;
   inset: 0;
@@ -4330,7 +4330,7 @@ html.page-hidden *::after {
   pointer-events: none;
   z-index: 8;
   border-radius: inherit;
-  /* NO background ÔÇö dimming only per-line */
+  /* NO background — dimming only per-line */
 }
 .lyrics-ctrl-bar {
   position: absolute;
@@ -4385,7 +4385,7 @@ html.page-hidden *::after {
   max-width: 96%;
   padding: 3px 14px;
   border-radius: 20px;
-  /* subtelne t┼éo na ka┼╝dej linii ÔÇö nie zlewa si─Ö z vizualiizerem */
+  /* subtelne tło na każdej linii — nie zlewa się z vizualiizerem */
   background: rgba(0,0,0,0.18);
   backdrop-filter: blur(3px);
   -webkit-backdrop-filter: blur(3px);
@@ -4444,7 +4444,7 @@ html.page-hidden *::after {
 .lyrics-not-found { color: rgba(255,255,255,0.18); }
 .lyrics-intro { font-style: italic; letter-spacing: 0.1em; }
 
-/* ÔöÇÔöÇ Countdown (przerwa instrumentalna / intro) ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ */
+/* ── Countdown (przerwa instrumentalna / intro) ───────────────────────────────── */
 .lyrics-countdown-slot {
   display: flex;
   align-items: center;
@@ -4483,7 +4483,7 @@ html.page-hidden *::after {
 .lyrics-countdown-track.paused::before { transition: none; }
 .lyrics-countdown-track.paused .lyrics-countdown-traveler { transition: none; }
 
-/* ÔöÇÔöÇ Sync mode ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ */
+/* ── Sync mode ───────────────────────────────────────────────────────────────── */
 .lyrics-ctrl-btn.active {
   background: rgba(255,220,80,0.2);
   border-color: rgba(255,220,80,0.45);
@@ -4503,7 +4503,7 @@ html.page-hidden *::after {
   50%      { opacity: 0.45; }
 }
 
-/* ÔöÇÔöÇ Moje YT panel ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ */
+/* ── Moje YT panel ──────────────────────────────────────────────────── */
 .myyt-panel {
   display: flex;
   flex-direction: column;
@@ -4624,9 +4624,9 @@ html.page-hidden *::after {
 .crossfade-btn:hover { background: rgba(255,255,255,0.08); color: rgba(200,215,230,0.8); }
 .crossfade-btn.active { color: #ffb05c; border-color: rgba(255,176,92,0.4); background: rgba(255,140,0,0.1); }
 
-/* ÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉ
+/* ═══════════════════════════════════════════════════════════
    TV TAB
-ÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉÔĽÉ */
+═══════════════════════════════════════════════════════════ */
 
 /* Stage */
 .tv-stage {
@@ -4718,14 +4718,14 @@ html.page-hidden *::after {
   border-radius: 14px;
 }
 
-/* hls-video w portalu ÔÇö wype┼énia ca┼éy kontener */
+/* hls-video w portalu — wypełnia cały kontener */
 hls-video {
   display: block;
   width: 100%;
   height: 100%;
   /* clip-path: inset(0) wymusza kompozytowanie przez normalny pipeline
-     zamiast OS-level hardware overlay, dzi─Öki czemu przyciski nad playerem
-     s─ů widoczne i nie s─ů zas┼éaniane przez warstw─Ö video */
+     zamiast OS-level hardware overlay, dzięki czemu przyciski nad playerem
+     są widoczne i nie są zasłaniane przez warstwę video */
   clip-path: inset(0);
   transform: translateZ(0);
 }
@@ -4791,11 +4791,11 @@ hls-video {
 }
 .tv-overlay-close:hover { background: rgba(200,0,0,0.8); border-color: #f66; }
 
-/* ÔöÇÔöÇ TV Fullscreen portal ÔÇö nowe kontrolki ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ */
+/* ── TV Fullscreen portal — nowe kontrolki ───────────────────────────────────── */
 .tv-fs-portal { cursor: default; }
-/* Gdy YouTube jest w trybie expanded, usu┼ä backdrop-filter ze wszystkich kart.
+/* Gdy YouTube jest w trybie expanded, usuń backdrop-filter ze wszystkich kart.
    backdrop-filter tworzy nowy containing block dla position:fixed, przez co
-   iframe fixed jest clampowany do stage-card zamiast do ca┼éego viewport. */
+   iframe fixed jest clampowany do stage-card zamiast do całego viewport. */
 .tv-yt-expanded .stage-card,
 .tv-yt-expanded .library-card,
 .tv-yt-expanded .topbar,
@@ -4806,7 +4806,7 @@ hls-video {
 }
 
 
-/* Przycisk ÔťĽ w g├│rnym prawym rogu */
+/* Przycisk ✕ w górnym prawym rogu */
 .tv-fs-close {
   position: absolute;
   top: 18px;
@@ -4857,7 +4857,7 @@ hls-video {
   pointer-events: auto;
 }
 
-/* Nazwa kana┼éu */
+/* Nazwa kanału */
 .tv-fs-channel {
   color: rgba(255,255,255,0.92);
   font-size: 1.05rem;
@@ -4889,7 +4889,7 @@ hls-video {
 .tv-fs-btn:hover { background: rgba(91,141,240,0.38); border-color: rgba(100,160,255,0.7); }
 .tv-fs-exit-btn:hover { background: rgba(200,40,40,0.72); border-color: rgba(220,80,80,0.85); }
 
-/* G┼éo┼Ťno┼Ť─ç w pasku fullscreen */
+/* Głośność w pasku fullscreen */
 .tv-fs-vol {
   display: flex;
   align-items: center;
@@ -5052,7 +5052,7 @@ hls-video {
   flex-shrink: 0;
 }
 
-/* Library ÔÇö TV top bar (categories + search) */
+/* Library — TV top bar (categories + search) */
 .tv-library-top {
   flex-shrink: 0;
   display: grid;
@@ -5111,7 +5111,7 @@ hls-video {
   box-shadow: 0 3px 8px rgba(0, 0, 0, 0.35);
 }
 
-/* Library ÔÇö TV channel items */
+/* Library — TV channel items */
 .tv-ch-art {
   width: 44px !important;
   height: 44px !important;
@@ -5148,7 +5148,7 @@ hls-video {
   color: rgba(200,215,230,0.4);
 }
 
-/* Przyciski normalnego trybu ÔÇö pokazuj─ů si─Ö na hover */
+/* Przyciski normalnego trybu — pokazują się na hover */
 .tv-inline-controls {
   position: absolute;
   inset: 0;
@@ -5162,7 +5162,7 @@ hls-video {
 }
 .tv-player-wrap:hover .tv-inline-controls .tv-exp-btn { opacity: 1; }
 
-/* TV live bar ÔÇö animowany skan (nie statyczny) */
+/* TV live bar — animowany skan (nie statyczny) */
 .live-progress.tv-live.playing .live-progress-fill {
   background: linear-gradient(90deg, rgba(91,141,240,0.3) 0%, #5b8df0 50%, #8eb4ff 100%);
   box-shadow: 0 0 14px rgba(91,141,240,0.5);
@@ -5207,7 +5207,7 @@ hls-video {
   text-align: right;
   flex-shrink: 0;
 }
-/* Przycisk LIVE ÔÇö aktywny (przy live edge) = czerwony, nieaktywny = szary */
+/* Przycisk LIVE — aktywny (przy live edge) = czerwony, nieaktywny = szary */
 .tv-live-btn {
   padding: 3px 10px;
   border-radius: 20px;
@@ -5231,7 +5231,7 @@ hls-video {
   color: #e8edf2;
 }
 
-/* TV bez DVR ÔÇö prosty statyczny wska┼║nik LIVE/STOP */
+/* TV bez DVR — prosty statyczny wskaźnik LIVE/STOP */
 .tv-live-simple {
   display: flex;
   align-items: center;

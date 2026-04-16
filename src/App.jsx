@@ -1,4 +1,4 @@
-﻿import { useEffect, useMemo, useRef, useState, startTransition, memo, useCallback } from 'react'
+import { useEffect, useMemo, useRef, useState, startTransition, memo, useCallback } from 'react'
 import { createPortal } from 'react-dom'
 import ReactPlayer from 'react-player'
 import HlsVideo from 'hls-video-element/react'
@@ -155,7 +155,7 @@ function sanitizeRuntimeUrl(url) {
   }
 }
 
-// R─Öcznie zweryfikowane polskie stacje z dzia┼éaj─ůcymi streamami
+// Ręcznie zweryfikowane polskie stacje z działającymi streamami
 function _pl(id, name, tags, bitrate, urls, favicon = '', homepage = '', votes = 5000) {
   const streamCandidates = urls.map(sanitizeRuntimeUrl).filter(Boolean)
   return {
@@ -175,18 +175,18 @@ function _pl(id, name, tags, bitrate, urls, favicon = '', homepage = '', votes =
   }
 }
 const CURATED_PL_STATIONS = [
-  // --- G┼é├│wne ---
+  // --- Główne ---
   _pl('rmffm',     'RMF FM',                 'pop,hits,polskie',       128, ['https://rs9-krk2.rmfstream.pl/RMFFM48','https://rs6-krk2.rmfstream.pl/RMFFM48','http://188.165.12.72:8000/rmf_fm'], 'https://www.rmf.fm/favicon.ico', 'https://www.rmf.fm', 9999),
   _pl('radiozet',  'Radio ZET',              'pop,hits,polskie',       128, ['https://n-4-6.dcs.redcdn.pl/sc/o2/Eurozet/live/audio.livx','https://n-1-6.dcs.redcdn.pl/sc/o2/Eurozet/live/audio.livx','http://91.121.179.221:8050'], 'https://www.radiozet.pl/favicon.ico', 'https://www.radiozet.pl', 9998),
-  _pl('trojka',    'Polskie Radio Tr├│jka',   'polskie,public,rock',    96,  ['https://mp3.polskieradio.pl:8904/','http://stream.polskieradio.pl/program3','https://stream3.polskieradio.pl:8954/'], 'https://www.polskieradio.pl/favicon.ico', 'https://trojka.polskieradio.pl', 9000),
+  _pl('trojka',    'Polskie Radio Trójka',   'polskie,public,rock',    96,  ['https://mp3.polskieradio.pl:8904/','http://stream.polskieradio.pl/program3','https://stream3.polskieradio.pl:8954/'], 'https://www.polskieradio.pl/favicon.ico', 'https://trojka.polskieradio.pl', 9000),
   _pl('jedynka',   'Polskie Radio Jedynka',  'polskie,public,news',    96,  ['https://mp3.polskieradio.pl:8900/','http://stream.polskieradio.pl/program1','https://stream3.polskieradio.pl:8950/'], 'https://www.polskieradio.pl/favicon.ico', 'https://jedynka.polskieradio.pl', 8900),
-  _pl('dwojka',    'Polskie Radio Dw├│jka',   'polskie,public,classical',96, ['https://mp3.polskieradio.pl:8902/','http://stream.polskieradio.pl/program2','https://stream3.polskieradio.pl:8952/'], 'https://www.polskieradio.pl/favicon.ico', 'https://dwojka.polskieradio.pl', 8800),
-  _pl('czworka',   'Polskie Radio Czw├│rka',  'polskie,public,pop',     96,  ['https://mp3.polskieradio.pl:8906/','http://stream.polskieradio.pl/euro','https://stream3.polskieradio.pl:8956/'], 'https://www.polskieradio.pl/favicon.ico', 'https://czworka.polskieradio.pl', 8700),
+  _pl('dwojka',    'Polskie Radio Dwójka',   'polskie,public,classical',96, ['https://mp3.polskieradio.pl:8902/','http://stream.polskieradio.pl/program2','https://stream3.polskieradio.pl:8952/'], 'https://www.polskieradio.pl/favicon.ico', 'https://dwojka.polskieradio.pl', 8800),
+  _pl('czworka',   'Polskie Radio Czwórka',  'polskie,public,pop',     96,  ['https://mp3.polskieradio.pl:8906/','http://stream.polskieradio.pl/euro','https://stream3.polskieradio.pl:8956/'], 'https://www.polskieradio.pl/favicon.ico', 'https://czworka.polskieradio.pl', 8700),
   _pl('tokfm',     'TOK FM',                 'polskie,news,talk',      128, ['https://radiostream.pl/tuba10-1.mp3'], 'https://www.tokfm.pl/favicon.ico', 'https://www.tokfm.pl', 8500),
   _pl('antyradio', 'Antyradio',              'rock,polskie',           128, ['https://an03.cdn.eurozet.pl/ant-waw.mp3','https://an01.cdn.eurozet.pl/ant-waw.mp3'], 'https://www.antyradio.pl/favicon.ico', 'https://www.antyradio.pl', 8400),
   _pl('maryja',    'Radio Maryja',           'polskie,religious',       48, ['https://usa12.fastcast4u.com/proxy/isnesllc?mp=/1','https://radiomaryja.fastcast4u.com/proxy/radiomaryja'], 'https://www.radiomaryja.pl/favicon.ico', 'https://www.radiomaryja.pl', 8300),
   _pl('voxfm',     'VOX FM',                 'pop,polskie',            128, ['https://rs101-krk2.rmfstream.pl/VOXFM48','https://rs104-krk2.rmfstream.pl/VOXFM48'], '', 'https://www.voxfm.pl', 8200),
-  // --- RMF podkana┼éy ---
+  // --- RMF podkanały ---
   _pl('rmfclassic',     'RMF Classic',           'classical,polskie',  48, ['https://rs201-krk-cyfrostat.rmfstream.pl/RMFCLASSIC48','http://188.165.12.72:8000/rmf_classic'], 'https://www.rmfclassic.pl/favicon.ico', 'https://www.rmfclassic.pl', 8600),
   _pl('rmfmaxxx',       'RMF MAXXX',             'dance,polskie',      48, ['https://rs101-krk.rmfstream.pl/RMFMAXXX48','http://188.165.12.72:8000/rmf_club'], 'https://www.rmfmaxxx.pl/favicon.ico', 'https://www.rmfmaxxx.pl', 8100),
   _pl('rmf-hiphop',     'RMF Hip Hop',           'hip-hop,rap',        48, ['http://188.165.12.72:8000/rmf_hip_hop'], '', 'https://www.rmf.fm', 6000),
@@ -202,7 +202,7 @@ const CURATED_PL_STATIONS = [
   _pl('rmf-jazz',       'RMF Smooth Jazz',       'jazz',               48, ['http://188.165.12.72:8000/rmf_smooth_jazz'], '', 'https://www.rmf.fm', 5200),
   _pl('rmf-baby',       'RMF Baby',              'dzieci,polskie',     48, ['http://188.165.12.72:8000/rmf_baby'], '', 'https://www.rmf.fm', 5100),
   _pl('rmf-party',      'RMF Party',             'party,dance',        48, ['http://188.165.12.72:8000/rmf_party'], '', 'https://www.rmf.fm', 5000),
-  // --- ZET podkana┼éy ---
+  // --- ZET podkanały ---
   _pl('zet-gold',       'Zet Gold',              'oldies,polskie',    128, ['http://zetgold-01.eurozet.pl:8000/'], '', 'https://www.radiozet.pl', 5800),
   _pl('zet-dance',      'Zet Dance',             'dance,electronic',  128, ['http://zetdance-01.eurozet.pl:8000/'], '', 'https://www.radiozet.pl', 5700),
   _pl('zet-rock',       'Zet Rock',              'rock',              128, ['http://zetrock-01.eurozet.pl:8000/'], '', 'https://www.radiozet.pl', 5600),
@@ -220,7 +220,7 @@ const CURATED_PL_STATIONS = [
   _pl('radio357',       'Radio 357',             'pop,rock,polskie',  128, ['https://stream.radio357.pl','http://live.r357.eu','http://n16a-eu.rcs.revma.com/an1ugyygzk8uv'], '', 'https://radio357.pl', 9500),
   _pl('meloradio',      'Meloradio',             'pop,ballads',       128, ['https://ml02.cdn.eurozet.pl/mel-wro.mp3','https://ml.cdn.eurozet.pl/mel-net.mp3','https://ml03.cdn.eurozet.pl/mel-poz.mp3'], '', 'https://www.meloradio.pl', 8000),
   _pl('planetafm',      'Planeta FM',            'dance,clubbing',    128, ['http://planetamp3-01.eurozet.pl:8400/'], '', 'https://www.planetafm.pl', 7500),
-  _pl('zlotempl',       'Radio Z┼éote Przeboje',  'polskie,oldies',    128, ['http://poznan5-6.radio.pionier.net.pl:8000/tuba9-1.mp3'], '', '', 7000),
+  _pl('zlotempl',       'Radio Złote Przeboje',  'polskie,oldies',    128, ['http://poznan5-6.radio.pionier.net.pl:8000/tuba9-1.mp3'], '', '', 7000),
   // --- Polskastacja (tematyczne) ---
   _pl('ps-party',       'Polskastacja Party',    'party,dance',       128, ['http://91.121.124.91:8000/ps-party'], '', 'https://www.polskastacja.pl', 6500),
   _pl('ps-clubhits',    'Polskastacja Club Hits','clubbing,dance',    128, ['http://91.121.124.91:8000/ps-clubhits'], '', 'https://www.polskastacja.pl', 6400),
@@ -238,33 +238,33 @@ const CURATED_PL_STATIONS = [
   _pl('ps-disco',       'Polskastacja Disco',    'disco,dance',       128, ['http://91.121.124.91:8000/ps-disco'], '', 'https://www.polskastacja.pl', 5200),
   _pl('ps-discopolo',   'Polskastacja Disco Polo','discopolo,polskie',128, ['http://91.121.124.91:8000/ps-discopolo'], '', 'https://www.polskastacja.pl', 5100),
   // --- Regionalne ---
-  _pl('radiokrakow',    'Radio Krak├│w',          'polskie,regional',   96, ['http://stream4.nadaje.com:9681/radiokrakow-s3'], '', 'https://www.radiokrakow.pl', 5000),
-  _pl('radiolodz',      'Radio ┼ü├│d┼║',            'polskie,regional',   96, ['https://stream.radiolodz.toya.cloud/RadioLodz-1.mp3'], '', '', 4900),
-  _pl('radiogdansk',    'Radio Gda┼äsk',          'polskie,regional',   96, ['http://stream.task.gda.pl:8443/rg1'], '', '', 4800),
-  _pl('radiopoznan',    'Radio Pozna┼ä',          'polskie,regional',   96, ['http://stream4.nadaje.com:8579/poznan'], '', '', 4700),
+  _pl('radiokrakow',    'Radio Kraków',          'polskie,regional',   96, ['http://stream4.nadaje.com:9681/radiokrakow-s3'], '', 'https://www.radiokrakow.pl', 5000),
+  _pl('radiolodz',      'Radio Łódź',            'polskie,regional',   96, ['https://stream.radiolodz.toya.cloud/RadioLodz-1.mp3'], '', '', 4900),
+  _pl('radiogdansk',    'Radio Gdańsk',          'polskie,regional',   96, ['http://stream.task.gda.pl:8443/rg1'], '', '', 4800),
+  _pl('radiopoznan',    'Radio Poznań',          'polskie,regional',   96, ['http://stream4.nadaje.com:8579/poznan'], '', '', 4700),
   _pl('radiokampus',    'Radio Kampus',          'polskie,alternative',96, ['http://193.0.98.66:8002/'], '', '', 4600),
 ].filter((station) => station.streamCandidates.length > 0)
 const failedImageUrls = new Set()
 const MIX_PATTERN = /\b(mix|mixtape|megamix|nonstop|non[ -]stop)\b/i
 const LIVE_PATTERN = /\b(live|concert|show)\b/i
-const COMPILATION_PATTERN = /\b(playlist|compilation|full album|full mixtape|dj set|type beat|best of|greatest hits|sk┼éadanka|full ep|full lp|\d+\s*(songs?|tracks?|piosenek|hit├│w|utwor├│w))\b/i
-const NON_MUSIC_PATTERN = /\b(gameplay|game|review|tutorial|how[ -]to|vlog|trailer|interview|podcast|episode|unboxing|reaction|challenge|prank|documentary|film|movie|gotowanie|przepis|recenzja|zgadnij|quiz|po bicie|rozpoznaj|test wiedzy|kt├│ry to|odgadnij|trivia|challenge|ranking top|top \d+|#\d)\b/i
+const COMPILATION_PATTERN = /\b(playlist|compilation|full album|full mixtape|dj set|type beat|best of|greatest hits|składanka|full ep|full lp|\d+\s*(songs?|tracks?|piosenek|hitów|utworów))\b/i
+const NON_MUSIC_PATTERN = /\b(gameplay|game|review|tutorial|how[ -]to|vlog|trailer|interview|podcast|episode|unboxing|reaction|challenge|prank|documentary|film|movie|gotowanie|przepis|recenzja|zgadnij|quiz|po bicie|rozpoznaj|test wiedzy|który to|odgadnij|trivia|challenge|ranking top|top \d+|#\d)\b/i
 
 const FILTER_TYPES = [
-  { id: 'track', label: 'Utw├│r' },
+  { id: 'track', label: 'Utwór' },
   { id: 'mix', label: 'Mix / Mixtape' },
   { id: 'live', label: 'Live / Koncert' },
-  { id: 'compilation', label: 'Sk┼éadanka' },
+  { id: 'compilation', label: 'Składanka' },
 ]
 
 const FILTER_LANGUAGES = [
-  { id: 'pl', label: '­čçÁ­čç▒ PL', query: 'polskie' },
-  { id: 'en', label: '­čç║­čçŞ EN', query: 'english' },
-  { id: 'es', label: '­čç¬­čçŞ ES', query: 'espa├▒ol' },
-  { id: 'fr', label: '­čçź­čçĚ FR', query: 'fran├žais' },
-  { id: 'de', label: '­čçę­čç¬ DE', query: 'deutsch' },
-  { id: 'it', label: '­čç«­čç╣ IT', query: 'italiano' },
-  { id: 'ru', label: '­čçĚ­čç║ RU', query: 'ĐÇĐâĐüĐüđ║đŞđ╣' },
+  { id: 'pl', label: '🇵🇱 PL', query: 'polskie' },
+  { id: 'en', label: '🇺🇸 EN', query: 'english' },
+  { id: 'es', label: '🇪🇸 ES', query: 'español' },
+  { id: 'fr', label: '🇫🇷 FR', query: 'français' },
+  { id: 'de', label: '🇩🇪 DE', query: 'deutsch' },
+  { id: 'it', label: '🇮🇹 IT', query: 'italiano' },
+  { id: 'ru', label: '🇷🇺 RU', query: 'русский' },
 ]
 
 const FILTER_GENRES = [
@@ -289,16 +289,16 @@ const FILTER_GENRES = [
 const FILTER_ERAS = [
   { id: 'all',     label: 'Wszystkie' },
   { id: 'retro',   label: 'Lata 90.' },
-  { id: 'classic', label: '2000ÔÇô2010' },
-  { id: 'tens',    label: '2010ÔÇô2020' },
+  { id: 'classic', label: '2000–2010' },
+  { id: 'tens',    label: '2010–2020' },
   { id: 'new',     label: 'Po 2020' },
 ]
 
 const FILTER_DURATIONS = [
   { id: 'all',    label: 'Wszystkie' },
   { id: 'short',  label: 'Do 3 min',  max: 3 * 60 },
-  { id: 'medium', label: '3ÔÇô6 min',   min: 3 * 60, max: 6 * 60 },
-  { id: 'long',   label: '6ÔÇô12 min',  min: 6 * 60, max: 12 * 60 },
+  { id: 'medium', label: '3–6 min',   min: 3 * 60, max: 6 * 60 },
+  { id: 'long',   label: '6–12 min',  min: 6 * 60, max: 12 * 60 },
   { id: 'xlong',  label: '12+ min',   min: 12 * 60 },
 ]
 
@@ -347,7 +347,7 @@ function buildFilteredQuery(filters) {
   if (filters.era === 'retro') parts.push('lata 90 oldschool retro classics')
   else if (filters.era === 'classic') parts.push('klasyki 2000s hits')
   else if (filters.era === 'tens') parts.push('2010s hits')
-  // 'new' uses publishedAfter only ÔÇö no keywords needed
+  // 'new' uses publishedAfter only — no keywords needed
 
   if (parts.length === 0) parts.push('muzyka')
 
@@ -390,7 +390,7 @@ function applyFilters(items, filters) {
     if (isLive && !filters.types.includes('live')) return false
     if (isCompilation && !filters.types.includes('compilation')) return false
 
-    // Heurystyka: je┼Ťli tryb tylko "utw├│r" i brak wyboru d┼éugo┼Ťci, odrzu─ç filmy >12min (prawdopodobne sk┼éadanki bez tagu)
+    // Heurystyka: jeśli tryb tylko "utwór" i brak wyboru długości, odrzuć filmy >12min (prawdopodobne składanki bez tagu)
     const onlyTrack = filters.types.includes('track') && !filters.types.includes('compilation') && !filters.types.includes('mix')
     if (onlyTrack && filters.duration === 'all' && secs > 12 * 60) return false
 
@@ -688,16 +688,16 @@ function getTvChannelCountryCodes(channel) {
 }
 
 function weatherIcon(code) {
-  if (code === 0) return 'ÔśÇ´ŞĆ'
-  if (code <= 2) return '­čîĄ´ŞĆ'
-  if (code === 3) return 'Ôśü´ŞĆ'
-  if (code <= 48) return '­čîź´ŞĆ'
-  if (code <= 55) return '­čîŽ´ŞĆ'
-  if (code <= 65) return '­čîž´ŞĆ'
-  if (code <= 77) return 'ÔŁä´ŞĆ'
-  if (code <= 82) return '­čîŽ´ŞĆ'
-  if (code <= 86) return 'ÔŁä´ŞĆ'
-  return 'ÔŤł´ŞĆ'
+  if (code === 0) return '☀️'
+  if (code <= 2) return '🌤️'
+  if (code === 3) return '☁️'
+  if (code <= 48) return '🌫️'
+  if (code <= 55) return '🌦️'
+  if (code <= 65) return '🌧️'
+  if (code <= 77) return '❄️'
+  if (code <= 82) return '🌦️'
+  if (code <= 86) return '❄️'
+  return '⛈️'
 }
 
 function formatSeconds(value) {
@@ -712,9 +712,9 @@ function formatSeconds(value) {
  * 
  * 
  *
- * @param {number} percent - G┼éo┼Ťno┼Ť─ç w procentach (0-100)
+ * @param {number} percent - Głośność w procentach (0-100)
  * @param {'linear'|'sqrt'|'square'} [curve='linear'] - Typ krzywej regulacji
- * @returns {number} - Warto┼Ť─ç g┼éo┼Ťno┼Ťci (0-1)
+ * @returns {number} - Wartość głośności (0-1)
  */
 function toEffectiveVolume(percent, curve = 'linear') {
   const safePercent = Number.isFinite(percent) ? Math.min(100, Math.max(0, percent)) : 0;
@@ -723,8 +723,8 @@ function toEffectiveVolume(percent, curve = 'linear') {
   switch (curve) {
     case 'square': return normalized * normalized;
     case 'sqrt':   return Math.sqrt(normalized);
-    // Logarytmiczna krzywa audio: 0%Ôćĺ0, 1%Ôëł-40dB, 50%Ôëł-20dB, 75%Ôëł-10dB, 100%Ôćĺ0dB
-    // Naturalna dla ucha ÔÇö pokrywa pe┼éen zakres dynamiki bez "g┼éo┼Ťnego" minimum
+    // Logarytmiczna krzywa audio: 0%→0, 1%≈-40dB, 50%≈-20dB, 75%≈-10dB, 100%→0dB
+    // Naturalna dla ucha — pokrywa pełen zakres dynamiki bez "głośnego" minimum
     case 'log':    return Math.pow(10, 2 * (normalized - 1));
     case 'linear':
     default:       return normalized;
@@ -763,7 +763,7 @@ function renderChatText(text) {
         nodes.push(
           <div key={`yt-${i}`} className="chat-link-preview">
             <img src={`https://img.youtube.com/vi/${ytId}/mqdefault.jpg`} alt="" className="chat-preview-thumb" draggable={false} />
-            <span className="chat-preview-label">ÔľÂ YouTube</span>
+            <span className="chat-preview-label">▶ YouTube</span>
           </div>
         )
       }
@@ -828,7 +828,7 @@ function sanitizeImageUrl(url) {
     const u = new URL(safeUrl)
     const host = u.hostname.toLowerCase()
     const path = u.pathname.toLowerCase()
-    // Znane ┼║r├│d┼éa generuj─ůce du┼╝y szum 404/403/412/429.
+    // Znane źródła generujące duży szum 404/403/412/429.
     if (host.includes('upload.wikimedia.org')) return ''
     if (host.includes('24dubstep.pl')) return ''
     if (host.includes('firebasestorage.googleapis.com')) return ''
@@ -875,26 +875,26 @@ function shuffleArray(arr) {
   return copy
 }
 
-// Statyczne dane dla idle wave ÔÇö kszta┼ét ┼éuku sinusoidalnego
+// Statyczne dane dla idle wave — kształt łuku sinusoidalnego
 const IDLE_BARS = Array.from({ length: 48 }, (_, i) => {
   const t = i / 47
   return Math.round(12 + Math.sin(t * Math.PI) * 58 + Math.sin(t * Math.PI * 3) * 10)
 })
 
 const CHAT_COMMANDS = [
-  { cmd: '/next',   desc: 'Nast─Öpny utw├│r/stacja',          argHint: '',                role: 'mod' },
+  { cmd: '/next',   desc: 'Następny utwór/stacja',          argHint: '',                role: 'mod' },
   { cmd: '/stop',   desc: 'Zatrzymaj odtwarzanie',          argHint: '',                role: 'mod' },
   { cmd: '/pause',  desc: 'Pauza',                          argHint: '',                role: 'mod' },
-  { cmd: '/play',   desc: 'Wzn├│w odtwarzanie',              argHint: '',                role: 'mod' },
-  { cmd: '/mute',   desc: 'Wycisz u┼╝ytkownika',             argHint: '[nick] [sek=30]', role: 'host' },
-  { cmd: '/unmute', desc: 'Odcisz u┼╝ytkownika',             argHint: '[nick]',          role: 'host' },
-  { cmd: '/clear',  desc: 'Wyczy┼Ť─ç czat',                   argHint: '',                role: 'host' },
+  { cmd: '/play',   desc: 'Wznów odtwarzanie',              argHint: '',                role: 'mod' },
+  { cmd: '/mute',   desc: 'Wycisz użytkownika',             argHint: '[nick] [sek=30]', role: 'host' },
+  { cmd: '/unmute', desc: 'Odcisz użytkownika',             argHint: '[nick]',          role: 'host' },
+  { cmd: '/clear',  desc: 'Wyczyść czat',                   argHint: '',                role: 'host' },
   { cmd: '/me',     desc: 'Akcja/emote',                    argHint: '[tekst]',         role: 'mod' },
-  { cmd: '/msg',    desc: 'Prywatna wiadomo┼Ť─ç',             argHint: '[nick] [tekst]',  role: 'all' },
+  { cmd: '/msg',    desc: 'Prywatna wiadomość',             argHint: '[nick] [tekst]',  role: 'all' },
   { cmd: '/r',      desc: 'Odpowiedz na ostatni PM',        argHint: '[tekst]',         role: 'all' },
-  { cmd: '/vol',    desc: 'Ustaw g┼éo┼Ťno┼Ť─ç',                 argHint: '[0-100]',         role: 'all' },
-  { cmd: '/queue',  desc: 'Poka┼╝ kolejk─Ö',                  argHint: '',                role: 'all' },
-  { cmd: '/sys',    desc: 'W┼é/Wy┼é wiadomo┼Ťci systemowe',   argHint: '',                role: 'all' },
+  { cmd: '/vol',    desc: 'Ustaw głośność',                 argHint: '[0-100]',         role: 'all' },
+  { cmd: '/queue',  desc: 'Pokaż kolejkę',                  argHint: '',                role: 'all' },
+  { cmd: '/sys',    desc: 'Wł/Wył wiadomości systemowe',   argHint: '',                role: 'all' },
   { cmd: '/help',   desc: 'Lista komend',                   argHint: '',                role: 'all' },
 ]
 
@@ -919,27 +919,27 @@ const LibraryItem = memo(function LibraryItem({ item, selected, mode, activeTrac
         <strong>{mode === 'radio' ? item.name : item.title}</strong>
         <span>
           {mode === 'radio'
-            ? [item.country, item.codec, item.votes ? `${item.votes} g┼éos├│w` : ''].filter(Boolean).join(' ÔÇó ')
-            : [item.author, item.duration].filter(Boolean).join(' ÔÇó ')}
+            ? [item.country, item.codec, item.votes ? `${item.votes} głosów` : ''].filter(Boolean).join(' • ')
+            : [item.author, item.duration].filter(Boolean).join(' • ')}
         </span>
       </div>
       {canSuggest && (
         <button
           className={`suggest-btn${isSuggested ? ' done' : ''}`}
-          title={isSuggested ? 'Ju┼╝ zasugerowa┼ée┼Ť' : 'Zasugeruj hostowi'}
+          title={isSuggested ? 'Już zasugerowałeś' : 'Zasugeruj hostowi'}
           onClick={(e) => onSuggest(e, item)}
-        >{isSuggested ? 'Ôťô' : '+'}</button>
+        >{isSuggested ? '✓' : '+'}</button>
       )}
     </div>
   )
 })
 
-// ÔöÇÔöÇÔöÇ TV ÔÇö HLS player wrapper ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
+// ─── TV — HLS player wrapper ─────────────────────────────────────────────────
 function TvChannelPlayer({ channel, videoRef, onError, onPlaying, onPause, onStall, volume, expanded = false }) {
   const innerRef = useRef(null)
   const resolvedRef = videoRef || innerRef
   useEffect(() => {
-    // Wymu┼Ť clip-path na wewn─Ötrznym <video> w Shadow DOM hls-video-element.
+    // Wymuś clip-path na wewnętrznym <video> w Shadow DOM hls-video-element.
     const el = resolvedRef.current
     if (!el) return
     const apply = () => {
@@ -953,7 +953,7 @@ function TvChannelPlayer({ channel, videoRef, onError, onPlaying, onPause, onSta
   useEffect(() => {
     const el = resolvedRef.current
     if (!el) return
-    // Ustaw g┼éo┼Ťno┼Ť─ç natychmiast ÔÇö zanim autoPlay wyda d┼║wi─Ök
+    // Ustaw głośność natychmiast — zanim autoPlay wyda dźwięk
     if (volume !== undefined) el.volume = volume
     const onErr  = () => onError?.()
     const onPlay = () => onPlaying?.()
@@ -983,8 +983,8 @@ function TvChannelPlayer({ channel, videoRef, onError, onPlaying, onPause, onSta
   )
 }
 
-// ÔöÇÔöÇÔöÇ TV ÔÇö kategorie i parser M3U ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
-// Kurowane polskie kana┼éy TVP ÔÇö statyczne HLS (tvpstream API jest nieaktywne)
+// ─── TV — kategorie i parser M3U ─────────────────────────────────────────────
+// Kurowane polskie kanały TVP — statyczne HLS (tvpstream API jest nieaktywne)
 const CURATED_TV_PL = [
   { id: 'tvp1',       name: 'TVP 1',       logo: '', country: 'PL', url: 'https://ec06-krk3.cache.orange.pl/dai4/org1/vb/104/tvp1hd/index.m3u8' },
   { id: 'tvpinfo',    name: 'TVP Info',    logo: '', country: 'PL', url: 'http://78.130.250.2:8023/play/a03b/index.m3u8' },
@@ -1004,23 +1004,23 @@ const TV_RETRO_LOCAL_PATTERN = /\b(retro|classic|vintage|oldies|local|regional|c
 const TV_CATEGORIES = [
   {
     id: 'all',
-    label: '­čîÉ Wszystkie',
+    label: '🌐 Wszystkie',
     url: 'https://iptv-org.github.io/iptv/index.m3u',
     extraUrls: ['https://raw.githubusercontent.com/Free-TV/IPTV/master/playlist.m3u8']
   },
   {
     id: 'pl',
-    label: '­čçÁ­čç▒ Polskie',
+    label: '🇵🇱 Polskie',
     url: 'https://iptv-org.github.io/iptv/countries/pl.m3u',
     extraUrls: TV_POLAND_TRUSTED_EXTRA_URLS,
     countryHints: ['PL'],
     curated: CURATED_TV_PL
   },
-  { id: 'news',          label: '­čô░ Wiadomo┼Ťci',    url: 'https://iptv-org.github.io/iptv/categories/news.m3u' },
-  { id: 'music',         label: '­čÄÁ Muzyczne',      url: 'https://iptv-org.github.io/iptv/categories/music.m3u' },
+  { id: 'news',          label: '📰 Wiadomości',    url: 'https://iptv-org.github.io/iptv/categories/news.m3u' },
+  { id: 'music',         label: '🎵 Muzyczne',      url: 'https://iptv-org.github.io/iptv/categories/music.m3u' },
   {
     id: 'retro-local',
-    label: '­č¬ę Dziwne / Retro / Local',
+    label: '🪩 Dziwne / Retro / Local',
     url: 'https://iptv-org.github.io/iptv/categories/classic.m3u',
     extraUrls: [
       'https://iptv-org.github.io/iptv/categories/public.m3u',
@@ -1031,11 +1031,11 @@ const TV_CATEGORIES = [
     ],
     keywordFilter: TV_RETRO_LOCAL_PATTERN
   },
-  { id: 'sports',        label: 'ÔÜŻ Sport',          url: 'https://iptv-org.github.io/iptv/categories/sports.m3u' },
-  { id: 'entertainment', label: '­čÄČ Rozrywka',      url: 'https://iptv-org.github.io/iptv/categories/entertainment.m3u' },
-  { id: 'kids',          label: '­čĹÂ Dla dzieci',    url: 'https://iptv-org.github.io/iptv/categories/kids.m3u' },
-  { id: 'science',       label: '­čöş Nauka',         url: 'https://iptv-org.github.io/iptv/categories/science.m3u' },
-  { id: 'documentary',   label: '­čÄą Dokumentalne',  url: 'https://iptv-org.github.io/iptv/categories/documentary.m3u' },
+  { id: 'sports',        label: '⚽ Sport',          url: 'https://iptv-org.github.io/iptv/categories/sports.m3u' },
+  { id: 'entertainment', label: '🎬 Rozrywka',      url: 'https://iptv-org.github.io/iptv/categories/entertainment.m3u' },
+  { id: 'kids',          label: '👶 Dla dzieci',    url: 'https://iptv-org.github.io/iptv/categories/kids.m3u' },
+  { id: 'science',       label: '🔭 Nauka',         url: 'https://iptv-org.github.io/iptv/categories/science.m3u' },
+  { id: 'documentary',   label: '🎥 Dokumentalne',  url: 'https://iptv-org.github.io/iptv/categories/documentary.m3u' },
 ]
 
 const TV_COMMON_COUNTRY_CODES = [
@@ -1180,9 +1180,9 @@ function parseM3U(text) {
     while (j < lines.length && lines[j].startsWith('#')) j += 1
     const url = lines[j]
     if (!url || url.startsWith('#')) continue
-    if (!/^https?:\/\//i.test(url)) continue          // bezpiecze┼ästwo ÔÇö tylko http/https
-    if (/liveovh\d+\.cda\.pl/.test(url)) continue     // CDA CDN wymaga token├│w auth
-    const name    = (info.match(/,(.+)$/)         || [])[1]?.trim() || 'Kana┼é'
+    if (!/^https?:\/\//i.test(url)) continue          // bezpieczeństwo — tylko http/https
+    if (/liveovh\d+\.cda\.pl/.test(url)) continue     // CDA CDN wymaga tokenów auth
+    const name    = (info.match(/,(.+)$/)         || [])[1]?.trim() || 'Kanał'
     const logoRaw = (info.match(/tvg-logo="([^"]*)"/) || [])[1] || ''
     const logo    = sanitizeTvLogoUrl(logoRaw)
     const id      = (info.match(/tvg-id="([^"]*)"/)     || [])[1] || url
@@ -1248,7 +1248,7 @@ function App() {
     const pct = Math.round(f * 100)
     const w   = Math.round(1460 * f)
     const h   = Math.round(940  * f)
-    return i === 16 ? `102% ÔÇö Normalne (${w} ├Ś ${h})` : `${pct}% ÔÇö ${w} ├Ś ${h}`
+    return i === 16 ? `102% — Normalne (${w} × ${h})` : `${pct}% — ${w} × ${h}`
   })
   const [zoomIdx, setZoomIdx] = useState(16)
   const [pendingZoom, setPendingZoom] = useState(null) // wybrany ale nie zapisany
@@ -1269,9 +1269,9 @@ function App() {
     window.playerBridge?.getVersion?.().then(v => {
       if (v?.version) { setAppVersion(v.version); setVersionHistory(v.history || []) }
     })
-    // D┼║wi─Ök startowy po chwili (┼╝eby AudioContext m├│g┼é si─Ö zainicjowa─ç)
+    // Dźwięk startowy po chwili (żeby AudioContext mógł się zainicjować)
     const startSound = setTimeout(() => soundStartup(), 800)
-    // Sprawd┼║ aktualizacje 3s po starcie (nie blokuj ┼éadowania UI)
+    // Sprawdź aktualizacje 3s po starcie (nie blokuj ładowania UI)
     const t = setTimeout(() => {
       window.playerBridge?.checkUpdate?.().then(info => {
         if (info?.hasUpdate) setUpdateInfo(info)
@@ -1305,12 +1305,12 @@ function App() {
   const [cmdSuggestIdx, setCmdSuggestIdx] = useState(0)
   const cmdListRef = useRef(null)
   const lastPmSenderRef = useRef(null)
-    // Zapisuj wybrany gatunek do localStorage przy ka┼╝dej zmianie
+    // Zapisuj wybrany gatunek do localStorage przy każdej zmianie
     useEffect(() => {
       localStorage.setItem('hiphop-player-genre', genreId)
     }, [genreId])
 
-    // Zapisuj widok biblioteki do localStorage przy ka┼╝dej zmianie
+    // Zapisuj widok biblioteki do localStorage przy każdej zmianie
     useEffect(() => {
       localStorage.setItem('hiphop-player-libraryview', libraryView)
     }, [libraryView])
@@ -1389,7 +1389,7 @@ function App() {
   const [monopolyDuration, setMonopolyDuration] = useState(7200)
   const monopolyAutoOpenedRef = useRef(false)
 
-  // Refs do bezpo┼Ťrednich aktualizacji DOM podczas przeci─ůgania (bez re-renderu)
+  // Refs do bezpośrednich aktualizacji DOM podczas przeciągania (bez re-renderu)
   const volumeFillRef = useRef(null)
   const volumeThumbRef = useRef(null)
   const volumeLabelRef = useRef(null)
@@ -1417,7 +1417,7 @@ function App() {
     return () => window.removeEventListener('keydown', onKeyDown)
   }, [])
 
-  // ÔöÇÔöÇÔöÇ TV ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
+  // ─── TV ───────────────────────────────────────────────────────────────────
   const [tvSubMode, setTvSubMode]         = useState('channels') // 'channels' | 'youtube'
   const [tvCategoryId, setTvCategoryId]   = useState('pl')
   const [tvChannels, setTvChannels]       = useState([])
@@ -1475,7 +1475,7 @@ function App() {
 
   const recoverTvStream = useCallback(() => {
     if (mode !== 'tv' || !currentTvChannel || tvSubMode !== 'channels') return
-    // Kr├│tki debounce, ┼╝eby nie robi─ç wielu restart├│w naraz.
+    // Krótki debounce, żeby nie robić wielu restartów naraz.
     if (tvRecoverTimerRef.current) return
     tvRecoverTimerRef.current = setTimeout(() => {
       tvRecoverTimerRef.current = null
@@ -1509,7 +1509,7 @@ function App() {
     recoverTvStream()
   }, [tvPlayerError, tvSubMode, currentTvChannel, recoverTvStream])
 
-  // ÔöÇÔöÇÔöÇ TV YouTube IFrame API ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
+  // ─── TV YouTube IFrame API ─────────────────────────────────────────────────
   const tvYtIframeRef    = useRef(null)
   const tvYtVolRef       = useRef(35)
   const [tvYtPlaying, setTvYtPlaying]         = useState(false)
@@ -1519,7 +1519,7 @@ function App() {
   const [tvYtThumbnail, setTvYtThumbnail]     = useState('')
   const [tvYtCc, setTvYtCc]                  = useState(false)
 
-  // Wyj┼Ťcie z trybu rozszerzonego ÔÇö Escape
+  // Wyjście z trybu rozszerzonego — Escape
   useEffect(() => {
     const onKey = (e) => {
       if (e.key === 'Escape') {
@@ -1537,15 +1537,15 @@ function App() {
   const activeTrackRef = useRef(null)
   const preloadedForRef = useRef(null)
   const [activeTrackQuery, setActiveTrackQuery] = useState('')
-  // Inicjalizacja volumePercent z localStorage lub domy┼Ťlnie 35
+  // Inicjalizacja volumePercent z localStorage lub domyślnie 35
   const [volumePercent, setVolumePercent] = useState(() => {
     const stored = localStorage.getItem('hiphop-player-volume')
     const parsed = Number(stored)
     return Number.isFinite(parsed) ? Math.min(100, Math.max(0, parsed)) : 35
   })
-  // Inicjalizacja currentStation z localStorage je┼Ťli istnieje
+  // Inicjalizacja currentStation z localStorage jeśli istnieje
   const [favorites, setFavorites] = useState(loadStoredFavorites)
-  // ÔöÇÔöÇÔöÇ Adaptacyjne FPS: 45 aktywna, 24 nieaktywna, 6 ukryta ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
+  // ─── Adaptacyjne FPS: 45 aktywna, 24 nieaktywna, 6 ukryta ──────────────────
   const fpsRef = useRef(45)
   useEffect(() => {
     const update = () => {
@@ -1570,7 +1570,7 @@ function App() {
     }
   }, [])
 
-  // ÔöÇÔöÇÔöÇ Zegar ÔÇö bezpo┼Ťrednia aktualizacja DOM (bez re-renderu ca┼éej apki) ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
+  // ─── Zegar — bezpośrednia aktualizacja DOM (bez re-renderu całej apki) ──────
   const clockHmRef   = useRef(null)
   const clockSRef    = useRef(null)
   const clockDateRef = useRef(null)
@@ -1646,7 +1646,7 @@ function App() {
         const parsed = JSON.parse(storedStation)
         if (parsed && parsed.id) {
           setCurrentStation(parsed)
-          // Ustaw od razu streamy i indeks, je┼Ťli stacje s─ů ju┼╝ za┼éadowane
+          // Ustaw od razu streamy i indeks, jeśli stacje są już załadowane
           setTimeout(() => {
             setStations((prevStations) => {
               const plan = buildStationPlaybackCandidates(parsed, prevStations)
@@ -1684,12 +1684,12 @@ function App() {
   const vizBgCanvasRef = useRef(null)
   const bgCanvasRef = useRef(null)
 
-  // Inicjalizacja AudioMotionAnalyzer ÔÇö jeden raz przy mount
+  // Inicjalizacja AudioMotionAnalyzer — jeden raz przy mount
   useEffect(() => {
     if (!audioMotionContainerRef.current) return
 
     const audioMotion = new AudioMotionAnalyzer(audioMotionContainerRef.current, {
-      mode: 1,                // oddzielne s┼éupki
+      mode: 1,                // oddzielne słupki
       channelLayout: 'single',
       frequencyScale: 'log',
       barSpace: 0.1,
@@ -1716,7 +1716,7 @@ function App() {
     audioMotion.onCanvasDraw = instance => {
       const bass = instance.getEnergy('bass')
       const overall = instance.getEnergy()
-      // Bass daje kopni─Öcia (kick, sub) ÔÇö wa┼╝niejszy dla chaosu i dynamiki
+      // Bass daje kopnięcia (kick, sub) — ważniejszy dla chaosu i dynamiki
       electricEnergyRef.current = Math.min(1, bass * 0.6 + overall * 0.4)
     }
 
@@ -1728,7 +1728,7 @@ function App() {
     }
   }, [])
 
-  // ÔöÇÔöÇÔöÇ T┼éo wizualizera ÔÇö aurora blobs reaguj─ůce na energi─Ö ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
+  // ─── Tło wizualizera — aurora blobs reagujące na energię ────────────────────
   useEffect(() => {
     if (mode === 'tv') return
     const canvas = vizBgCanvasRef.current
@@ -1800,17 +1800,17 @@ function App() {
     }
   }, [mode]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // ÔöÇÔöÇÔöÇ T┼éo aplikacji ÔÇö orby reaguj─ůce na energi─Ö muzyki ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
+  // ─── Tło aplikacji — orby reagujące na energię muzyki ───────────────────────
   useEffect(() => {
     if (mode === 'tv') return
     const canvas = bgCanvasRef.current
     if (!canvas) return
     const ctx = canvas.getContext('2d')
 
-    // 16 ma┼éych orb├│w rozsianych po ca┼éym ekranie
-    // hue: odcie┼ä startowy (┬░), hs: pr─Ödko┼Ť─ç dryftu odcienia, sz: rozmiar bazowy
+    // 16 małych orbów rozsianych po całym ekranie
+    // hue: odcień startowy (°), hs: prędkość dryftu odcienia, sz: rozmiar bazowy
     const blobs = [
-      // ÔÇö ciep┼ée pomara┼äcze (oryginalne) ÔÇö
+      // — ciepłe pomarańcze (oryginalne) —
       { x: 0.10, y: 0.08, vx:  0.00030, vy:  0.00020, hue: 20,  hs:  0.008, sz: 0.22 },
       { x: 0.50, y: 0.05, vx: -0.00025, vy:  0.00015, hue: 35,  hs: -0.006, sz: 0.17 },
       { x: 0.90, y: 0.12, vx: -0.00028, vy:  0.00022, hue: 25,  hs:  0.010, sz: 0.19 },
@@ -1827,16 +1827,16 @@ function App() {
       { x: 0.30, y: 0.92, vx:  0.00021, vy: -0.00024, hue: 17,  hs: -0.006, sz: 0.20 },
       { x: 0.62, y: 0.95, vx: -0.00018, vy: -0.00020, hue: 24,  hs:  0.009, sz: 0.17 },
       { x: 0.92, y: 0.88, vx: -0.00020, vy: -0.00015, hue: 28,  hs: -0.007, sz: 0.19 },
-      // ÔÇö dodatkowe kolory rozsiane po kole barw ÔÇö
-      { x: 0.35, y: 0.15, vx:  0.00017, vy:  0.00023, hue: 80,  hs:  0.008, sz: 0.18 }, // ┼╝├│┼éto-zielony
+      // — dodatkowe kolory rozsiane po kole barw —
+      { x: 0.35, y: 0.15, vx:  0.00017, vy:  0.00023, hue: 80,  hs:  0.008, sz: 0.18 }, // żółto-zielony
       { x: 0.74, y: 0.08, vx: -0.00022, vy:  0.00018, hue: 140, hs: -0.007, sz: 0.20 }, // soczysty zielony
-      { x: 0.08, y: 0.35, vx:  0.00025, vy:  0.00014, hue: 170, hs:  0.009, sz: 0.17 }, // mi─Öta / teal
+      { x: 0.08, y: 0.35, vx:  0.00025, vy:  0.00014, hue: 170, hs:  0.009, sz: 0.17 }, // mięta / teal
       { x: 0.55, y: 0.38, vx: -0.00019, vy: -0.00021, hue: 195, hs: -0.008, sz: 0.21 }, // cyjan
       { x: 0.83, y: 0.22, vx:  0.00021, vy:  0.00016, hue: 220, hs:  0.006, sz: 0.19 }, // niebieski
       { x: 0.25, y: 0.60, vx: -0.00016, vy:  0.00024, hue: 245, hs: -0.009, sz: 0.22 }, // indygo
       { x: 0.58, y: 0.68, vx:  0.00023, vy: -0.00017, hue: 270, hs:  0.010, sz: 0.18 }, // fiolet
       { x: 0.42, y: 0.88, vx: -0.00020, vy: -0.00022, hue: 300, hs: -0.007, sz: 0.20 }, // magenta
-      { x: 0.70, y: 0.85, vx:  0.00018, vy:  0.00019, hue: 325, hs:  0.008, sz: 0.17 }, // r├│┼╝owy
+      { x: 0.70, y: 0.85, vx:  0.00018, vy:  0.00019, hue: 325, hs:  0.008, sz: 0.17 }, // różowy
       { x: 0.12, y: 0.90, vx:  0.00024, vy: -0.00013, hue: 350, hs: -0.006, sz: 0.19 }, // malinowy / czerwony
     ]
 
@@ -1902,7 +1902,7 @@ function App() {
     return () => { cancelAnimationFrame(raf); ro.disconnect(); window.removeEventListener('resize', resize) }
   }, [mode]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // ÔöÇÔöÇÔöÇ Thumbar ÔÇö ref zawsze aktualny, listenerzy rejestruj─ů si─Ö raz ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
+  // ─── Thumbar — ref zawsze aktualny, listenerzy rejestrują się raz ─────────
   const thumbarActionsRef = useRef({})
   useEffect(() => {
     thumbarActionsRef.current = {
@@ -1916,7 +1916,7 @@ function App() {
     window.playerBridge.onThumbarPrev(() => thumbarActionsRef.current.prev?.())
     window.playerBridge.onThumbarNext(() => thumbarActionsRef.current.next?.())
     window.playerBridge.onThumbarTogglePlay(() => thumbarActionsRef.current.togglePlay?.())
-    // TV Cast ÔÇö sync status from Chromecast back to app
+    // TV Cast — sync status from Chromecast back to app
     window.playerBridge.onCastStatus?.((data) => {
       if (!tvActiveDeviceRef.current) return
       const { playerState, currentTime } = data
@@ -1930,20 +1930,20 @@ function App() {
         if (playerRef.current) playerRef.current.currentTime = currentTime
       }
     })
-    // TV Cast ÔÇö skip triggered from TV remote/UI
+    // TV Cast — skip triggered from TV remote/UI
     window.playerBridge.onCastQueueSkip?.((data) => {
       if (!tvActiveDeviceRef.current) return
       if (data.direction === 'next') handleTrackNext(true)
       else handleTrackPrevious(true)
     })
-    // Tryb t┼éa ÔÇö wy┼é─ůcz ci─Ö┼╝kie animacje CSS gdy okno nie jest aktywne
+    // Tryb tła — wyłącz ciężkie animacje CSS gdy okno nie jest aktywne
     window.playerBridge.onAppBackground?.((isBackground) => {
       document.documentElement.classList.toggle('app-background', isBackground)
       if (isBackground) { fpsRef.current = 6 } else if (document.visibilityState !== 'hidden') { fpsRef.current = document.hasFocus() ? 45 : 24 }
     })
   }, [])
 
-  // ÔöÇÔöÇÔöÇ Zoom ÔÇö sync z main + blokada Ctrl+/-/0 ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
+  // ─── Zoom — sync z main + blokada Ctrl+/-/0 ─────────────────────────────
   useEffect(() => {
     window.playerBridge?.onZoomIdx?.((idx) => {
       setZoomIdx(idx)
@@ -1969,14 +1969,14 @@ function App() {
     checkYt()
   }, [])
 
-  // ÔöÇÔöÇÔöÇ Thumbar ÔÇö aktualizuj ikon─Ö play/pause ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
+  // ─── Thumbar — aktualizuj ikonę play/pause ────────────────────────────────
   useEffect(() => {
     window.playerBridge?.setThumbarPlaying(
       mode === 'radio' ? isRadioPlaying : isTrackPlaying
     )
   }, [isTrackPlaying, isRadioPlaying, mode])
 
-  // ÔöÇÔöÇÔöÇ Discord Rich Presence ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
+  // ─── Discord Rich Presence ────────────────────────────────────────────────
   useEffect(() => {
     if (!window.playerBridge) return
     const timer = setTimeout(() => {
@@ -1994,7 +1994,7 @@ function App() {
         const discordTrackArt = getDiscordTrackArt(currentTrack) || 'appicon'
         window.playerBridge.updateDiscordPresence({
           type: 2,
-          name: currentTrack.title || 'Nieznany utw├│r',
+          name: currentTrack.title || 'Nieznany utwór',
           details: currentTrack.author || 'YouTube',
           state: 'Music App',
           largeImageKey: discordTrackArt,
@@ -2017,7 +2017,7 @@ function App() {
           name: radioNowPlaying
             ? `${currentStation.name || 'Radio'} | ${radioNowPlaying}`
             : (currentStation.name || 'Radio'),
-          details: radioNowPlaying || 'Kana┼é na ┼╝ywo',
+          details: radioNowPlaying || 'Kanał na żywo',
           state: 'Music App',
           largeImageKey: sanitizeImageUrl(currentStation.favicon) || 'appicon',
           largeImageText: currentStation.name || 'Radio',
@@ -2040,10 +2040,10 @@ function App() {
             : 'TV'
           window.playerBridge.updateDiscordPresence({
             type: 3,
-            name: currentTvChannel.name || 'Kana┼é TV',
+            name: currentTvChannel.name || 'Kanał TV',
             details: tvCountryCode
               ? `${tvFlag} ${formatCountryCodeLabel(String(tvCountryCode).toUpperCase())}`
-              : `${tvFlag} Kana┼é na ┼╝ywo`,
+              : `${tvFlag} Kanał na żywo`,
             state: 'Music App TV',
             largeImageKey: currentTvChannel.logo || 'appicon',
             largeImageText: `${tvFlag} ${currentTvChannel.name || 'TV'}`,
@@ -2062,7 +2062,7 @@ function App() {
           window.playerBridge.updateDiscordPresence({
             type: 3,
             name: 'YouTube (TV)',
-            details: tvYtTitle || 'YouTube na ┼╝ywo',
+            details: tvYtTitle || 'YouTube na żywo',
             state: 'Music App TV',
             largeImageKey: 'appicon',
             largeImageText: tvYtTitle || 'YouTube',
@@ -2094,7 +2094,7 @@ function App() {
     tvYoutubeUrl,
   ])
 
-  // ÔöÇÔöÇÔöÇ TV ÔÇö ┼éadowanie kana┼é├│w z iptv-org ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
+  // ─── TV — ładowanie kanałów z iptv-org ───────────────────────────────────
   useEffect(() => {
     if (mode !== 'tv' || tvSubMode !== 'channels') return
     const cat = TV_CATEGORIES.find(c => c.id === tvCategoryId)
@@ -2139,7 +2139,7 @@ function App() {
               return channelCountries.some((code) => cat.countryHints.includes(code))
             })
             : categoryFiltered
-          // Deduplikuj: usu┼ä kana┼éy kt├│re ju┼╝ s─ů w curated (po nazwie)
+          // Deduplikuj: usuń kanały które już są w curated (po nazwie)
           const curatedNames = new Set(curatedWithCountryCodes.map(c => c.name.toLowerCase()))
           const extra = countryHintFiltered.filter(ch => !curatedNames.has(ch.name.toLowerCase()))
           setTvChannels(dedupeTvChannels([...curatedWithCountryCodes, ...extra]))
@@ -2148,7 +2148,7 @@ function App() {
       })
       .catch(() => {
         if (!cancelled) {
-          // Nawet bez sieci poka┼╝ curated
+          // Nawet bez sieci pokaż curated
           if (curatedWithCountryCodes.length > 0) setTvChannels(curatedWithCountryCodes)
           setTvLoading(false)
         }
@@ -2160,7 +2160,7 @@ function App() {
     }
   }, [mode, tvSubMode, tvCategoryId, tvCountryFilter])
 
-  // ÔöÇÔöÇÔöÇ TV ÔÇö ustaw g┼éo┼Ťno┼Ť─ç + auto-seek do live-15s przy za┼éadowaniu ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
+  // ─── TV — ustaw głośność + auto-seek do live-15s przy załadowaniu ─────────
   useEffect(() => {
     if (mode !== 'tv' || tvSubMode !== 'channels' || !currentTvChannel) { setTvIsPlaying(false); return }
     setTvPlayerError(false)
@@ -2179,7 +2179,7 @@ function App() {
     return () => clearTimeout(t)
   }, [mode, tvSubMode, currentTvChannel, volumePercent])
 
-  // ÔöÇÔöÇÔöÇ TV ÔÇö DVR tracking (co 2s, ┼╝eby nie lagowa─ç) ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
+  // ─── TV — DVR tracking (co 2s, żeby nie lagować) ─────────────────────────
   useEffect(() => {
     if (!tvIsPlaying) return
     const tick = () => {
@@ -2192,7 +2192,7 @@ function App() {
       if (Math.abs((tvLastProgressRef.current.time ?? 0) - el.currentTime) > 0.2) {
         tvLastProgressRef.current = { time: el.currentTime, at: now }
       } else if (now - (tvLastProgressRef.current.at || 0) > 15000) {
-        // Stream stoi >15s mimo stanu playing ÔÇö spr├│buj auto-recovery.
+        // Stream stoi >15s mimo stanu playing — spróbuj auto-recovery.
         recoverTvStream()
         tvLastProgressRef.current.at = now
       }
@@ -2231,7 +2231,7 @@ function App() {
     }
   }, [])
 
-  // ÔöÇÔöÇÔöÇ TV YouTube ÔÇö nas┼éuch wiadomo┼Ťci IFrame API ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
+  // ─── TV YouTube — nasłuch wiadomości IFrame API ───────────────────────────
   useEffect(() => {
     if (tvSubMode !== 'youtube' || !tvYoutubeUrl) return
     function onMsg(e) {
@@ -2245,7 +2245,7 @@ function App() {
           if (typeof info.playerState === 'number') setTvYtPlaying(info.playerState === 1)
           if (d.event === 'initialDelivery') {
             if (info.videoData?.title) setTvYtTitle(info.videoData.title)
-            // Ustaw g┼éo┼Ťno┼Ť─ç aplikacji w playerze YouTube
+            // Ustaw głośność aplikacji w playerze YouTube
             tvYtIframeRef.current?.contentWindow?.postMessage(
               JSON.stringify({ event: 'command', func: 'setVolume', args: [tvYtVolRef.current] }),
               'https://www.youtube-nocookie.com'
@@ -2258,7 +2258,7 @@ function App() {
     return () => window.removeEventListener('message', onMsg)
   }, [tvSubMode, tvYoutubeUrl])
 
-  // ÔöÇÔöÇÔöÇ TV YouTube ÔÇö sync g┼éo┼Ťno┼Ťci z aplikacji ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
+  // ─── TV YouTube — sync głośności z aplikacji ─────────────────────────────
   useEffect(() => { tvYtVolRef.current = volumePercent }, [volumePercent])
   useEffect(() => {
     if (tvSubMode !== 'youtube' || !tvYoutubeUrl) return
@@ -2268,7 +2268,7 @@ function App() {
     )
   }, [volumePercent, tvSubMode, tvYoutubeUrl])
 
-  // ÔöÇÔöÇÔöÇ TV YouTube ÔÇö thumbnail z video ID ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
+  // ─── TV YouTube — thumbnail z video ID ───────────────────────────────────
   useEffect(() => {
     if (!tvYoutubeUrl) { setTvYtTitle(''); setTvYtThumbnail(''); setTvYtCurrentTime(0); setTvYtDuration(0); setTvYtPlaying(false); return }
     const id = getYoutubeVideoId(tvYoutubeUrl)
@@ -2276,7 +2276,7 @@ function App() {
     setTvYtCurrentTime(0); setTvYtDuration(0); setTvYtPlaying(false); setTvYtTitle('')
   }, [tvYoutubeUrl])
 
-  // ÔöÇÔöÇÔöÇ Historia odtwarzania (localStorage, 2 dni) ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
+  // ─── Historia odtwarzania (localStorage, 2 dni) ───────────────────────────
   useEffect(() => {
     if (!currentTrack?.id) return
     setTrackHistory((prev) => {
@@ -2287,7 +2287,7 @@ function App() {
     })
   }, [currentTrack])
 
-  // ÔöÇÔöÇÔöÇ Podpowiedzi w wyszukiwarce ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
+  // ─── Podpowiedzi w wyszukiwarce ───────────────────────────────────────────
   useEffect(() => {
     if (searchTerm.length < 3 || !window.playerBridge?.searchYoutube) {
       setSuggestions([])
@@ -2304,7 +2304,7 @@ function App() {
     return () => clearTimeout(timer)
   }, [searchTerm])
 
-  // ÔöÇÔöÇÔöÇ Auto-scroll do aktywnego utworu ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
+  // ─── Auto-scroll do aktywnego utworu ─────────────────────────────────────
   useEffect(() => {
     if (mode !== 'player') return
     activeTrackRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
@@ -2414,12 +2414,12 @@ function App() {
     })
   }, [tvCountryOptions, tvCountrySearch])
 
-  // Reset widocznej liczby stacji gdy lista si─Ö zmienia
+  // Reset widocznej liczby stacji gdy lista się zmienia
   useEffect(() => {
     setVisibleStationCount(40)
   }, [stationSearchTerm, radioTagFilter, countryFilter, libraryView])
 
-  // IntersectionObserver ÔÇö dok┼éadaj 40 stacji gdy sentinel wchodzi w viewport
+  // IntersectionObserver — dokładaj 40 stacji gdy sentinel wchodzi w viewport
   useEffect(() => {
     const sentinel = stationListSentinelRef.current
     if (!sentinel) return
@@ -2444,13 +2444,13 @@ function App() {
     () => applyFilters(libraryView === 'favorites' ? trackFavorites : allTracks, filters),
     [allTracks, libraryView, trackFavorites, filters],
   )
-  // Przewi┼ä na g├│r─Ö i resetuj stron─Ö gdy zmienia si─Ö zawarto┼Ť─ç
+  // Przewiń na górę i resetuj stronę gdy zmienia się zawartość
   useEffect(() => {
     if (libraryListRef.current) libraryListRef.current.scrollTop = 0
     setTrackPage(0)
   }, [allTracks, filters, libraryView])
 
-  // Szybsze i p┼éynne scrollowanie listy
+  // Szybsze i płynne scrollowanie listy
   useEffect(() => {
     const el = libraryListRef.current
     if (!el) return
@@ -2472,7 +2472,7 @@ function App() {
       raf = requestAnimationFrame(step)
     }
 
-    // Wykryj klikni─Öcie na scrollbarze (jest za clientWidth)
+    // Wykryj kliknięcie na scrollbarze (jest za clientWidth)
     const onPointerDown = (e) => {
       if (e.offsetX > el.clientWidth) {
         scrollbarDragging = true
@@ -2485,7 +2485,7 @@ function App() {
     // Sync target gdy natywny scroll (klawiatura, touch, scrollbar drag)
     const onScroll = () => {
       if (scrollbarDragging) { target = el.scrollTop; return }
-      // wheel-driven scroll: target ju┼╝ ustawiony, ignoruj
+      // wheel-driven scroll: target już ustawiony, ignoruj
     }
 
     el.addEventListener('wheel', onWheel, { passive: false })
@@ -2501,7 +2501,7 @@ function App() {
     }
   }, [])
 
-  // Auto-przesu┼ä stron─Ö gdy aktywny utw├│r jest poza widocznym zakresem
+  // Auto-przesuń stronę gdy aktywny utwór jest poza widocznym zakresem
   useEffect(() => {
     if (!currentTrack || mode !== 'player') return
     const idx = visibleTracks.findIndex(t => t.id === currentTrack.id)
@@ -2514,7 +2514,7 @@ function App() {
   const currentRadioStreamEntry = stationStreams[stationStreamIndex] || null
   const currentRadioStreamUrl = currentRadioStreamEntry?.url || currentStation?.url || ''
 
-  // ÔöÇÔöÇÔöÇ Ping do stacji radiowej ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
+  // ─── Ping do stacji radiowej ──────────────────────────────────────────────
   const [pingMs, setPingMs] = useState(null)
   useEffect(() => {
     if (mode !== 'radio' || !currentRadioStreamUrl) { setPingMs(null); return }
@@ -2540,19 +2540,19 @@ function App() {
   const effectiveVolume = useMemo(() => toEffectiveVolume(volumePercent, 'log'), [volumePercent])
   const favoriteKey = activeItem ? `${mode}:${activeItem.id}` : ''
   const isFavorite = favoriteKey ? favorites.some((entry) => entry.key === favoriteKey) : false
-  const currentTitle = activeItem?.title || activeItem?.name || 'Wybierz co┼Ť do odpalenia'
+  const currentTitle = activeItem?.title || activeItem?.name || 'Wybierz coś do odpalenia'
   const isRadioVisualLoading = mode === 'radio' && (radioLoading || isSwitchingStationStream || isRadioBuffering)
   const shouldShowRadioErrorStatus = mode === 'radio' && Boolean(radioError) && !isRadioVisualLoading
   const fallbackStatusMatch = shouldShowRadioErrorStatus
-    ? String(radioError).match(/^Radio\s+(.+?)\s+nie dzia┼éa, odpalamy stacj─Ö podstawow─ů\.?$/i)
+    ? String(radioError).match(/^Radio\s+(.+?)\s+nie działa, odpalamy stację podstawową\.?$/i)
     : null
   const fallbackStationName = fallbackStatusMatch?.[1] || ''
-  const isAlreadyOnStationStatus = /^Ju┼╝ jeste┼Ť na tej stacji\.?$/i.test(String(radioError || '').trim())
+  const isAlreadyOnStationStatus = /^Już jesteś na tej stacji\.?$/i.test(String(radioError || '').trim())
   const radioVisualizerStatus = shouldShowRadioErrorStatus
     ? radioError
     : (!currentStation
-    ? 'Wybierz stacj─Ö'
-    : (isRadioVisualLoading ? '┼üadowanie stacji...' : (!isRadioPlaying ? 'Radio zatrzymane' : '')))
+    ? 'Wybierz stację'
+    : (isRadioVisualLoading ? 'Ładowanie stacji...' : (!isRadioPlaying ? 'Radio zatrzymane' : '')))
 
   const playerArt = mode === 'radio'
     ? safeArt(currentStation?.favicon, currentStation?.name || activeGenre.label, 'radio')
@@ -2565,14 +2565,14 @@ function App() {
     localStorage.setItem('hiphop-player-favorites', JSON.stringify(favorites))
   }, [favorites])
 
-  // Zapisuj g┼éo┼Ťno┼Ť─ç do localStorage przy ka┼╝dej zmianie + synchronizuj d┼║wi─Öki UI
+  // Zapisuj głośność do localStorage przy każdej zmianie + synchronizuj dźwięki UI
   useEffect(() => {
     localStorage.setItem('hiphop-player-volume', String(volumePercent))
     setUiVolume(volumePercent)
   }, [volumePercent])
 
 
-  // Global radio search (radio-browser.info, ca┼éy ┼Ťwiat)
+  // Global radio search (radio-browser.info, cały świat)
   useEffect(() => {
     if (!radioGardenMode) return
     clearTimeout(rgDebounceRef.current)
@@ -2593,7 +2593,7 @@ function App() {
     }, 400)
   }, [stationSearchTerm, radioGardenMode, rgCountry, radioTagFilter])
 
-  // Zapisuj ostatni─ů stacj─Ö do localStorage przy ka┼╝dej zmianie currentStation
+  // Zapisuj ostatnią stację do localStorage przy każdej zmianie currentStation
   useEffect(() => {
     if (currentStation && currentStation.id) {
       localStorage.setItem('hiphop-player-last-station', JSON.stringify(currentStation))
@@ -2604,8 +2604,8 @@ function App() {
     effectiveVolumeRef.current = effectiveVolume
 
     if (audioRef.current) {
-      // Gdy gain node jest aktywny, on kontroluje g┼éo┼Ťno┼Ť─ç ÔÇö audio element musi by─ç na 1
-      // ┼╝eby nie mno┼╝y─ç g┼éo┼Ťno┼Ťci przez siebie (effectiveVolume * effectiveVolume = effectiveVolume┬▓)
+      // Gdy gain node jest aktywny, on kontroluje głośność — audio element musi być na 1
+      // żeby nie mnożyć głośności przez siebie (effectiveVolume * effectiveVolume = effectiveVolume²)
       audioRef.current.volume = (radioGainNodeRef.current && effectiveVolume > 0) ? 1 : effectiveVolume
     }
 
@@ -2655,12 +2655,12 @@ function App() {
           })
 
           if (normalized.length === 0) {
-            setRadioError('Nie znalaz┼éem stacji w tym klimacie. Spr├│buj inny gatunek.')
+            setRadioError('Nie znalazłem stacji w tym klimacie. Spróbuj inny gatunek.')
           }
         }
       } catch {
         if (!ignore) {
-          setRadioError('Nie uda┼éo si─Ö pobra─ç stacji dla tego klimatu.')
+          setRadioError('Nie udało się pobrać stacji dla tego klimatu.')
           setStations([])
           setCurrentStation(null)
           setStationStreams([])
@@ -2742,7 +2742,7 @@ function App() {
     async function loadCuratedTracks() {
       if (!window.playerBridge?.searchYoutube) {
         setCuratedTracks([])
-        setTrackError('Wyszukiwanie YouTube dzia┼éa tylko po uruchomieniu przez Electron.')
+        setTrackError('Wyszukiwanie YouTube działa tylko po uruchomieniu przez Electron.')
         return
       }
 
@@ -2772,12 +2772,12 @@ function App() {
           setActiveTrackQuery(q1)
 
           if (found.length === 0) {
-            setTrackError('Nie znalaz┼éem pojedynczych utwor├│w dla tego klimatu.')
+            setTrackError('Nie znalazłem pojedynczych utworów dla tego klimatu.')
           }
         }
       } catch {
         if (!ignore) {
-          setTrackError('Nie uda┼éo si─Ö pobra─ç wynik├│w YouTube.')
+          setTrackError('Nie udało się pobrać wyników YouTube.')
           setCuratedTracks([])
           setCurrentTrack(null)
         }
@@ -2834,17 +2834,17 @@ function App() {
       }
     }
 
-    // ÔöÇÔöÇ TRYB PLAYER ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
-    // Loopback stream dla player mode jest zarz─ůdzany przez osobny useEffect([mode])
+    // ── TRYB PLAYER ─────────────────────────────────────────────────────────
+    // Loopback stream dla player mode jest zarządzany przez osobny useEffect([mode])
     if (mode !== 'radio') return
 
-    // ÔöÇÔöÇ RADIO ZATRZYMANE / BRAK ELEMENTU ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
+    // ── RADIO ZATRZYMANE / BRAK ELEMENTU ────────────────────────────────────
     if (!audioElement || !isRadioPlaying) {
       disconnectAudioMotion()
       return
     }
 
-    // ÔöÇÔöÇ RADIO GRA ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
+    // ── RADIO GRA ────────────────────────────────────────────────────────────
     let cancelled = false
 
     async function startAudioReactiveVisualizer() {
@@ -2914,7 +2914,7 @@ function App() {
       if (radioCompressorRef.current && audioMotionRef.current) {
         if (!radioVizStreamDestRef.current) {
           radioVizStreamDestRef.current = context.createMediaStreamDestination()
-          // Pod┼é─ůcz wizualizer przed gain nodem (po kompresorze) ÔÇö niezale┼╝ny od g┼éo┼Ťno┼Ťci
+          // Podłącz wizualizer przed gain nodem (po kompresorze) — niezależny od głośności
           radioCompressorRef.current.connect(radioVizStreamDestRef.current)
         }
         disconnectAudioMotion()
@@ -2934,7 +2934,7 @@ function App() {
     }
   }, [isRadioPlaying, mode, currentRadioStreamUrl])
 
-  // ÔöÇÔöÇ PLAYER MODE: loopback audio Ôćĺ wizualizer (pod┼é─ůcz gdy gra, od┼é─ůcz gdy pauza) ÔöÇÔöÇ
+  // ── PLAYER MODE: loopback audio → wizualizer (podłącz gdy gra, odłącz gdy pauza) ──
   useEffect(() => {
     if (mode !== 'player') {
       if (loopbackStreamRef.current) {
@@ -3140,7 +3140,7 @@ function App() {
     }
   }, [trackError, mode])
 
-  // Preload 20 kolejnych utwor├│w gdy dojdziemy do ostatniego w li┼Ťcie
+  // Preload 20 kolejnych utworów gdy dojdziemy do ostatniego w liście
   useEffect(() => {
     if (mode !== 'player' || !currentTrack || loadingMoreTracks) return
     const idx = visibleTracks.findIndex((t) => t.id === currentTrack.id)
@@ -3151,7 +3151,7 @@ function App() {
     loadMoreTracks(20).catch(() => {})
   }, [currentTrack?.id, visibleTracks.length, loadingMoreTracks, mode])
 
-  // Interwa┼é czasu ÔÇö ┼Ťled┼║ pozycj─Ö odtwarzania
+  // Interwał czasu — śledź pozycję odtwarzania
   useEffect(() => {
     if (mode !== 'player') return undefined
     const interval = window.setInterval(() => {
@@ -3187,21 +3187,21 @@ function App() {
     showSessionToast(`Zasugerowano: ${item.title}`)
   }
 
-  // Zwraca true je┼Ťli akcja jest dozwolona; false + toast je┼Ťli zablokowana
+  // Zwraca true jeśli akcja jest dozwolona; false + toast jeśli zablokowana
   function checkPerm(perm) {
     if (!inSession || isHost) return true
     if (myPermissions[perm]) return true
     const labels = { canPlay: 'uprawnienia moderatora', canSkip: 'uprawnienia moderatora', canAdd: 'uprawnienia moderatora' }
-    showSessionToast(`Tylko host mo┼╝e ${labels[perm] ?? 'to zrobi─ç'} ÔÇö popro┼Ť o uprawnienia`)
+    showSessionToast(`Tylko host może ${labels[perm] ?? 'to zrobić'} — poproś o uprawnienia`)
     return false
   }
 
   function updateMode(nextMode, remote = false) {
     if (!remote && inSession && !isHost && nextMode !== mode) {
-      showSessionToast('Tylko host mo┼╝e zmienia─ç zak┼éadki podczas sesji')
+      showSessionToast('Tylko host może zmieniać zakładki podczas sesji')
       return
     }
-    // Opuszczamy zak┼éadk─Ö TV ÔÇö zatrzymaj expand/fullscreen i zwolnij RAM
+    // Opuszczamy zakładkę TV — zatrzymaj expand/fullscreen i zwolnij RAM
     if (mode === 'tv' && nextMode !== 'tv') {
       if (tvRecoverTimerRef.current) {
         clearTimeout(tvRecoverTimerRef.current)
@@ -3251,12 +3251,12 @@ function App() {
     if (!remote && inSession) notifyAction('tvStateChange', { subMode: 'youtube', youtubeUrl: clean })
   }
 
-  // Zapisuj tryb do localStorage przy ka┼╝dej zmianie
+  // Zapisuj tryb do localStorage przy każdej zmianie
   useEffect(() => {
     localStorage.setItem('hiphop-player-mode', mode)
   }, [mode])
 
-  // Zapisuj filtry do localStorage przy ka┼╝dej zmianie
+  // Zapisuj filtry do localStorage przy każdej zmianie
   useEffect(() => {
     localStorage.setItem('hiphop-player-trackfilters', JSON.stringify(filters))
   }, [filters])
@@ -3267,14 +3267,14 @@ function App() {
     if (!searchTerm.trim()) return
 
     if (!window.playerBridge?.searchYoutube) {
-      setTrackError('Wyszukiwanie YouTube dzia┼éa tylko po uruchomieniu przez Electron.')
+      setTrackError('Wyszukiwanie YouTube działa tylko po uruchomieniu przez Electron.')
       return
     }
 
     setTrackLoading(true)
     setTrackError('')
 
-    // Wykryj link do playlisty YouTube ÔÇö za┼éaduj wszystkie utwory
+    // Wykryj link do playlisty YouTube — załaduj wszystkie utwory
     const plId = extractYoutubePlaylistId(searchTerm.trim())
     if (plId && window.playerBridge.getPlaylist) {
       try {
@@ -3284,24 +3284,24 @@ function App() {
         if (tracks.length > 0) {
           const filtered = filterPlayableTracks(tracks)
           setSearchResults(filtered)
-          setActiveTrackQuery(`Playlista (${filtered.length} utwor├│w)`)
+          setActiveTrackQuery(`Playlista (${filtered.length} utworów)`)
           selectTrack(filtered[0], true, false)
-          if (err && tracks.length < 500) setTrackError(`Wczytano ${filtered.length} z mo┼╝liwych ÔÇö reszta niedost─Öpna.`)
+          if (err && tracks.length < 500) setTrackError(`Wczytano ${filtered.length} z możliwych — reszta niedostępna.`)
         } else {
-          if (err === 'quota') setTrackError('Przekroczono dzienny limit API YouTube. Spr├│buj za kilka godzin.')
-          else if (err === 'private') setTrackError('Playlista jest prywatna lub niedost─Öpna.')
+          if (err === 'quota') setTrackError('Przekroczono dzienny limit API YouTube. Spróbuj za kilka godzin.')
+          else if (err === 'private') setTrackError('Playlista jest prywatna lub niedostępna.')
           else if (err === 'not_found') setTrackError('Nie znaleziono playlisty pod tym adresem.')
-          else setTrackError('Nie uda┼éo si─Ö za┼éadowa─ç playlisty. Sprawd┼║ link i spr├│buj ponownie.')
+          else setTrackError('Nie udało się załadować playlisty. Sprawdź link i spróbuj ponownie.')
         }
       } catch {
-        setTrackError('B┼é─ůd po┼é─ůczenia podczas ┼éadowania playlisty.')
+        setTrackError('Błąd połączenia podczas ładowania playlisty.')
       } finally {
         setTrackLoading(false)
       }
       return
     }
 
-    // Wykryj link YouTube ÔÇö za┼éaduj konkretne wideo (dzia┼éa te┼╝ dla live)
+    // Wykryj link YouTube — załaduj konkretne wideo (działa też dla live)
     const ytId = extractYoutubeId(searchTerm.trim())
     if (ytId && window.playerBridge.getVideoById) {
       try {
@@ -3315,7 +3315,7 @@ function App() {
           setTrackError('Nie znaleziono wideo pod tym linkiem.')
         }
       } catch {
-        setTrackError('Nie uda┼éo si─Ö pobra─ç informacji o wideo.')
+        setTrackError('Nie udało się pobrać informacji o wideo.')
       } finally {
         setTrackLoading(false)
       }
@@ -3329,10 +3329,10 @@ function App() {
       setActiveTrackQuery(searchTerm)
 
       if (found.length === 0) {
-        setTrackError('Brak kr├│tkich pojedynczych utwor├│w. Zmie┼ä fraz─Ö i spr├│buj jeszcze raz.')
+        setTrackError('Brak krótkich pojedynczych utworów. Zmień frazę i spróbuj jeszcze raz.')
       }
     } catch {
-      setTrackError('Szukajka YouTube chwilowo nie odpowiedzia┼éa.')
+      setTrackError('Szukajka YouTube chwilowo nie odpowiedziała.')
     } finally {
       setTrackLoading(false)
     }
@@ -3340,7 +3340,7 @@ function App() {
 
   function selectStation(station, options = {}) {
     if (currentStation?.id && station?.id && currentStation.id === station.id) {
-      setRadioError('Ju┼╝ jeste┼Ť na tej stacji.')
+      setRadioError('Już jesteś na tej stacji.')
       return
     }
 
@@ -3373,25 +3373,25 @@ function App() {
         setStationStreamIndex((previous) => previous + 1)
         const checkedNow = stationStreamIndex + 1
         const tryingIndex = stationStreamIndex + 2
-        setRadioError(`Stream ${checkedNow}/${primaryTotal} nie dzia┼éa. Pr├│buj─Ö ${tryingIndex}/${primaryTotal}...`)
+        setRadioError(`Stream ${checkedNow}/${primaryTotal} nie działa. Próbuję ${tryingIndex}/${primaryTotal}...`)
         return
       }
 
       if (stationStreamIndex === primaryTotal - 1 && stationStreams.length > primaryTotal) {
         const nextEntry = stationStreams[primaryTotal]
         setStationStreamIndex(primaryTotal)
-        setRadioError(`Sprawdzi┼éem ${primaryTotal}/${primaryTotal}. Pr├│buj─Ö wariant ${nextEntry?.label || '128'}...`)
+        setRadioError(`Sprawdziłem ${primaryTotal}/${primaryTotal}. Próbuję wariant ${nextEntry?.label || '128'}...`)
         return
       }
 
       if (stationStreamIndex >= primaryTotal && stationStreamIndex < stationStreams.length - 1) {
         const nextEntry = stationStreams[stationStreamIndex + 1]
         setStationStreamIndex((previous) => previous + 1)
-        setRadioError(`Wariant ${currentRadioStreamEntry?.label || currentStation?.name || 'stacji'} nie dzia┼éa. Pr├│buj─Ö ${nextEntry?.label || 'nast─Öpny wariant'}...`)
+        setRadioError(`Wariant ${currentRadioStreamEntry?.label || currentStation?.name || 'stacji'} nie działa. Próbuję ${nextEntry?.label || 'następny wariant'}...`)
         return
       }
 
-      // Wszystkie streamy wyczerpane ÔÇö zatrzymaj i wyczy┼Ť─ç src
+      // Wszystkie streamy wyczerpane — zatrzymaj i wyczyść src
       if (audioRef.current) {
         audioRef.current.pause()
         audioRef.current.src = ''
@@ -3400,17 +3400,17 @@ function App() {
       setIsRadioPlaying(false)
       setIsRadioBuffering(false)
 
-      // Je┼Ťli go┼Ť─ç jest w sesji ÔÇö automatycznie spr├│buj ponownie po 5s (max 3 razy)
+      // Jeśli gość jest w sesji — automatycznie spróbuj ponownie po 5s (max 3 razy)
       if (inSession && !isHost && currentStation && sessionReconnectCountRef.current < 3) {
         sessionReconnectCountRef.current += 1
-        setRadioError(`Po┼é─ůczenie przerwane, ponawiam za 5s... (${sessionReconnectCountRef.current}/3)`)
+        setRadioError(`Połączenie przerwane, ponawiam za 5s... (${sessionReconnectCountRef.current}/3)`)
         if (sessionReconnectTimerRef.current) clearTimeout(sessionReconnectTimerRef.current)
         sessionReconnectTimerRef.current = setTimeout(() => {
           if (currentStation) selectStation(currentStation)
         }, 5000)
       } else {
         sessionReconnectCountRef.current = 0
-        setRadioError(`Nie mo┼╝na po┼é─ůczy─ç z ${currentStation?.name || 't─ů stacj─ů'}. Spr├│buj klikn─ů─ç stacj─Ö ponownie lub wybierz inn─ů.`)
+        setRadioError(`Nie można połączyć z ${currentStation?.name || 'tą stacją'}. Spróbuj kliknąć stację ponownie lub wybierz inną.`)
       }
     } finally {
       setIsSwitchingStationStream(false)
@@ -3499,7 +3499,7 @@ function App() {
     }
 
     if (!currentTrack?.url) {
-      setTrackError('Najpierw wybierz utw├│r z listy.')
+      setTrackError('Najpierw wybierz utwór z listy.')
       return
     }
 
@@ -3542,7 +3542,7 @@ function App() {
   async function handleTrackNext(autoplay = isTrackPlaying) {
     if (!checkPerm('canSkip')) return
 
-    // Kolejka sugestii ÔÇö host (lub poza sesj─ů) gra sugerowane w pierwszej kolejno┼Ťci
+    // Kolejka sugestii — host (lub poza sesją) gra sugerowane w pierwszej kolejności
     const currentQueue = inSession ? sessionSuggestions : localQueueRef.current
     if (currentQueue.length > 0 && (isHost || !inSession)) {
       const next = currentQueue[0]
@@ -3580,10 +3580,10 @@ function App() {
       if (appended.length > 0) {
         selectTrack(appended[0], autoplay, true)
       } else {
-        setTrackError('Brak kolejnych utwor├│w dla tej frazy. Spr├│buj innej wyszukiwarki.')
+        setTrackError('Brak kolejnych utworów dla tej frazy. Spróbuj innej wyszukiwarki.')
       }
     } catch {
-      setTrackError('Nie uda┼éo si─Ö pobra─ç kolejnych utwor├│w.')
+      setTrackError('Nie udało się pobrać kolejnych utworów.')
     } finally {
       setLoadingMoreTracks(false)
     }
@@ -3626,7 +3626,7 @@ function App() {
   function handleSeekTrack(event) {
     const nextTime = Number(event.target.value)
     seekValueRef.current = nextTime
-    // Aktualizuj wizual bezpo┼Ťrednio przez DOM ÔÇö zero re-render├│w podczas przeci─ůgania
+    // Aktualizuj wizual bezpośrednio przez DOM — zero re-renderów podczas przeciągania
     const dur = Math.max(trackDuration || currentTrack?.seconds || 0, 1)
     const pct = `${Math.min(100, (nextTime / dur) * 100).toFixed(3)}%`
     seekFillRef.current?.style.setProperty('--pct', pct)
@@ -3659,7 +3659,7 @@ function App() {
     const nextValue = Number.isFinite(Number(event.target.value))
       ? Math.min(100, Math.max(0, Math.round(Number(event.target.value)))) : 0
     pendingVolumeRef.current = nextValue
-    // Aktualizuj wizual i audio bezpo┼Ťrednio ÔÇö bez re-renderu
+    // Aktualizuj wizual i audio bezpośrednio — bez re-renderu
     const pct = `${nextValue}%`
     volumeFillRef.current?.style.setProperty('--pct', pct)
     volumeThumbRef.current?.style.setProperty('--pct', pct)
@@ -3796,22 +3796,22 @@ function App() {
     onActionNotification: (nick, type, payload) => {
       const sysVerb = {
         playPause: payload.playing
-          ? `ÔľÂ ${nick} wznowi┼é ${payload.mode === 'radio' ? 'radio' : 'odtwarzanie'}`
-          : `ÔĆŞ ${nick} wstrzyma┼é ${payload.mode === 'radio' ? 'radio' : 'odtwarzanie'}`,
-        trackChange: `­čÄÁ ${nick} w┼é─ůczy┼é: ${payload.title ?? ''}`,
-        modeChange: `­čöä ${nick} prze┼é─ůczy┼é na ${payload.mode === 'radio' ? 'Radio' : payload.mode === 'player' ? 'Player' : 'TV'}`,
-        stationChange: `­čô╗ ${nick} zmieni┼é stacj─Ö: ${payload.name ?? ''}`,
-        tvStateChange: `­čô║ ${nick} uruchomi┼é YouTube w TV`,
-        tvPlayPause: payload.playing ? `ÔľÂ ${nick} wznowi┼é TV` : `ÔĆŞ ${nick} wstrzyma┼é TV`,
-        tvSeek: `ÔĆę ${nick} przewin─ů┼é TV`,
+          ? `▶ ${nick} wznowił ${payload.mode === 'radio' ? 'radio' : 'odtwarzanie'}`
+          : `⏸ ${nick} wstrzymał ${payload.mode === 'radio' ? 'radio' : 'odtwarzanie'}`,
+        trackChange: `🎵 ${nick} włączył: ${payload.title ?? ''}`,
+        modeChange: `🔄 ${nick} przełączył na ${payload.mode === 'radio' ? 'Radio' : payload.mode === 'player' ? 'Player' : 'TV'}`,
+        stationChange: `📻 ${nick} zmienił stację: ${payload.name ?? ''}`,
+        tvStateChange: `📺 ${nick} uruchomił YouTube w TV`,
+        tvPlayPause: payload.playing ? `▶ ${nick} wznowił TV` : `⏸ ${nick} wstrzymał TV`,
+        tvSeek: `⏩ ${nick} przewinął TV`,
       }
       const text = sysVerb[type]
       if (text) sendSysMsgRef.current?.(text)
-      showSessionToast(text?.replace(/^[^ ]+ /, '') ?? `${nick} wykona┼é akcj─Ö`)
+      showSessionToast(text?.replace(/^[^ ]+ /, '') ?? `${nick} wykonał akcję`)
     },
   })
 
-  // Zawsze aktualny ref do sendSystemMessage (u┼╝ywany w onActionNotification przed inicjalizacj─ů)
+  // Zawsze aktualny ref do sendSystemMessage (używany w onActionNotification przed inicjalizacją)
   sendSysMsgRef.current = sendSystemMessage
 
   const handleItemSelect = useCallback((item) => {
@@ -3830,7 +3830,7 @@ function App() {
     if (!suggestedIds.has(item.id)) handleSuggest(item)
   }, [suggestedIds, handleSuggest])
 
-  // Reset po zako┼äczeniu sesji
+  // Reset po zakończeniu sesji
   useEffect(() => {
     if (!inSession) {
       setSuggestedIds(new Set())
@@ -3839,7 +3839,7 @@ function App() {
     }
   }, [inSession])
 
-  // Kolejka: w sesji u┼╝ywamy Firebase (sessionSuggestions), poza sesj─ů ÔÇö lokaln─ů
+  // Kolejka: w sesji używamy Firebase (sessionSuggestions), poza sesją — lokalną
   const activeQueue = inSession ? sessionSuggestions : localQueue
   localQueueRef.current = localQueue
 
@@ -3871,7 +3871,7 @@ function App() {
     }
   }
 
-  // Monopoly: auto-otw├│rz dla klienta gdy host zacznie gr─Ö
+  // Monopoly: auto-otwórz dla klienta gdy host zacznie grę
   const monopolyEndedRef = useRef(false)
   useEffect(() => {
     if (!sessionCode) {
@@ -3883,7 +3883,7 @@ function App() {
     const gRef = ref(db, `sessions/${sessionCode}/monopoly`)
     const unsub = onValue(gRef, (snap) => {
       const data = snap.val()
-      // Auto-open for color_pick AND playing ÔÇö once per session
+      // Auto-open for color_pick AND playing — once per session
       const shouldOpen = (data?.state === 'color_pick' || data?.state === 'playing') && !monopolyEndedRef.current
       if (shouldOpen && !monopolyAutoOpenedRef.current) {
         monopolyAutoOpenedRef.current = true
@@ -3914,7 +3914,7 @@ function App() {
     return () => unsub()
   }, [sessionCode]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Podobne: od┼Ťwie┼╝ gdy kolejka uro┼Ťnie o 3 elementy
+  // Podobne: odśwież gdy kolejka urośnie o 3 elementy
   useEffect(() => {
     if (activeQueue.length === 0) return
     if (activeQueue.length - lastSimilarQueueLengthRef.current >= 3) {
@@ -3923,7 +3923,7 @@ function App() {
     }
   }, [activeQueue.length])
 
-  // System messages dla do┼é─ůczenia/wyj┼Ťcia s┼éuchaczy (tylko host wysy┼éa)
+  // System messages dla dołączenia/wyjścia słuchaczy (tylko host wysyła)
   const prevListenersRef = useRef([])
   useEffect(() => {
     if (!inSession) { prevListenersRef.current = []; return }
@@ -3932,22 +3932,22 @@ function App() {
     if (isHost) {
       curr.forEach(l => {
         if (!prev.find(p => p.key === l.key))
-          sendSystemMessage(`­čĹĄ ${l.nickname} do┼é─ůczy┼é do sesji`)
+          sendSystemMessage(`👤 ${l.nickname} dołączył do sesji`)
       })
       prev.forEach(l => {
         if (!curr.find(c => c.key === l.key))
-          sendSystemMessage(`­čĹĄ ${l.nickname} opu┼Ťci┼é sesj─Ö`)
+          sendSystemMessage(`👤 ${l.nickname} opuścił sesję`)
       })
     }
     prevListenersRef.current = curr
   }, [sessionListeners]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Widoczno┼Ť─ç wiadomo┼Ťci systemowych (localStorage)
+  // Widoczność wiadomości systemowych (localStorage)
   const [showSystemMsgs, setShowSystemMsgs] = useState(
     () => localStorage.getItem('chat-show-sys') !== 'false'
   )
 
-  // Chat ÔÇö tick co sekund─Ö gdy kto┼Ť jest wyciszony (countdown)
+  // Chat — tick co sekundę gdy ktoś jest wyciszony (countdown)
   const [chatTick, setChatTick] = useState(0)
   useEffect(() => {
     const hasTimed = Object.values(chatMuted).some(m => !m.blocked && m.until && m.until > Date.now())
@@ -3956,7 +3956,7 @@ function App() {
     return () => clearInterval(id)
   }, [chatMuted])
 
-  // Chat ÔÇö auto-scroll i licznik nieprzeczytanych (ref zapobiega fa┼észywemu resetowi)
+  // Chat — auto-scroll i licznik nieprzeczytanych (ref zapobiega fałszywemu resetowi)
   const lastSeenChatCountRef = useRef(0)
   const lastSoundedChatCountRef = useRef(0)
   const myNicknameRef = useRef(myNickname)
@@ -3988,8 +3988,8 @@ function App() {
     }
   }, [libraryView]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Zak┼éadka Podobne ÔÇö ┼éaduj rekomendacje lokalnie
-  // Od┼Ťwie┼╝a si─Ö tylko przy: klikni─Öciu zak┼éadki LUB gdy kolejka uro┼Ťnie o 3 (refreshSimilarTrigger)
+  // Zakładka Podobne — ładuj rekomendacje lokalnie
+  // Odświeża się tylko przy: kliknięciu zakładki LUB gdy kolejka urośnie o 3 (refreshSimilarTrigger)
   useEffect(() => {
     if (libraryView !== 'similar') return
     let cancelled = false
@@ -3999,7 +3999,7 @@ function App() {
         if (mode === 'player') {
           const queue = localQueueRef.current
           const track = currentTrack
-          // Bazuj na kolejce je┼Ťli ma elementy, inaczej na aktualnym utworze
+          // Bazuj na kolejce jeśli ma elementy, inaczej na aktualnym utworze
           const sourceItems = queue.length > 0 ? queue : (track ? [track] : [])
           if (sourceItems.length === 0) { if (!cancelled) setSimilarLoading(false); return }
           const queueIds = new Set(queue.map((i) => i.id))
@@ -4044,7 +4044,7 @@ function App() {
     return () => { cancelled = true }
   }, [libraryView, refreshSimilarTrigger]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Poka┼╝ modal gdy sesja zako┼äczona z b┼é─Ödem
+  // Pokaż modal gdy sesja zakończona z błędem
   useEffect(() => {
     if (togetherError) {
       soundSessionEnd()
@@ -4052,7 +4052,7 @@ function App() {
     }
   }, [togetherError])
 
-  // D┼║wi─Ök zmiany trybu
+  // Dźwięk zmiany trybu
   const prevModeRef = useRef(null)
   useEffect(() => {
     if (prevModeRef.current === null) { prevModeRef.current = mode; return }
@@ -4062,7 +4062,7 @@ function App() {
     else if (mode === 'player') soundSwitchPlayer()
   }, [mode])
 
-  // D┼║wi─Ök do┼é─ůczenia/wyj┼Ťcia z sesji (tylko gdy w sesji)
+  // Dźwięk dołączenia/wyjścia z sesji (tylko gdy w sesji)
   const prevListenerCountRef = useRef(null)
   useEffect(() => {
     if (!inSession) { prevListenerCountRef.current = null; return }
@@ -4072,7 +4072,7 @@ function App() {
     prevListenerCountRef.current = listenerCount
   }, [listenerCount, inSession])
 
-  // D┼║wi─Ök gdy dostaniemy nowe uprawnienie (go┼Ť─ç)
+  // Dźwięk gdy dostaniemy nowe uprawnienie (gość)
   const prevPermsRef = useRef(null)
   useEffect(() => {
     if (!inSession || isHost) { prevPermsRef.current = null; return }
@@ -4085,7 +4085,7 @@ function App() {
     prevPermsRef.current = { ...curr }
   }, [myPermissions, inSession, isHost])
 
-  // D┼║wi─Ök zatrzymania radia
+  // Dźwięk zatrzymania radia
   const prevRadioPlayingRef = useRef(null)
   useEffect(() => {
     if (prevRadioPlayingRef.current === null) { prevRadioPlayingRef.current = isRadioPlaying; return }
@@ -4093,7 +4093,7 @@ function App() {
     prevRadioPlayingRef.current = isRadioPlaying
   }, [isRadioPlaying])
 
-  // D┼║wi─Ök zatrzymania playera
+  // Dźwięk zatrzymania playera
   const prevTrackPlayingRef = useRef(null)
   useEffect(() => {
     if (prevTrackPlayingRef.current === null) { prevTrackPlayingRef.current = isTrackPlaying; return }
@@ -4105,15 +4105,15 @@ function App() {
     const parts = raw.trim().split(/\s+/)
     const cmd = parts[0].toLowerCase()
     const args = parts.slice(1)
-    const noPerms = () => showSessionToast('Brak uprawnie┼ä do tej komendy.')
-    const hostOnly = () => showSessionToast('Tylko host mo┼╝e u┼╝y─ç tej komendy.')
+    const noPerms = () => showSessionToast('Brak uprawnień do tej komendy.')
+    const hostOnly = () => showSessionToast('Tylko host może użyć tej komendy.')
     const isMod = isHost || (myPermissions.canPlay && myPermissions.canSkip && myPermissions.canAdd)
 
     switch (cmd) {
       case '/clear':
         if (!isHost) return hostOnly()
         clearChat()
-        sendSystemMessage(`­čŚĹ´ŞĆ ${myNickname} wyczyszci┼é czat`)
+        sendSystemMessage(`🗑️ ${myNickname} wyczyszcił czat`)
         return
       case '/next':
         if (!checkPerm('canSkip')) return noPerms()
@@ -4151,17 +4151,17 @@ function App() {
         if (!isHost) return hostOnly()
         const nick = args[0]
         const secs = parseInt(args[1]) || 30
-        if (!nick) return showSessionToast('U┼╝ycie: /mute [nick] [sekundy]')
+        if (!nick) return showSessionToast('Użycie: /mute [nick] [sekundy]')
         muteChatUser(nick, secs)
-        sendSystemMessage(`­čöç ${nick} zosta┼é wyciszony na ${secs}s`)
+        sendSystemMessage(`🔇 ${nick} został wyciszony na ${secs}s`)
         return
       }
       case '/unmute': {
         if (!isHost) return hostOnly()
         const nick = args[0]
-        if (!nick) return showSessionToast('U┼╝ycie: /unmute [nick]')
+        if (!nick) return showSessionToast('Użycie: /unmute [nick]')
         unblockChatUser(nick)
-        sendSystemMessage(`­čöŐ ${nick} zosta┼é odciszony`)
+        sendSystemMessage(`🔊 ${nick} został odciszony`)
         return
       }
       case '/me': {
@@ -4174,32 +4174,32 @@ function App() {
       case '/msg': {
         const target = args[0]
         const text = args.slice(1).join(' ')
-        if (!target || !text) return showSessionToast('U┼╝ycie: /msg [nick] [wiadomo┼Ť─ç]')
+        if (!target || !text) return showSessionToast('Użycie: /msg [nick] [wiadomość]')
         sendChatMessage(text, false, target)
         return
       }
       case '/r': {
         const text = args.join(' ')
-        if (!text) return showSessionToast('U┼╝ycie: /r [wiadomo┼Ť─ç]')
+        if (!text) return showSessionToast('Użycie: /r [wiadomość]')
         if (!lastPmSenderRef.current) return showSessionToast('Brak ostatniego PM do odpowiedzi.')
         sendChatMessage(text, false, lastPmSenderRef.current)
         return
       }
       case '/vol': {
         const v = parseInt(args[0])
-        if (isNaN(v) || v < 0 || v > 100) return showSessionToast('U┼╝ycie: /vol [0-100]')
+        if (isNaN(v) || v < 0 || v > 100) return showSessionToast('Użycie: /vol [0-100]')
         setVolumePercent(v)
-        showSessionToast(`­čöŐ G┼éo┼Ťno┼Ť─ç: ${v}%`)
+        showSessionToast(`🔊 Głośność: ${v}%`)
         return
       }
       case '/queue':
-        showSessionToast(`Kolejka: ${activeQueue.length} ${activeQueue.length === 1 ? 'utw├│r' : 'utwor├│w'}`)
+        showSessionToast(`Kolejka: ${activeQueue.length} ${activeQueue.length === 1 ? 'utwór' : 'utworów'}`)
         return
       case '/sys':
         setShowSystemMsgs(v => {
           const next = !v
           localStorage.setItem('chat-show-sys', String(next))
-          showSessionToast(next ? 'Ôťů Wiadomo┼Ťci systemowe w┼é─ůczone' : '­čÜź Wiadomo┼Ťci systemowe wy┼é─ůczone')
+          showSessionToast(next ? '✅ Wiadomości systemowe włączone' : '🚫 Wiadomości systemowe wyłączone')
           return next
         })
         return
@@ -4207,7 +4207,7 @@ function App() {
         showSessionToast('/clear /next /stop /pause /play /mute /unmute /me /msg /r /vol /queue /sys')
         return
       default:
-        showSessionToast(`Nieznana komenda: ${cmd}. Wpisz /help po list─Ö.`)
+        showSessionToast(`Nieznana komenda: ${cmd}. Wpisz /help po listę.`)
     }
   }
 
@@ -4367,7 +4367,7 @@ function App() {
             seekBufferRef.current?.style.setProperty('--buf', `${(loaded * 100).toFixed(2)}%`)
           }}
           onPlay={() => setIsTrackPlaying(true)}
-          onPause={() => {/* YouTube odpala onPause przy bufferowaniu ÔÇö ignoruj */}}
+          onPause={() => {/* YouTube odpala onPause przy bufferowaniu — ignoruj */}}
           onDurationChange={(d) => setTrackDuration(Number(d) || 0)}
           onEnded={() => handleTrackNext(true)}
           onError={async () => {
@@ -4390,12 +4390,12 @@ function App() {
             setIsTrackPlaying(false)
             const ok = await window.playerBridge?.youtubeCheckLogin?.()
             if (!ok) setTrackError('__yt_login__')
-            else setTrackError('Ten utw├│r nie daje si─Ö odtworzy─ç (prywatny lub usuni─Öty). Wybierz inny.')
+            else setTrackError('Ten utwór nie daje się odtworzyć (prywatny lub usunięty). Wybierz inny.')
           }}
         />
       )}
 
-      {/* T┼éo aplikacji ÔÇö orby reaguj─ůce na muzyk─Ö */}
+      {/* Tło aplikacji — orby reagujące na muzykę */}
       <canvas
         ref={bgCanvasRef}
         style={{ position: 'fixed', inset: 0, width: '100%', height: '100%', zIndex: -1, pointerEvents: 'none' }}
@@ -4443,7 +4443,7 @@ function App() {
           <button
             className={`together-btn${inSession ? ' active' : ''}`}
             onClick={() => setSessionModalOpen(v => !v)}
-            title="S┼éuchaj razem"
+            title="Słuchaj razem"
           >
             <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/></svg>
             {inSession && <span className="together-count">{listenerCount}</span>}
@@ -4453,21 +4453,21 @@ function App() {
               className={`together-btn${lyricsVisible ? ' active' : ''}`}
               onClick={() => setLyricsVisible(v => !v)}
               title="Tekst piosenki"
-            >­čÄĄ</button>
+            >🎤</button>
           )}
           {inSession && (
             <button
               className={`together-btn game-btn${gameState === 'playing' ? ' active' : ''}`}
               onClick={() => gameState === 'playing' ? setMonopolyOpen(true) : setGameLobbyOpen(v => !v)}
               title="Monopoly"
-            >­čÄ▓</button>
+            >🎲</button>
           )}
           {window.playerBridge && (
             <button
               className={`together-btn${tvActiveDevice ? ' casting' : tvCastOpen ? ' active' : ''}`}
               onClick={() => setTvCastOpen(v => !v)}
-              title={tvActiveDevice ? `Na ┼╝ywo: ${tvActiveDevice.name}` : 'Otw├│rz Radio na TV'}
-            >ß»Ą{tvActiveDevice && <span className="together-count casting-dot">ÔŚĆ</span>}</button>
+              title={tvActiveDevice ? `Na żywo: ${tvActiveDevice.name}` : 'Otwórz Radio na TV'}
+            >ᯤ{tvActiveDevice && <span className="together-count casting-dot">●</span>}</button>
           )}
         </div>
       </header>
@@ -4501,12 +4501,12 @@ function App() {
                 {mode === 'radio' && currentStation && (
                   <div className="radio-track-timeline">
                     <p key={radioNowPlaying} className="stage-nowplaying"
-                      title={radioNowPlaying ? 'Kliknij aby skopiowa─ç' : undefined}
+                      title={radioNowPlaying ? 'Kliknij aby skopiować' : undefined}
                       style={radioNowPlaying ? { cursor: 'pointer' } : undefined}
                       onClick={() => {
                         if (!radioNowPlaying) return
                         navigator.clipboard?.writeText(radioNowPlaying)
-                        showSessionToast('­čôő Skopiowano: ' + radioNowPlaying)
+                        showSessionToast('📋 Skopiowano: ' + radioNowPlaying)
                       }}
                     >
                       {radioNowPlaying ? (
@@ -4521,15 +4521,15 @@ function App() {
                       ) : 'Teraz gra: brak metadanych od stacji'}
                     </p>
                     <p className={`radio-track-prev${radioPlayHistory.length === 0 ? ' radio-track-prev--empty' : ''}`}
-                      title={radioPlayHistory.length > 0 ? 'Kliknij aby skopiowa─ç' : undefined}
+                      title={radioPlayHistory.length > 0 ? 'Kliknij aby skopiować' : undefined}
                       style={radioPlayHistory.length > 0 ? { cursor: 'pointer' } : undefined}
                       onClick={() => {
                         if (!radioPlayHistory[0]) return
                         navigator.clipboard?.writeText(radioPlayHistory[0])
-                        showSessionToast('­čôő Skopiowano: ' + radioPlayHistory[0])
+                        showSessionToast('📋 Skopiowano: ' + radioPlayHistory[0])
                       }}
                     >
-                      <span className="radio-track-prev-label">Wcze┼Ťniej gra┼éo: </span>
+                      <span className="radio-track-prev-label">Wcześniej grało: </span>
                       {radioPlayHistory[0] || ''}
                     </p>
                   </div>
@@ -4545,13 +4545,13 @@ function App() {
           {mode === 'tv' && (
             <div className="tv-stage">
               <div className="tv-submode-bar">
-                <button className={`tv-submode-btn${tvSubMode === 'channels' ? ' active' : ''}`} onClick={() => setTvSubMode('channels')}>­čô║ Kana┼éy</button>
+                <button className={`tv-submode-btn${tvSubMode === 'channels' ? ' active' : ''}`} onClick={() => setTvSubMode('channels')}>📺 Kanały</button>
                 <button className={`tv-submode-btn${tvSubMode === 'youtube' ? ' active' : ''}`} onClick={() => {
                   if (!checkPerm('canAdd')) return
                   setTvSubMode('youtube')
                   setCurrentTvChannel(null)
                   if (inSession) notifyAction('tvStateChange', { subMode: 'youtube', youtubeUrl: tvYoutubeUrl || '' })
-                }}>ÔľÂ YouTube</button>
+                }}>▶ YouTube</button>
              
               </div>
               {tvSubMode === 'youtube' && (
@@ -4566,7 +4566,7 @@ function App() {
                   <button
                     className="tv-yt-play-btn"
                     onClick={() => { if (isValidYoutubeUrl(tvYoutubeInput)) applyTvYoutubeUrl(tvYoutubeInput) }}
-                  >ÔľÂ</button>
+                  >▶</button>
                 </div>
               )}
               <div ref={tvPlayerWrapRef} className="tv-player-wrap">
@@ -4599,17 +4599,17 @@ function App() {
 
                   return (
                     <>
-                      {expanded && <div className="tv-placeholder"><span className="tv-placeholder-icon">­čô║</span><span>{currentTvChannel.name}</span></div>}
+                      {expanded && <div className="tv-placeholder"><span className="tv-placeholder-icon">📺</span><span>{currentTvChannel.name}</span></div>}
                       {playerEl}
                       {expanded
                         ? createPortal(
                           <div style={{ position: 'fixed', inset: 0, zIndex: 2147483647, background: 'transparent' }} className="tv-fs-portal">
-                            <button className="tv-fs-close" title="Zamknij (Esc)" onClick={exitExpand}>ÔťĽ</button>
+                            <button className="tv-fs-close" title="Zamknij (Esc)" onClick={exitExpand}>✕</button>
                             <div className="tv-fs-bar">
-                              <span className="tv-fs-channel">­čô║ {currentTvChannel.name}</span>
+                              <span className="tv-fs-channel">📺 {currentTvChannel.name}</span>
                               <div style={{ flex: 1 }} />
                               <div className="tv-fs-vol">
-                                <button className="tv-fs-vol-icon" title="Wycisz/W┼é─ůcz"
+                                <button className="tv-fs-vol-icon" title="Wycisz/Włącz"
                                   onClick={() => setVolumePercent(v => v === 0 ? 35 : 0)}>
                                   {volumePercent === 0
                                     ? <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M16.5 12A4.5 4.5 0 0 0 14 7.97v2.21l2.45 2.45c.03-.2.05-.41.05-.63zm2.5 0c0 .94-.2 1.82-.54 2.64l1.51 1.51A8.796 8.796 0 0 0 21 12c0-4.28-3-7.86-7-8.77v2.06c2.89.86 5 3.54 5 6.71zM4.27 3L3 4.27 7.73 9H3v6h4l5 5v-6.73l4.25 4.25c-.67.52-1.42.93-2.25 1.18v2.06A8.99 8.99 0 0 0 17.73 18l1.98 2L21 18.73 4.27 3zM12 4L9.91 6.09 12 8.18V4z"/></svg>
@@ -4626,7 +4626,7 @@ function App() {
                                 />
                                 <span className="tv-fs-vol-num">{volumePercent}%</span>
                               </div>
-                              <button className="tv-fs-btn" title={tvExpandMode === 'app' ? 'Wyjd┼║ z monitora' : 'Pe┼ény ekran monitora'}
+                              <button className="tv-fs-btn" title={tvExpandMode === 'app' ? 'Wyjdź z monitora' : 'Pełny ekran monitora'}
                                 onClick={() => {
                                   if (tvExpandMode === 'app') {
                                     setTvExpandMode('monitor')
@@ -4638,7 +4638,7 @@ function App() {
                                 }}>
                                 {tvExpandMode === 'monitor'
                                   ? <><svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M5 16h3v3h2v-5H5v2zm3-8H5v2h5V5H8v3zm6 11h2v-3h3v-2h-5v5zm2-11V5h-2v5h5V8h-3z"/></svg><span>Tryb aplikacji</span></>
-                                  : <><svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M3 5v4h2V5h4V3H5C3.9 3 3 3.9 3 5zm2 10H3v4c0 1.1.9 2 2 2h4v-2H5v-4zm14 4h-4v2h4c1.1 0 2-.9 2-2v-4h-2v4zm0-16h-4v2h4v4h2V5c0-1.1-.9-2-2-2z"/></svg><span>Pe┼ény monitor</span></>}
+                                  : <><svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M3 5v4h2V5h4V3H5C3.9 3 3 3.9 3 5zm2 10H3v4c0 1.1.9 2 2 2h4v-2H5v-4zm14 4h-4v2h4c1.1 0 2-.9 2-2v-4h-2v4zm0-16h-4v2h4v4h2V5c0-1.1-.9-2-2-2z"/></svg><span>Pełny monitor</span></>}
                               </button>
                               <button className="tv-fs-btn tv-fs-exit-btn" onClick={exitExpand}>
                                 <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
@@ -4651,12 +4651,12 @@ function App() {
                         : (
                           <div className="tv-inline-controls">
                             <button className="tv-exp-btn" style={{ right: 56 }}
-                              title="Pe┼éna aplikacja"
+                              title="Pełna aplikacja"
                               onClick={() => setTvExpandMode('app')}>
                               <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z"/></svg>
                             </button>
                             <button className="tv-exp-btn" style={{ right: 12 }}
-                              title="Pe┼ény ekran monitora"
+                              title="Pełny ekran monitora"
                               onClick={() => { setTvExpandMode('monitor'); window.playerBridge?.setWindowFullscreen?.(true) }}>
                               <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M3 5v4h2V5h4V3H5C3.9 3 3 3.9 3 5zm2 10H3v4c0 1.1.9 2 2 2h4v-2H5v-4zm14 4h-4v2h4c1.1 0 2-.9 2-2v-4h-2v4zm0-16h-4v2h4v4h2V5c0-1.1-.9-2-2-2z"/></svg>
                             </button>
@@ -4669,8 +4669,8 @@ function App() {
                   const embedUrl = getYoutubeEmbedUrl(tvYoutubeUrl)
                   if (!embedUrl) return (
                     <div className="tv-error-overlay">
-                      <span>ÔÜá Nie uda┼éo si─Ö odczyta─ç linku YouTube</span>
-                      <button onClick={() => { setTvYoutubeUrl(''); setTvYoutubeInput('') }}>Wyczy┼Ť─ç</button>
+                      <span>⚠ Nie udało się odczytać linku YouTube</span>
+                      <button onClick={() => { setTvYoutubeUrl(''); setTvYoutubeInput('') }}>Wyczyść</button>
                     </div>
                   )
                   const expanded = tvExpandMode !== 'normal'
@@ -4683,7 +4683,7 @@ function App() {
                       if (doc.getElementById('app-yt-css')) return
                       const s = doc.createElement('style')
                       s.id = 'app-yt-css'
-                      // controls=0 ukrywa chrome-bottom; te selektory usuwaj─ů reszt─Ö nak┼éadek
+                      // controls=0 ukrywa chrome-bottom; te selektory usuwają resztę nakładek
                       s.textContent = `
                         .ytp-title, .ytp-title-text, .ytp-title-link,
                         .ytp-watermark,
@@ -4706,8 +4706,8 @@ function App() {
                     setTvYtCc(p => !p)
                   }
 
-                  // iframe ZAWSZE w tym samym miejscu DOM ÔÇö tylko styl si─Ö zmienia
-                  // Dzi─Öki temu React nie odmontowuje przy expand i video nie restartuje
+                  // iframe ZAWSZE w tym samym miejscu DOM — tylko styl się zmienia
+                  // Dzięki temu React nie odmontowuje przy expand i video nie restartuje
                   return (
                     <>
                       <iframe
@@ -4730,13 +4730,13 @@ function App() {
                         }}
                       />
 
-                      {/* Tryb normalny ÔÇö CC u g├│ry + expand u do┼éu */}
+                      {/* Tryb normalny — CC u góry + expand u dołu */}
                       {!expanded && (
                         <>
                           <button
                             className={`tv-exp-btn tv-yt-cc-btn${tvYtCc ? ' active' : ''}`}
                             style={{ top: 14, right: 14, bottom: 'auto' }}
-                            title={tvYtCc ? 'Wy┼é─ůcz napisy' : 'W┼é─ůcz napisy'}
+                            title={tvYtCc ? 'Wyłącz napisy' : 'Włącz napisy'}
                             onClick={handleCc}
                           >
                             <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M20 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm-9 7H9.5v-.5h-2v3h2V13H11v1c0 .55-.45 1-1 1H7c-.55 0-1-.45-1-1v-4c0-.55.45-1 1-1h3c.55 0 1 .45 1 1v1zm7 0h-1.5v-.5h-2v3h2V13H18v1c0 .55-.45 1-1 1h-3c-.55 0-1-.45-1-1v-4c0-.55.45-1 1-1h3c.55 0 1 .45 1 1v1z"/></svg>
@@ -4744,12 +4744,12 @@ function App() {
                           </button>
                           <div className="tv-inline-controls">
                             <button className="tv-exp-btn" style={{ right: 56 }}
-                              title="Pe┼éna aplikacja"
+                              title="Pełna aplikacja"
                               onClick={() => setTvExpandMode('app')}>
                               <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z"/></svg>
                             </button>
                             <button className="tv-exp-btn" style={{ right: 12 }}
-                              title="Pe┼ény ekran monitora"
+                              title="Pełny ekran monitora"
                               onClick={() => { setTvExpandMode('monitor'); window.playerBridge?.setWindowFullscreen?.(true) }}>
                               <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M3 5v4h2V5h4V3H5C3.9 3 3 3.9 3 5zm2 10H3v4c0 1.1.9 2 2 2h4v-2H5v-4zm14 4h-4v2h4c1.1 0 2-.9 2-2v-4h-2v4zm0-16h-4v2h4v4h2V5c0-1.1-.9-2-2-2z"/></svg>
                             </button>
@@ -4757,25 +4757,25 @@ function App() {
                         </>
                       )}
 
-                      {/* Tryb rozszerzony ÔÇö tylko kontrolki w portalu, iframe jest fixed powy┼╝ej */}
+                      {/* Tryb rozszerzony — tylko kontrolki w portalu, iframe jest fixed powyżej */}
                       {expanded && createPortal(
                         <div style={{ position: 'fixed', inset: 0, zIndex: 2147483647, background: 'transparent', pointerEvents: 'none' }} className="tv-fs-portal">
-                          <button className="tv-fs-close" style={{ pointerEvents: 'auto' }} title="Zamknij (Esc)" onClick={exitExpand}>ÔťĽ</button>
+                          <button className="tv-fs-close" style={{ pointerEvents: 'auto' }} title="Zamknij (Esc)" onClick={exitExpand}>✕</button>
                           <div className="tv-fs-bar" style={{ pointerEvents: 'auto' }}>
-                            <span className="tv-fs-channel">ÔľÂ {tvYtTitle || 'YouTube'}</span>
+                            <span className="tv-fs-channel">▶ {tvYtTitle || 'YouTube'}</span>
                             <div style={{ flex: 1 }} />
                             {/* CC w pasku fullscreen */}
                             <button
                               className={`tv-fs-btn${tvYtCc ? ' active' : ''}`}
                               style={tvYtCc ? { background: 'rgba(91,141,240,0.25)', borderColor: 'rgba(91,141,240,0.6)', color: '#8eb4ff' } : undefined}
                               onClick={handleCc}
-                              title={tvYtCc ? 'Wy┼é─ůcz napisy' : 'W┼é─ůcz napisy'}
+                              title={tvYtCc ? 'Wyłącz napisy' : 'Włącz napisy'}
                             >
                               <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M20 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm-9 7H9.5v-.5h-2v3h2V13H11v1c0 .55-.45 1-1 1H7c-.55 0-1-.45-1-1v-4c0-.55.45-1 1-1h3c.55 0 1 .45 1 1v1zm7 0h-1.5v-.5h-2v3h2V13H18v1c0 .55-.45 1-1 1h-3c-.55 0-1-.45-1-1v-4c0-.55.45-1 1-1h3c.55 0 1 .45 1 1v1z"/></svg>
                               <span>CC</span>
                             </button>
                             <div className="tv-fs-vol">
-                              <button className="tv-fs-vol-icon" title="Wycisz/W┼é─ůcz" onClick={() => setVolumePercent(v => v === 0 ? 35 : 0)}>
+                              <button className="tv-fs-vol-icon" title="Wycisz/Włącz" onClick={() => setVolumePercent(v => v === 0 ? 35 : 0)}>
                                 {volumePercent === 0
                                   ? <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M16.5 12A4.5 4.5 0 0 0 14 7.97v2.21l2.45 2.45c.03-.2.05-.41.05-.63zm2.5 0c0 .94-.2 1.82-.54 2.64l1.51 1.51A8.796 8.796 0 0 0 21 12c0-4.28-3-7.86-7-8.77v2.06c2.89.86 5 3.54 5 6.71zM4.27 3L3 4.27 7.73 9H3v6h4l5 5v-6.73l4.25 4.25c-.67.52-1.42.93-2.25 1.18v2.06A8.99 8.99 0 0 0 17.73 18l1.98 2L21 18.73 4.27 3zM12 4L9.91 6.09 12 8.18V4z"/></svg>
                                   : volumePercent < 50
@@ -4789,14 +4789,14 @@ function App() {
                               />
                               <span className="tv-fs-vol-num">{volumePercent}%</span>
                             </div>
-                            <button className="tv-fs-btn" title={tvExpandMode === 'app' ? 'Pe┼ény monitor' : 'Tryb aplikacji'}
+                            <button className="tv-fs-btn" title={tvExpandMode === 'app' ? 'Pełny monitor' : 'Tryb aplikacji'}
                               onClick={() => {
                                 if (tvExpandMode === 'app') { setTvExpandMode('monitor'); window.playerBridge?.setWindowFullscreen?.(true) }
                                 else { setTvExpandMode('app'); window.playerBridge?.setWindowFullscreen?.(false) }
                               }}>
                               {tvExpandMode === 'monitor'
                                 ? <><svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M5 16h3v3h2v-5H5v2zm3-8H5v2h5V5H8v3zm6 11h2v-3h3v-2h-5v5zm2-11V5h-2v5h5V8h-3z"/></svg><span>Tryb aplikacji</span></>
-                                : <><svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M3 5v4h2V5h4V3H5C3.9 3 3 3.9 3 5zm2 10H3v4c0 1.1.9 2 2 2h4v-2H5v-4zm14 4h-4v2h4c1.1 0 2-.9 2-2v-4h-2v4zm0-16h-4v2h4v4h2V5c0-1.1-.9-2-2-2z"/></svg><span>Pe┼ény monitor</span></>}
+                                : <><svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M3 5v4h2V5h4V3H5C3.9 3 3 3.9 3 5zm2 10H3v4c0 1.1.9 2 2 2h4v-2H5v-4zm14 4h-4v2h4c1.1 0 2-.9 2-2v-4h-2v4zm0-16h-4v2h4v4h2V5c0-1.1-.9-2-2-2z"/></svg><span>Pełny monitor</span></>}
                             </button>
                             <button className="tv-fs-btn tv-fs-exit-btn" onClick={exitExpand}>
                               <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
@@ -4816,8 +4816,8 @@ function App() {
                         <span className="tv-placeholder-icon">
                           <svg width="52" height="52" viewBox="0 0 24 24" fill="currentColor"><path d="M21 3H3c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h5v2h8v-2h5c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 14H3V5h18v12z"/></svg>
                         </span>
-                        <span className="tv-placeholder-title">Wybierz kana┼é z listy po prawej</span>
-                        <span className="tv-placeholder-sub">Kliknij na kana┼é aby rozpocz─ů─ç odtwarzanie</span>
+                        <span className="tv-placeholder-title">Wybierz kanał z listy po prawej</span>
+                        <span className="tv-placeholder-sub">Kliknij na kanał aby rozpocząć odtwarzanie</span>
                       </>
                     ) : (
                       <>
@@ -4832,16 +4832,16 @@ function App() {
                 )}
               </div>
               <div className="info-strip info-strip-tv">
-                <span>{tvSubMode === 'youtube' ? 'YouTube TV' : 'Kana┼éy TV'}</span>
+                <span>{tvSubMode === 'youtube' ? 'YouTube TV' : 'Kanały TV'}</span>
                 <span>
                   {tvSubMode === 'youtube'
-                    ? (tvYtTitle || (tvYoutubeUrl ? '┼üadowanie danych filmu...' : 'Wklej link YouTube'))
-                    : (currentTvChannel?.name || 'Wybierz kana┼é')}
+                    ? (tvYtTitle || (tvYoutubeUrl ? 'Ładowanie danych filmu...' : 'Wklej link YouTube'))
+                    : (currentTvChannel?.name || 'Wybierz kanał')}
                 </span>
                 <span className="info-strip-dot">
                   {tvSubMode === 'youtube'
-                    ? (tvYtPlaying ? 'ÔŚĆ Na ┼╝ywo' : 'ÔŚő Stop')
-                    : (tvIsPlaying ? 'ÔŚĆ Na ┼╝ywo' : 'ÔŚő Stop')}
+                    ? (tvYtPlaying ? '● Na żywo' : '○ Stop')
+                    : (tvIsPlaying ? '● Na żywo' : '○ Stop')}
                 </span>
                 <span className="info-strip-online"><i className="online-dot" />{onlineCount} online</span>
               </div>
@@ -4873,7 +4873,7 @@ function App() {
                   <span className="stage-clock-sep" />
                   <span className="stage-clock-now">
                     <span className="weather-icon">{weatherIcon(weather.code)}</span>
-                    <span className="weather-temp">{weather.temp}┬░C</span>
+                    <span className="weather-temp">{weather.temp}°C</span>
                     <span className="weather-city">Warszawa</span>
                   </span>
                   <span className="stage-clock-sep" />
@@ -4885,8 +4885,8 @@ function App() {
                         </span>
                         <span className="forecast-icon">{weatherIcon(day.code)}</span>
                         <span className="forecast-temps">
-                          <span className="forecast-max">{day.max}┬░</span>
-                          <span className="forecast-min">{day.min}┬░</span>
+                          <span className="forecast-max">{day.max}°</span>
+                          <span className="forecast-min">{day.min}°</span>
                         </span>
                       </span>
                     ))}
@@ -4900,7 +4900,7 @@ function App() {
                 {tvActiveDevice && mode === 'player' && (
                   <div className="cast-streaming-overlay">
                     <span className="cast-streaming-dot" />
-                    Streaming Ôćĺ {tvActiveDevice.name}
+                    Streaming → {tvActiveDevice.name}
                   </div>
                 )}
                 {mode === 'player' && (
@@ -4930,9 +4930,9 @@ function App() {
                     {fallbackStationName ? (
                       <>
                         <span className="radio-viz-hint-line">
-                          Radio <span className="radio-viz-hint-station">{fallbackStationName}</span> nie dzia┼éa
+                          Radio <span className="radio-viz-hint-station">{fallbackStationName}</span> nie działa
                         </span>
-                        <span className="radio-viz-hint-line secondary">Odpalamy stacj─Ö podstawow─ů</span>
+                        <span className="radio-viz-hint-line secondary">Odpalamy stację podstawową</span>
                       </>
                     ) : radioVisualizerStatus}
                   </p>
@@ -4957,26 +4957,26 @@ function App() {
             {mode === 'radio' ? (
               <>
                 <span>{countryFlagEmoji(currentStation?.countryCode)} {currentStation?.country || 'Online'}</span>
-                <span>{(currentStation?.codec || 'STREAM').toUpperCase()} ┬Ě {currentStation?.bitrate ? `${currentStation.bitrate} kbps` : 'Auto'}</span>
+                <span>{(currentStation?.codec || 'STREAM').toUpperCase()} · {currentStation?.bitrate ? `${currentStation.bitrate} kbps` : 'Auto'}</span>
                 {currentStation?.language ? <span>{currentStation.language}</span> : null}
-                {currentStation?.votes > 0 ? <span>ÔÖą {currentStation.votes > 999 ? `${(currentStation.votes / 1000).toFixed(1)}k` : currentStation.votes}</span> : null}
+                {currentStation?.votes > 0 ? <span>♥ {currentStation.votes > 999 ? `${(currentStation.votes / 1000).toFixed(1)}k` : currentStation.votes}</span> : null}
                 {currentStation?.tags ? <span>{currentStation.tags.split(',')[0].trim()}</span> : null}
-                <span className="info-strip-dot">{isRadioVisualLoading ? 'ÔŚő Buforuje' : isRadioPlaying ? 'ÔŚĆ Na ┼╝ywo' : 'ÔŚő Stop'}</span>
+                <span className="info-strip-dot">{isRadioVisualLoading ? '○ Buforuje' : isRadioPlaying ? '● Na żywo' : '○ Stop'}</span>
                 <span className="info-strip-online"><i className="online-dot" />{onlineCount} online</span>
               </>
             ) : (
               <>
                 {currentTrack && isTrackReady && trackDuration > 0 ? (
-                  <span className="info-strip-remaining">Ôłĺ{formatSeconds(Math.max(0, trackDuration - trackTime))}</span>
+                  <span className="info-strip-remaining">−{formatSeconds(Math.max(0, trackDuration - trackTime))}</span>
                 ) : (
-                  <span className="info-strip-remaining">{currentTrack?.duration || 'ÔÇö'}</span>
+                  <span className="info-strip-remaining">{currentTrack?.duration || '—'}</span>
                 )}
                 {currentTrack ? (
                   <span>#{visibleTracks.findIndex((t) => t.id === currentTrack.id) + 1} / {visibleTracks.length}</span>
                 ) : null}
                 <span>{currentTrack?.author || 'YouTube'}</span>
-                {isFavorite ? <span>Ôśů Ulubiona</span> : null}
-                <span className="info-strip-dot">{isTrackReady ? 'ÔŚĆ Gotowy' : 'ÔŚő ┼üadowanie'}</span>
+                {isFavorite ? <span>★ Ulubiona</span> : null}
+                <span className="info-strip-dot">{isTrackReady ? '● Gotowy' : '○ Ładowanie'}</span>
                 <span className="info-strip-online"><i className="online-dot" />{onlineCount} online</span>
               </>
             )}
@@ -4990,7 +4990,7 @@ function App() {
                 Wszystkie
               </button>
               <button className={libraryView === 'favorites' ? 'active' : ''} onClick={() => setLibraryView('favorites')}>
-                ÔÖą Ulubione
+                ♥ Ulubione
               </button>
               <button className={`${libraryView === 'similar' ? 'active' : ''} similar-tab`} onClick={() => setLibraryView('similar')}>
                 Podobne
@@ -5043,7 +5043,7 @@ function App() {
                       return active > 0 ? `${active} aktywne` : 'Wszystkie'
                     })()}
                   </span>
-                  <span className="filters-chevron">{filtersOpen ? 'Ôľ▓' : 'Ôľ╝'}</span>
+                  <span className="filters-chevron">{filtersOpen ? '▲' : '▼'}</span>
                 </button>
 
                 {filtersOpen && (
@@ -5067,7 +5067,7 @@ function App() {
                     </div>
 
                     <div className="filters-section">
-                      <p className="filters-label">J─Özyk</p>
+                      <p className="filters-label">Język</p>
                       <div className="filters-chips">
                         {FILTER_LANGUAGES.map((l) => (
                           <button
@@ -5085,7 +5085,7 @@ function App() {
                     </div>
 
                     <div className="filters-section">
-                      <p className="filters-label">Typ materia┼éu</p>
+                      <p className="filters-label">Typ materiału</p>
                       <div className="filters-chips">
                         {FILTER_TYPES.map((t) => (
                           <button
@@ -5104,7 +5104,7 @@ function App() {
 
                     <div className="filters-row2">
                       <div className="filters-section">
-                        <p className="filters-label">D┼éugo┼Ť─ç</p>
+                        <p className="filters-label">Długość</p>
                         <div className="filters-chips">
                           {FILTER_DURATIONS.map((d) => (
                             <button
@@ -5149,7 +5149,7 @@ function App() {
                 )}
               </div>
               <form className="search-panel" onSubmit={(e) => { setShowSuggestions(false); handleTrackSearch(e) }}>
-                <label htmlFor="search">Szukaj pojedynczych utwor├│w</label>
+                <label htmlFor="search">Szukaj pojedynczych utworów</label>
                 <div className="search-row" style={{ position: 'relative' }}>
                   <input
                     id="search"
@@ -5157,7 +5157,7 @@ function App() {
                     onChange={(event) => { setSearchTerm(event.target.value); setShowSuggestions(true) }}
                     onFocus={() => setShowSuggestions(true)}
                     onBlur={() => setTimeout(() => setShowSuggestions(false), 150)}
-                    placeholder="np. Pezet Dom nad wod─ů, Quebonafide, J Cole"
+                    placeholder="np. Pezet Dom nad wodą, Quebonafide, J Cole"
                     autoComplete="off"
                   />
                   <button type="submit" className="primary">Szukaj</button>
@@ -5227,7 +5227,7 @@ function App() {
 
           <div className="library-header" style={{ display: mode === 'tv' ? 'none' : '' }}>
             <div>
-              <p className="stage-label">Lista ┼║r├│de┼é</p>
+              <p className="stage-label">Lista źródeł</p>
               <h3>
                 {mode === 'radio' ? 'Stacje' : 'Utwory'}
                 <span className="count-pill count-pill--sm">
@@ -5249,31 +5249,31 @@ function App() {
                   type="text"
                   value={stationSearchTerm}
                   onChange={(event) => setStationSearchTerm(event.target.value)}
-                  placeholder={radioGardenMode ? '­čîŹ Szukaj stacji...' : 'Szukaj stacji...'}
+                  placeholder={radioGardenMode ? '🌍 Szukaj stacji...' : 'Szukaj stacji...'}
                 />
                 <button
                   className={`rg-toggle-btn${radioGardenMode ? ' active' : ''}`}
                   onClick={() => { setRadioGardenMode(v => !v); setRgResults([]); setStationSearchTerm('') }}
-                  title="Radio Garden ÔÇö stacje z ca┼éego ┼Ťwiata"
-                >­čîŹ</button>
+                  title="Radio Garden — stacje z całego świata"
+                >🌍</button>
                 {radioGardenMode && (
                   <select className="rg-country-inline" value={rgCountry} onChange={e => setRgCountry(e.target.value)}>
-                    <option value="">­čîŹ Wszystkie</option>
-                    <option value="PL">­čçÁ­čç▒ PL</option>
-                    <option value="US">­čç║­čçŞ US</option>
-                    <option value="GB">­čçČ­čçž GB</option>
-                    <option value="DE">­čçę­čç¬ DE</option>
-                    <option value="FR">­čçź­čçĚ FR</option>
-                    <option value="ES">­čç¬­čçŞ ES</option>
-                    <option value="IT">­čç«­čç╣ IT</option>
-                    <option value="BR">­čçž­čçĚ BR</option>
-                    <option value="JP">­čç»­čçÁ JP</option>
-                    <option value="TR">­čç╣­čçĚ TR</option>
-                    <option value="RU">­čçĚ­čç║ RU</option>
-                    <option value="UA">­čç║­čçŽ UA</option>
-                    <option value="SE">­čçŞ­čç¬ SE</option>
-                    <option value="NL">­čç│­čç▒ NL</option>
-                    <option value="AU">­čçŽ­čç║ AU</option>
+                    <option value="">🌍 Wszystkie</option>
+                    <option value="PL">🇵🇱 PL</option>
+                    <option value="US">🇺🇸 US</option>
+                    <option value="GB">🇬🇧 GB</option>
+                    <option value="DE">🇩🇪 DE</option>
+                    <option value="FR">🇫🇷 FR</option>
+                    <option value="ES">🇪🇸 ES</option>
+                    <option value="IT">🇮🇹 IT</option>
+                    <option value="BR">🇧🇷 BR</option>
+                    <option value="JP">🇯🇵 JP</option>
+                    <option value="TR">🇹🇷 TR</option>
+                    <option value="RU">🇷🇺 RU</option>
+                    <option value="UA">🇺🇦 UA</option>
+                    <option value="SE">🇸🇪 SE</option>
+                    <option value="NL">🇳🇱 NL</option>
+                    <option value="AU">🇦🇺 AU</option>
                   </select>
                 )}
               </div>
@@ -5283,13 +5283,13 @@ function App() {
           {trackError && mode === 'player' ? (
             trackError === '__yt_login__' ? (
               <p className="status-copy error" style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                Utw├│r 18+ wymaga zalogowania do YouTube.
+                Utwór 18+ wymaga zalogowania do YouTube.
                 <button
                   style={{ fontSize: 12, padding: '2px 10px', borderRadius: 8, border: '1px solid #ffb05c', background: 'rgba(255,176,92,0.15)', color: '#ffb05c', cursor: 'pointer', whiteSpace: 'nowrap' }}
                   onClick={async () => {
                     await window.playerBridge?.youtubeLogin?.()
                     setTrackError('')
-                    // Wymu┼Ť prze┼éadowanie playera przez zmian─Ö klucza
+                    // Wymuś przeładowanie playera przez zmianę klucza
                     if (currentTrack) {
                       const saved = currentTrack
                       setCurrentTrack(null)
@@ -5306,7 +5306,7 @@ function App() {
 
           {mode === 'tv' && (
             <div className="tv-library-top">
-              {/* Filtry ÔÇö jak radio-filters */}
+              {/* Filtry — jak radio-filters */}
               <div className="radio-filters">
                 <div className="country-filter">
                   <label>Kategoria</label>
@@ -5321,7 +5321,7 @@ function App() {
                   </div>
                 </div>
                 <div className="country-filter">
-                  <label>Kraj kana┼éu</label>
+                  <label>Kraj kanału</label>
                   <div className="tv-country-picker" ref={tvCountryPickerRef}>
                     <button
                       type="button"
@@ -5336,9 +5336,9 @@ function App() {
                     >
                       {tvCountryFilter
                         ? <img src={getCountryFlagImageUrl(tvCountryFilter)} alt="" className="tv-country-flag" loading="lazy" />
-                        : <span className="tv-country-globe">­čîÉ</span>}
+                        : <span className="tv-country-globe">🌐</span>}
                       <span>{tvCountryFilter ? formatCountryCodeLabel(tvCountryFilter) : 'Wszystkie kraje'}</span>
-                      <span className="tv-country-caret">Ôľż</span>
+                      <span className="tv-country-caret">▾</span>
                     </button>
                     {tvCountryPickerOpen && (
                       <div className="tv-country-picker-menu">
@@ -5356,7 +5356,7 @@ function App() {
                           className={`tv-country-picker-option${!tvCountryFilter ? ' active' : ''}`}
                           onClick={() => { setTvCountryFilter(''); setTvChannelPage(0); setTvCountryPickerOpen(false); setTvCountrySearch('') }}
                         >
-                          <span className="tv-country-globe">­čîÉ</span>
+                          <span className="tv-country-globe">🌐</span>
                           <span>Wszystkie kraje</span>
                         </button>
                         {tvVisibleCountryOptions.map((c) => (
@@ -5375,11 +5375,11 @@ function App() {
                   </div>
                 </div>
               </div>
-              {/* Nag┼é├│wek listy ÔÇö jak library-header */}
+              {/* Nagłówek listy — jak library-header */}
               <div className="library-header">
                 <div>
-                  <p className="stage-label">Lista ┼║r├│de┼é</p>
-                  <h3>Kana┼éy <span className="count-pill count-pill--sm">{tvChannels.length}</span></h3>
+                  <p className="stage-label">Lista źródeł</p>
+                  <h3>Kanały <span className="count-pill count-pill--sm">{tvChannels.length}</span></h3>
                 </div>
                 {tvSubMode === 'channels' && (
                   <div className="station-search">
@@ -5387,7 +5387,7 @@ function App() {
                       type="text"
                       value={tvChannelSearch}
                       onChange={e => { setTvChannelSearch(e.target.value); setTvChannelPage(0) }}
-                      placeholder="Szukaj kana┼éu..."
+                      placeholder="Szukaj kanału..."
                     />
                   </div>
                 )}
@@ -5413,7 +5413,7 @@ function App() {
                 if (q && !ch.name.toLowerCase().includes(q) && !countriesText.includes(q)) return false
                 return true
               })
-              if (filtered.length === 0) return <div className="empty-state">{tvChannels.length === 0 ? 'Brak kana┼é├│w w tej kategorii.' : 'Brak wynik├│w dla wyszukiwanej frazy.'}</div>
+              if (filtered.length === 0) return <div className="empty-state">{tvChannels.length === 0 ? 'Brak kanałów w tej kategorii.' : 'Brak wyników dla wyszukiwanej frazy.'}</div>
               const paginated = filtered.slice(tvChannelPage * TV_PAGE_SIZE, (tvChannelPage + 1) * TV_PAGE_SIZE)
               return <>
                 {paginated.map(ch => {
@@ -5427,28 +5427,28 @@ function App() {
                       <div className="item-art with-badge">
                         {ch.logo
                           ? <img src={safeArt(sanitizeTvLogoUrl(ch.logo), ch.name, 'radio')} alt="" onError={e => withFallbackArt(e, ch.name, 'radio')} />
-                          : <span style={{ fontSize: '1.4rem' }}>­čô║</span>}
+                          : <span style={{ fontSize: '1.4rem' }}>📺</span>}
                         {ch.country && <span className="item-flag">{countryFlagEmoji(ch.country)}</span>}
                       </div>
                       <div className="item-copy">
                         <span className="item-title">{ch.name}</span>
-                        <span className="item-meta">{ch.country || 'TV'}{selected ? ' ┬Ě ÔŚĆ Live' : ''}</span>
+                        <span className="item-meta">{ch.country || 'TV'}{selected ? ' · ● Live' : ''}</span>
                       </div>
                     </div>
                   )
                 })}
                 {filtered.length > TV_PAGE_SIZE && (
                   <div className="track-pagination">
-                    <button className="load-more-btn" disabled={tvChannelPage === 0} onClick={() => { setTvChannelPage(p => p - 1); libraryListRef.current && (libraryListRef.current.scrollTop = 0) }}>ÔćÉ Poprzednie</button>
-                    <span>{tvChannelPage * TV_PAGE_SIZE + 1}ÔÇô{Math.min((tvChannelPage + 1) * TV_PAGE_SIZE, filtered.length)} / {filtered.length}</span>
-                    <button className="load-more-btn" disabled={(tvChannelPage + 1) * TV_PAGE_SIZE >= filtered.length} onClick={() => { setTvChannelPage(p => p + 1); libraryListRef.current && (libraryListRef.current.scrollTop = 0) }}>Nast─Öpne Ôćĺ</button>
+                    <button className="load-more-btn" disabled={tvChannelPage === 0} onClick={() => { setTvChannelPage(p => p - 1); libraryListRef.current && (libraryListRef.current.scrollTop = 0) }}>← Poprzednie</button>
+                    <span>{tvChannelPage * TV_PAGE_SIZE + 1}–{Math.min((tvChannelPage + 1) * TV_PAGE_SIZE, filtered.length)} / {filtered.length}</span>
+                    <button className="load-more-btn" disabled={(tvChannelPage + 1) * TV_PAGE_SIZE >= filtered.length} onClick={() => { setTvChannelPage(p => p + 1); libraryListRef.current && (libraryListRef.current.scrollTop = 0) }}>Następne →</button>
                   </div>
                 )}
               </>
             })()}
             {mode === 'tv' && tvSubMode === 'youtube' && (
               <div className="tv-yt-hint empty-state">
-                <span>ÔľÂ Wklej link YouTube po lewej i ogl─ůdaj razem</span>
+                <span>▶ Wklej link YouTube po lewej i oglądaj razem</span>
               </div>
             )}
             {mode === 'radio' && radioGardenMode && (
@@ -5459,7 +5459,7 @@ function App() {
                     </div>
                   ))
                 : rgResults.length === 0
-                  ? <div className="empty-state">{stationSearchTerm ? 'Brak wynik├│w' : 'Wpisz nazw─Ö stacji lub miasta...'}</div>
+                  ? <div className="empty-state">{stationSearchTerm ? 'Brak wyników' : 'Wpisz nazwę stacji lub miasta...'}</div>
                   : rgResults.map(s => {
                       const selected = currentStation?.id === s.id
                       return (
@@ -5475,7 +5475,7 @@ function App() {
                           </div>
                           <div className="item-copy">
                             <span className="item-title">{s.name}</span>
-                            <span className="item-meta">{s.country}{s.tags ? ` ┬Ě ${s.tags.split(',').slice(0,2).join(', ')}` : ''}</span>
+                            <span className="item-meta">{s.country}{s.tags ? ` · ${s.tags.split(',').slice(0,2).join(', ')}` : ''}</span>
                           </div>
                         </div>
                       )
@@ -5506,7 +5506,7 @@ function App() {
                 ))
               ) : similarItems.length === 0 ? (
                 <div className="empty-state">
-                  {mode === 'player' && !currentTrack ? 'W┼é─ůcz jaki┼Ť utw├│r, ┼╝eby zobaczy─ç podobne.' : mode === 'radio' && !currentStation ? 'W┼é─ůcz stacj─Ö, ┼╝eby zobaczy─ç podobne.' : 'Brak podobnych wynik├│w.'}
+                  {mode === 'player' && !currentTrack ? 'Włącz jakiś utwór, żeby zobaczyć podobne.' : mode === 'radio' && !currentStation ? 'Włącz stację, żeby zobaczyć podobne.' : 'Brak podobnych wyników.'}
                 </div>
               ) : similarItems.map((item) => {
                 const selected = (mode === 'player' ? currentTrack?.id : currentStation?.id) === item.id
@@ -5532,7 +5532,7 @@ function App() {
               })
             ) : libraryView === 'suggested' && mode === 'player' ? (
               activeQueue.length === 0 ? (
-                <div className="empty-state">Kolejka jest pusta ÔÇö dodaj utwory przyciskiem + przy ka┼╝dym utworze.</div>
+                <div className="empty-state">Kolejka jest pusta — dodaj utwory przyciskiem + przy każdym utworze.</div>
               ) : activeQueue.map((item) => (
                 <div key={item.key} className="library-item suggestion-item">
                   <div className="item-art with-badge">
@@ -5550,14 +5550,14 @@ function App() {
                   <div className="suggestion-actions">
                     <button
                       className="suggestion-play-btn"
-                      title="Odtw├│rz teraz"
+                      title="Odtwórz teraz"
                       onClick={() => { selectTrack(item); removeFromQueue(item.key) }}
-                    >ÔľÂ</button>
+                    >▶</button>
                     <button
                       className="suggestion-remove-btn"
-                      title="Usu┼ä z kolejki"
+                      title="Usuń z kolejki"
                       onClick={() => removeFromQueue(item.key)}
-                    >ÔťĽ</button>
+                    >✕</button>
                   </div>
                 </div>
               ))
@@ -5566,7 +5566,7 @@ function App() {
                 {!ytLoggedIn ? (
                   <div className="myyt-login-prompt">
                     <svg width="40" height="40" viewBox="0 0 24 24" fill="rgba(255,176,92,0.6)"><path d="M10 15l5.19-3L10 9v6m11.56-7.83c.13.47.22 1.1.28 1.9.07.8.1 1.49.1 2.09L22 12c0 2.19-.16 3.8-.44 4.83-.25.9-.83 1.48-1.73 1.73-.47.13-1.33.22-2.65.28-1.3.07-2.49.1-3.59.1L12 19c-4.19 0-6.8-.16-7.83-.44-.9-.25-1.48-.83-1.73-1.73-.13-.47-.22-1.1-.28-1.9-.07-.8-.1-1.49-.1-2.09L2 12c0-2.19.16-3.8.44-4.83.25-.9.83-1.48 1.73-1.73.47-.13 1.33-.22 2.65-.28 1.3-.07 2.49-.1 3.59-.1L12 5c4.19 0 6.8.16 7.83.44.9.25 1.48.83 1.73 1.73z"/></svg>
-                    <p>Zaloguj si─Ö do YouTube, aby zobaczy─ç swoje playlisty i odtwarza─ç tre┼Ťci 18+</p>
+                    <p>Zaloguj się do YouTube, aby zobaczyć swoje playlisty i odtwarzać treści 18+</p>
                     <button className="myyt-login-btn" onClick={async () => {
                       await window.playerBridge?.youtubeLogin?.()
                       const ok = await window.playerBridge?.youtubeCheckLogin?.()
@@ -5591,7 +5591,7 @@ function App() {
                 ) : myPlaylists.length === 0 ? (
                   <div className="myyt-empty">
                     <p>Brak playlist na tym koncie.</p>
-                    <button className="myyt-refresh-btn" onClick={loadMyPlaylists}>Od┼Ťwie┼╝</button>
+                    <button className="myyt-refresh-btn" onClick={loadMyPlaylists}>Odśwież</button>
                     <button className="myyt-logout-btn" onClick={async () => {
                       await window.playerBridge?.youtubeLogout?.()
                       setYtLoggedIn(false)
@@ -5603,7 +5603,7 @@ function App() {
                     <div className="myyt-header">
                       <span className="myyt-count">{myPlaylists.length} playlist</span>
                       <div style={{ display: 'flex', gap: 6 }}>
-                        <button className="myyt-refresh-btn" onClick={loadMyPlaylists} title="Od┼Ťwie┼╝">Ôć╗</button>
+                        <button className="myyt-refresh-btn" onClick={loadMyPlaylists} title="Odśwież">↻</button>
                         <button className="myyt-logout-btn" onClick={async () => {
                           await window.playerBridge?.youtubeLogout?.()
                           setYtLoggedIn(false)
@@ -5622,15 +5622,15 @@ function App() {
                           const tracks = Array.isArray(result) ? result : (result?.tracks ?? [])
                           if (tracks.length > 0) {
                             startTransition(() => setSearchResults(tracks))
-                            setActiveTrackQuery(`${pl.title} (${tracks.length} utwor├│w)`)
+                            setActiveTrackQuery(`${pl.title} (${tracks.length} utworów)`)
                             setLibraryView('all')
                             selectTrack(tracks[0], true, false)
                           } else {
-                            setTrackError('Nie uda┼éo si─Ö za┼éadowa─ç playlisty.')
+                            setTrackError('Nie udało się załadować playlisty.')
                           }
                         } catch (e) {
                           console.log('[myyt click] error:', e)
-                          setTrackError('B┼é─ůd podczas ┼éadowania playlisty.')
+                          setTrackError('Błąd podczas ładowania playlisty.')
                         } finally {
                           setLoadingPlaylistId(null)
                         }
@@ -5651,13 +5651,13 @@ function App() {
               <div className="chat-panel">
                 <div className="chat-messages">
                   {chatMessages.length === 0 && (
-                    <div className="empty-state">Brak wiadomo┼Ťci ÔÇö napisz co┼Ť!</div>
+                    <div className="empty-state">Brak wiadomości — napisz coś!</div>
                   )}
                   {chatMessages.map((msg) => {
                     if (msg.system && !showSystemMsgs) return null
                     const time = new Date(msg.sentAt).toLocaleTimeString('pl-PL', { hour: '2-digit', minute: '2-digit' })
 
-                    // Wiadomo┼Ť─ç systemowa
+                    // Wiadomość systemowa
                     if (msg.system) {
                       return (
                         <div key={msg.key} className="chat-msg-system">
@@ -5667,7 +5667,7 @@ function App() {
                       )
                     }
 
-                    // Prywatna wiadomo┼Ť─ç ÔÇö widoczna tylko dla nadawcy, odbiorcy i hosta
+                    // Prywatna wiadomość — widoczna tylko dla nadawcy, odbiorcy i hosta
                     if (msg.pmTo) {
                       const pmVisible = isHost || msg.nick === myNickname || msg.pmTo === myNickname
                       if (!pmVisible) return null
@@ -5676,7 +5676,7 @@ function App() {
                       return (
                         <div key={msg.key} className={`chat-msg-pm${pmIsMe ? ' chat-msg-pm-out' : ''}`}>
                           <div className="chat-msg-header">
-                            <span className="chat-pm-label">{pmIsMe ? `PM Ôćĺ ${msg.pmTo}` : `PM ÔćÉ ${msg.nick}`}</span>
+                            <span className="chat-pm-label">{pmIsMe ? `PM → ${msg.pmTo}` : `PM ← ${msg.nick}`}</span>
                             <span className="chat-msg-time">{time}</span>
                           </div>
                           <span className="chat-msg-text">{renderChatText(msg.text)}</span>
@@ -5684,7 +5684,7 @@ function App() {
                       )
                     }
 
-                    // Wiadomo┼Ť─ç /me (akcja)
+                    // Wiadomość /me (akcja)
                     if (msg.me) {
                       return (
                         <div key={msg.key} className="chat-msg-action">
@@ -5694,7 +5694,7 @@ function App() {
                       )
                     }
 
-                    // Zwyk┼éa wiadomo┼Ť─ç
+                    // Zwykła wiadomość
                     const isMe = msg.nick === myNickname
                     const isFromHost = msg.nick === hostNick
                     const listener = sessionListeners.find(l => l.nickname === msg.nick)
@@ -5716,24 +5716,24 @@ function App() {
                           <span className="chat-msg-nick">{isMe ? 'Ty' : msg.nick}</span>
                           {isMuted && (
                             <span className="chat-muted-badge" title={muteEntry.blocked ? 'Zablokowany' : `Wyciszony: ${muteSecsLeft}s`}>
-                              {muteEntry.blocked ? '­čÜź' : `ÔĆ▒${muteSecsLeft}s`}
+                              {muteEntry.blocked ? '🚫' : `⏱${muteSecsLeft}s`}
                             </span>
                           )}
                           <span className="chat-msg-time">{time}</span>
                         </div>
                         <span className="chat-msg-text">
-                          {msg.deleted ? <em className="chat-deleted-text">Usuni─Öte przez hosta</em> : renderChatText(msg.text)}
+                          {msg.deleted ? <em className="chat-deleted-text">Usunięte przez hosta</em> : renderChatText(msg.text)}
                         </span>
                         {isHost && !isMe && !msg.deleted && (
                           <div className="chat-mod-actions">
-                            <button className="chat-mod-btn chat-mod-delete" title="Usu┼ä wiadomo┼Ť─ç" onClick={() => deleteChatMsg(msg.key)}>ÔťĽ</button>
+                            <button className="chat-mod-btn chat-mod-delete" title="Usuń wiadomość" onClick={() => deleteChatMsg(msg.key)}>✕</button>
                             {isMuted ? (
-                              <button className="chat-mod-btn chat-mod-unmute" title="Odblokuj" onClick={() => unblockChatUser(msg.nick)}>­čöŐ Odblokuj</button>
+                              <button className="chat-mod-btn chat-mod-unmute" title="Odblokuj" onClick={() => unblockChatUser(msg.nick)}>🔊 Odblokuj</button>
                             ) : (
                               <>
-                                <button className="chat-mod-btn" title="Wycisz 10s" onClick={() => muteChatUser(msg.nick, 10)}>ÔĆ▒ 10s</button>
-                                <button className="chat-mod-btn" title="Wycisz 30s" onClick={() => muteChatUser(msg.nick, 30)}>ÔĆ▒ 30s</button>
-                                <button className="chat-mod-btn chat-mod-block" title="Zablokuj ca┼ékowicie" onClick={() => blockChatUser(msg.nick)}>­čÜź Blokuj</button>
+                                <button className="chat-mod-btn" title="Wycisz 10s" onClick={() => muteChatUser(msg.nick, 10)}>⏱ 10s</button>
+                                <button className="chat-mod-btn" title="Wycisz 30s" onClick={() => muteChatUser(msg.nick, 30)}>⏱ 30s</button>
+                                <button className="chat-mod-btn chat-mod-block" title="Zablokuj całkowicie" onClick={() => blockChatUser(msg.nick)}>🚫 Blokuj</button>
                               </>
                             )}
                           </div>
@@ -5749,8 +5749,8 @@ function App() {
                   const blocked = myMute?.blocked
                   const secsLeft = myMute?.until ? Math.max(0, Math.ceil((myMute.until - Date.now()) / 1000)) : 0
                   const timedOut = secsLeft > 0
-                  if (blocked) return <div className="chat-muted-info">­čÜź Zosta┼ée┼Ť zablokowany przez hosta.</div>
-                  if (timedOut) return <div className="chat-muted-info">ÔĆ▒ Wyciszony przez hosta ÔÇö jeszcze {secsLeft}s.</div>
+                  if (blocked) return <div className="chat-muted-info">🚫 Zostałeś zablokowany przez hosta.</div>
+                  if (timedOut) return <div className="chat-muted-info">⏱ Wyciszony przez hosta — jeszcze {secsLeft}s.</div>
                   return (
                     <div className="chat-input-area">
                       {cmdSuggestions.length > 0 && (
@@ -5773,7 +5773,7 @@ function App() {
                             >
                               {s.nick ? (
                                 <>
-                                  <span className="cmd-nick-icon">­čĹĄ</span>
+                                  <span className="cmd-nick-icon">👤</span>
                                   <span className="cmd-nick-name">{s.name}</span>
                                 </>
                               ) : (
@@ -5792,7 +5792,7 @@ function App() {
                         <input
                           className={`chat-input${chatInput.startsWith('/') ? ' chat-input-cmd' : ''}`}
                           type="text"
-                          placeholder="Wiadomo┼Ť─ç lub /komenda..."
+                          placeholder="Wiadomość lub /komenda..."
                           maxLength={300}
                           value={chatInput}
                           onChange={(e) => {
@@ -5819,7 +5819,7 @@ function App() {
                             }
                           }}
                           onKeyDown={(e) => {
-                            // Nawigacja po li┼Ťcie komend
+                            // Nawigacja po liście komend
                             if (cmdSuggestions.length > 0) {
                               if (e.key === 'ArrowDown') {
                                 e.preventDefault()
@@ -5850,7 +5850,7 @@ function App() {
                               }
                               if (e.key === 'Escape') { setCmdSuggestions([]); return }
                             }
-                            // Tab dla uzupe┼éniania nicku (/mute, /unmute)
+                            // Tab dla uzupełniania nicku (/mute, /unmute)
                             if (e.key === 'Tab') {
                               e.preventDefault()
                               const parts = chatInput.trim().split(/\s+/)
@@ -5866,7 +5866,7 @@ function App() {
                               }
                               return
                             }
-                            // Wy┼Ťlij
+                            // Wyślij
                             if (e.key === 'Enter' && chatInput.trim()) {
                               if (chatInput.startsWith('/')) handleChatCommand(chatInput)
                               else sendChatMessage(chatInput)
@@ -5885,7 +5885,7 @@ function App() {
                             setChatInput('')
                             setCmdSuggestions([])
                           }}
-                        >{chatInput.startsWith('/') ? 'Wykonaj' : 'Wy┼Ťlij'}</button>
+                        >{chatInput.startsWith('/') ? 'Wykonaj' : 'Wyślij'}</button>
                       </div>
                     </div>
                   )
@@ -5921,11 +5921,11 @@ function App() {
             {mode === 'player' && visibleTracks.length > PAGE_SIZE && (
               <div className="track-pagination">
                 <button className="load-more-btn" disabled={trackPage === 0} onClick={() => { setTrackPage(p => p - 1); libraryListRef.current && (libraryListRef.current.scrollTop = 0) }}>
-                  ÔćÉ Poprzednie
+                  ← Poprzednie
                 </button>
-                <span>{trackPage * PAGE_SIZE + 1}ÔÇô{Math.min((trackPage + 1) * PAGE_SIZE, visibleTracks.length)} / {visibleTracks.length}</span>
+                <span>{trackPage * PAGE_SIZE + 1}–{Math.min((trackPage + 1) * PAGE_SIZE, visibleTracks.length)} / {visibleTracks.length}</span>
                 <button className="load-more-btn" disabled={(trackPage + 1) * PAGE_SIZE >= visibleTracks.length} onClick={() => { setTrackPage(p => p + 1); libraryListRef.current && (libraryListRef.current.scrollTop = 0) }}>
-                  Nast─Öpne Ôćĺ
+                  Następne →
                 </button>
               </div>
             )}
@@ -5937,7 +5937,7 @@ function App() {
                     ? stationSearchTerm.trim()
                       ? 'Brak stacji dla wpisanej frazy.'
                       : 'Brak stacji dla wybranego kraju.'
-                    : 'Brak utwor├│w dla tej frazy.'}
+                    : 'Brak utworów dla tej frazy.'}
               </div>
             ) : null}
 
@@ -5948,7 +5948,7 @@ function App() {
                   onClick={() => setHistoryExpanded((v) => !v)}
                 >
                   <span>Historia odtwarzania ({trackHistory.length})</span>
-                  <span className="history-chevron">{historyExpanded ? 'Ôľ▓' : 'Ôľ╝'}</span>
+                  <span className="history-chevron">{historyExpanded ? '▲' : '▼'}</span>
                 </button>
                 {historyExpanded && trackHistory.map((entry) => (
                   <button
@@ -5966,7 +5966,7 @@ function App() {
                     </div>
                     <div className="item-copy">
                       <strong>{entry.track.title}</strong>
-                      <span>{[entry.track.author, entry.track.duration].filter(Boolean).join(' ÔÇó ')}</span>
+                      <span>{[entry.track.author, entry.track.duration].filter(Boolean).join(' • ')}</span>
                     </div>
                   </button>
                 ))}
@@ -5989,8 +5989,8 @@ function App() {
                   : <div key="tv-art" style={{ width: 48, height: 48, borderRadius: 8, background: 'rgba(255,255,255,0.06)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}><svg width="24" height="24" viewBox="0 0 24 24" fill="rgba(200,215,230,0.5)"><path d="M21 3H3c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h5v2h8v-2h5c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 14H3V5h18v12z"/></svg></div>
               }
               <div className="bottom-nowcopy">
-                <p className="bottom-label">{tvSubMode === 'youtube' ? 'YouTube' : 'Teraz ogl─ůdasz'}</p>
-                <p className="title-single-text compact">{tvSubMode === 'youtube' ? (tvYtTitle || tvYoutubeUrl || 'Wklej link YouTube') : (currentTvChannel?.name || 'Wybierz kana┼é')}</p>
+                <p className="bottom-label">{tvSubMode === 'youtube' ? 'YouTube' : 'Teraz oglądasz'}</p>
+                <p className="title-single-text compact">{tvSubMode === 'youtube' ? (tvYtTitle || tvYoutubeUrl || 'Wklej link YouTube') : (currentTvChannel?.name || 'Wybierz kanał')}</p>
               </div>
             </>
           ) : (
@@ -6045,7 +6045,7 @@ function App() {
                 {tvSubMode !== 'youtube' && (
                   <button className="player-button ghost" onClick={() => {
                     if (tvVideoRef.current) { tvVideoRef.current.currentTime = 0; tvVideoRef.current.play().catch(() => {}) }
-                  }}>Ôč│ Od nowa</button>
+                  }}>⟳ Od nowa</button>
                 )}
               </>
             ) : mode === 'player' ? (
@@ -6122,7 +6122,7 @@ function App() {
                 </div>
               )
             })() : tvHasDvr && tvSeekableEnd > tvSeekableStart ? (() => {
-              // Pasek DVR ÔÇö pokazuj tylko ostatnie 3 minuty (rolling window) dla p┼éynniejszego seeka.
+              // Pasek DVR — pokazuj tylko ostatnie 3 minuty (rolling window) dla płynniejszego seeka.
               const dvrEnd = Math.max(tvSeekableStart, tvSeekableEnd - TV_DVR_LIVE_BUFFER)
               const dvrStart = Math.max(tvSeekableStart, dvrEnd - TV_DVR_MAX_WINDOW_SECONDS)
               const dvrRange = Math.max(1, dvrEnd - dvrStart)
@@ -6164,7 +6164,7 @@ function App() {
                       setTvCurrentTime(liveTarget)
                       el.play?.().then(() => setTvIsPlaying(true)).catch(() => recoverTvStream())
                     }}
-                  >ÔŚĆ LIVE</button>
+                  >● LIVE</button>
                 </div>
               )
             })() : (
@@ -6220,8 +6220,8 @@ function App() {
               lastVolumeBeforeMuteRef.current = v
               return 0
             })}
-            aria-label={volumePercent === 0 ? 'W┼é─ůcz d┼║wi─Ök' : 'Wycisz'}
-            title={volumePercent === 0 ? 'W┼é─ůcz d┼║wi─Ök' : 'Wycisz'}
+            aria-label={volumePercent === 0 ? 'Włącz dźwięk' : 'Wycisz'}
+            title={volumePercent === 0 ? 'Włącz dźwięk' : 'Wycisz'}
           >
             {volumePercent === 0 ? (
               <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M16.5 12A4.5 4.5 0 0 0 14 7.97v2.21l2.45 2.45c.03-.2.05-.41.05-.63zm2.5 0c0 .94-.2 1.82-.54 2.64l1.51 1.51A8.796 8.796 0 0 0 21 12c0-4.28-2.99-7.86-7-8.77v2.06c2.89.86 5 3.54 5 6.71zM4.27 3 3 4.27 7.73 9H3v6h4l5 5v-6.73l4.25 4.25c-.67.52-1.42.93-2.25 1.18v2.06A8.99 8.99 0 0 0 17.73 19L19 20.27 20.27 19 5.27 4 4.27 3zM12 4 9.91 6.09 12 8.18V4z"/></svg>
@@ -6258,16 +6258,16 @@ function App() {
       {sessionModalOpen && (
         <div className="together-overlay" onClick={e => { if (e.target === e.currentTarget) setSessionModalOpen(false) }}>
           <div className="together-modal">
-            <button className="together-modal-close" onClick={() => setSessionModalOpen(false)}>ÔťĽ</button>
-            <h2>S┼éuchaj razem</h2>
+            <button className="together-modal-close" onClick={() => setSessionModalOpen(false)}>✕</button>
+            <h2>Słuchaj razem</h2>
 
             {!inSession ? (
               <>
                 <div className="together-nickname-row">
-                  <label className="together-nickname-label">Tw├│j nick</label>
+                  <label className="together-nickname-label">Twój nick</label>
                   <input
                     className="together-nickname-input"
-                    placeholder="Wpisz sw├│j nick..."
+                    placeholder="Wpisz swój nick..."
                     value={myNickname}
                     onChange={e => {
                       setMyNickname(e.target.value)
@@ -6282,10 +6282,10 @@ function App() {
                   onClick={() => { soundCreateSession(); createSession() }}
                   disabled={togetherLoading}
                 >
-                  {togetherLoading ? 'Tworzenie...' : 'Utw├│rz sesj─Ö'}
+                  {togetherLoading ? 'Tworzenie...' : 'Utwórz sesję'}
                 </button>
 
-                <div className="together-divider">lub do┼é─ůcz</div>
+                <div className="together-divider">lub dołącz</div>
 
                 <div className="together-join-row">
                   <input
@@ -6301,7 +6301,7 @@ function App() {
                     onClick={() => joinSession(joinCodeInput)}
                     disabled={togetherLoading || joinCodeInput.length < 4}
                   >
-                    {togetherLoading ? 'Do┼é─ůczanie...' : 'Do┼é─ůcz'}
+                    {togetherLoading ? 'Dołączanie...' : 'Dołącz'}
                   </button>
                 </div>
 
@@ -6312,7 +6312,7 @@ function App() {
                 <div className="together-session-info">
                   {isHost ? (
                     <>
-                      <p className="together-label">Tw├│j kod sesji</p>
+                      <p className="together-label">Twój kod sesji</p>
                       <div className="together-code-display">
                         {sessionCode}
                       </div>
@@ -6328,12 +6328,12 @@ function App() {
                       </button>
                       <p className="together-listeners">
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/></svg>
-                        {listenerCount} {listenerCount === 1 ? 'osoba s┼éucha' : 'osoby s┼éuchaj─ů'}
+                        {listenerCount} {listenerCount === 1 ? 'osoba słucha' : 'osoby słuchają'}
                       </p>
 
                       {sessionListeners.length > 0 && (
                         <div className="together-listeners-list">
-                          <p className="together-perm-header">Uprawnienia s┼éuchaczy</p>
+                          <p className="together-perm-header">Uprawnienia słuchaczy</p>
                           {sessionListeners.map(l => {
                             const isMod = l.canPlay && l.canSkip && l.canAdd
                             return (
@@ -6343,7 +6343,7 @@ function App() {
                                   className={`together-perm-btn ${isMod ? 'active' : ''}`}
                                   onClick={() => setModerator(l.key, !isMod)}
                                 >
-                                  {isMod ? 'Ôśů Moderator' : 'Ôść Moderator'}
+                                  {isMod ? '★ Moderator' : '☆ Moderator'}
                                 </button>
                               </div>
                             )
@@ -6353,18 +6353,18 @@ function App() {
                     </>
                   ) : (
                     <>
-                      <p className="together-label">Po┼é─ůczono z sesj─ů</p>
+                      <p className="together-label">Połączono z sesją</p>
                       <div className="together-code-display">{sessionCode}</div>
                       <p className="together-listeners">
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/></svg>
-                        {listenerCount} {listenerCount === 1 ? 'osoba s┼éucha' : 'osoby s┼éuchaj─ů'}
+                        {listenerCount} {listenerCount === 1 ? 'osoba słucha' : 'osoby słuchają'}
                       </p>
                       <div className="together-my-perms">
                         <p className="together-perm-header">Twoje uprawnienia</p>
                         <div className="together-perm-status-row">
                           {myPermissions.canPlay && myPermissions.canSkip && myPermissions.canAdd
-                            ? <span className="together-perm-status on">Ôśů Moderator</span>
-                            : <span className="together-perm-status off">Brak uprawnie┼ä</span>
+                            ? <span className="together-perm-status on">★ Moderator</span>
+                            : <span className="together-perm-status off">Brak uprawnień</span>
                           }
                         </div>
                       </div>
@@ -6372,7 +6372,7 @@ function App() {
                   )}
                 </div>
                 <button className="together-leave-btn" onClick={leaveSession}>
-                  {isHost ? 'Zako┼äcz sesj─Ö' : 'Opu┼Ť─ç sesj─Ö'}
+                  {isHost ? 'Zakończ sesję' : 'Opuść sesję'}
                 </button>
               </>
             )}
@@ -6402,12 +6402,12 @@ function App() {
       const hasDetails = sessionEndedMsg.includes('\n')
       const [mainMsg, ...detailParts] = sessionEndedMsg.split('\n')
       const details = detailParts.join('\n')
-      const copyText = `[OnePlayer - b┼é─ůd sesji]\n${sessionEndedMsg}\nWersja: ${appVersion}\nCzas: ${new Date().toLocaleString('pl-PL')}`
+      const copyText = `[OnePlayer - błąd sesji]\n${sessionEndedMsg}\nWersja: ${appVersion}\nCzas: ${new Date().toLocaleString('pl-PL')}`
       return (
         <div className="session-ended-overlay">
           <div className="session-ended-modal">
-            <div className="session-ended-icon">ÔÜí</div>
-            <h2 className="session-ended-title">Sesja zako┼äczona</h2>
+            <div className="session-ended-icon">⚡</div>
+            <h2 className="session-ended-title">Sesja zakończona</h2>
             <p className="session-ended-reason">{mainMsg}</p>
             {hasDetails && (
               <div className="session-ended-error-box">
@@ -6415,9 +6415,9 @@ function App() {
                 <button
                   className="session-ended-copy"
                   onClick={() => navigator.clipboard.writeText(copyText)}
-                  title="Skopiuj b┼é─ůd"
+                  title="Skopiuj błąd"
                 >
-                  ­čôő Kopiuj b┼é─ůd
+                  📋 Kopiuj błąd
                 </button>
               </div>
             )}
@@ -6433,9 +6433,9 @@ function App() {
         {isRadioVisualLoading ? (
           <span className="ping-dots"><span /><span /><span /></span>
         ) : !isRadioPlaying ? (
-          <span className="ping-label">ÔĆż OFF</span>
+          <span className="ping-label">⏾ OFF</span>
         ) : (
-          <span className="ping-label">{pingMs < 0 ? '├Ś' : `${pingMs >= 1000 ? '999+' : pingMs}ms`}</span>
+          <span className="ping-label">{pingMs < 0 ? '×' : `${pingMs >= 1000 ? '999+' : pingMs}ms`}</span>
         )}
       </div>
     )}
@@ -6480,7 +6480,7 @@ function App() {
               key={i}
               className={`size-option${i === (pendingZoom ?? zoomIdx) ? ' selected' : ''}`}
               onClick={() => setPendingZoom(i === zoomIdx ? null : i)}
-            >{name}{i === zoomIdx ? ' Ôťô' : ''}</button>
+            >{name}{i === zoomIdx ? ' ✓' : ''}</button>
           ))}
         </div>
         {pendingZoom !== null && pendingZoom !== zoomIdx && (

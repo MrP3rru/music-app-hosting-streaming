@@ -1,4 +1,4 @@
-﻿const { contextBridge, ipcRenderer } = require('electron')
+const { contextBridge, ipcRenderer } = require('electron')
 
 // Suppress uncaught renderer errors so Electron's red error bar never shows to users.
 // Errors are still logged to the DevTools console for debugging.
@@ -25,7 +25,7 @@ contextBridge.exposeInMainWorld('playerBridge', {
   // Radio Garden
   radioGardenSearch: (query) => ipcRenderer.invoke('radiogarden:search', query),
   radioGardenStream: (channelId) => ipcRenderer.invoke('radiogarden:stream', channelId),
-  // T┼éo / focus
+  // Tło / focus
   onAppBackground: (cb) => ipcRenderer.on('app:background', (_e, isBackground) => cb(isBackground)),
   // Custom titlebar
   minimizeWindow:      () => ipcRenderer.send('window:minimize'),

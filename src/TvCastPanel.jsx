@@ -1,4 +1,4 @@
-﻿import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import QRCode from 'qrcode'
 import './TvCastPanel.css'
 
@@ -6,9 +6,9 @@ const ONLINE_URL  = 'https://mrperru.pl'
 const NETLIFY_URL = 'https://mrperru.netlify.app'
 
 const QR_MODES = [
-  { id: 'local',   label: '­čĆá Lokalna',  hint: 'Dzia┼éa tylko gdy TV/telefon jest w tej samej sieci WiFi co komputer.', badge: 'WiFi' },
-  { id: 'online',  label: '­čîÉ Online',   hint: 'Publiczny adres ÔÇö dzia┼éa z ka┼╝dej sieci, telefonu, telewizora.', badge: 'mrperru.pl' },
-  { id: 'netlify', label: 'Ôśü´ŞĆ Backup',   hint: 'Kopia zapasowa na Netlify ÔÇö dzia┼éa zawsze, niezale┼╝nie od domeny.', badge: 'netlify' },
+  { id: 'local',   label: '🏠 Lokalna',  hint: 'Działa tylko gdy TV/telefon jest w tej samej sieci WiFi co komputer.', badge: 'WiFi' },
+  { id: 'online',  label: '🌐 Online',   hint: 'Publiczny adres — działa z każdej sieci, telefonu, telewizora.', badge: 'mrperru.pl' },
+  { id: 'netlify', label: '☁️ Backup',   hint: 'Kopia zapasowa na Netlify — działa zawsze, niezależnie od domeny.', badge: 'netlify' },
 ]
 
 async function makeQr(url) {
@@ -28,7 +28,7 @@ export default function TvCastPanel({ isOpen, onClose, currentStation, currentSt
   const [discovering, setDiscovering] = useState(false)
   const [castingId, setCastingId]     = useState(null)
   const [ytCastingId, setYtCastingId] = useState(null)
-  const [castResults, setCastResults] = useState({}) // id Ôćĺ 'ok'|'err'
+  const [castResults, setCastResults] = useState({}) // id → 'ok'|'err'
   const [discoverDone, setDiscoverDone] = useState(false)
 
   // On open: fetch local URL + generate all 3 QR codes
@@ -135,30 +135,30 @@ export default function TvCastPanel({ isOpen, onClose, currentStation, currentSt
 
   return (
     <div className="tvcp-overlay" onClick={e => { if (e.target === e.currentTarget) onClose() }}>
-      <div className="tvcp-panel" role="dialog" aria-modal="true" aria-label="Otw├│rz Radio na urz─ůdzeniu">
+      <div className="tvcp-panel" role="dialog" aria-modal="true" aria-label="Otwórz Radio na urządzeniu">
 
         {/* Header */}
         <div className="tvcp-header">
-          <span className="tvcp-title">­čô║ Otw├│rz Radio na urz─ůdzeniu</span>
-          <button className="tvcp-close" onClick={onClose} aria-label="Zamknij">ÔťĽ</button>
+          <span className="tvcp-title">📺 Otwórz Radio na urządzeniu</span>
+          <button className="tvcp-close" onClick={onClose} aria-label="Zamknij">✕</button>
         </div>
 
-        {/* ÔöÇÔöÇ Active cast status ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ */}
+        {/* ── Active cast status ─────────────────────── */}
         {tvActiveDevice && (
           <div className="tvcp-active-bar">
             <div className="tvcp-active-info">
               <span className="tvcp-live-dot" />
-              <span>Na ┼╝ywo: <strong>{tvActiveDevice.name}</strong></span>
+              <span>Na żywo: <strong>{tvActiveDevice.name}</strong></span>
             </div>
             <button className="tvcp-stop-pill" onClick={stopCast} title="Zatrzymaj streaming">
-              ÔĆ╣ Roz┼é─ůcz
+              ⏹ Rozłącz
             </button>
           </div>
         )}
 
-        {/* ÔöÇÔöÇ Section 1: QR / URL ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ */}
+        {/* ── Section 1: QR / URL ────────────────────── */}
         <div className="tvcp-section">
-          <p className="tvcp-section-label">Telefon / Przegl─ůdarka TV</p>
+          <p className="tvcp-section-label">Telefon / Przeglądarka TV</p>
 
           {/* Mode switcher */}
           <div className="tvcp-qr-tabs">
@@ -177,29 +177,29 @@ export default function TvCastPanel({ isOpen, onClose, currentStation, currentSt
             <div className="tvcp-qr-wrap">
               {qrUrls[qrMode]
                 ? <img src={qrUrls[qrMode]} alt="QR Code" className="tvcp-qr-img" />
-                : <div className="tvcp-qr-placeholder">ÔîŤ</div>
+                : <div className="tvcp-qr-placeholder">⌛</div>
               }
             </div>
             <div className="tvcp-qr-text">
               <p className="tvcp-qr-hint">
-                Zeskanuj telefonem QR kod lub wpisz adres w przegl─ůdarce TV:
+                Zeskanuj telefonem QR kod lub wpisz adres w przeglądarce TV:
                 <br/>
                 <small style={{opacity:.6}}>{QR_MODES.find(m => m.id === qrMode)?.hint}</small>
               </p>
               <code className="tvcp-url">
                 {qrMode === 'local'
-                  ? (radioUrl || 'ÔîŤ Wykrywam adres...')
+                  ? (radioUrl || '⌛ Wykrywam adres...')
                   : qrMode === 'online' ? ONLINE_URL : NETLIFY_URL
                 }
               </code>
               <button className={`tvcp-copy${copiedUrl ? ' done' : ''}`} onClick={copyUrl}>
-                {copiedUrl ? 'Ôťô Skopiowano!' : '­čôő Kopiuj'}
+                {copiedUrl ? '✓ Skopiowano!' : '📋 Kopiuj'}
               </button>
             </div>
           </div>
         </div>
 
-        {/* ÔöÇÔöÇ Section 2: Chromecast ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ */}
+        {/* ── Section 2: Chromecast ──────────────────── */}
         <div className="tvcp-section">
           <div className="tvcp-cast-head">
             <p className="tvcp-section-label">Chromecast / Android TV</p>
@@ -208,22 +208,22 @@ export default function TvCastPanel({ isOpen, onClose, currentStation, currentSt
               onClick={discover}
               disabled={discovering}
             >
-              {discovering ? 'ÔîŤ Szukam (4s)ÔÇŽ' : '­čöŹ Szukaj urz─ůdze┼ä'}
+              {discovering ? '⌛ Szukam (4s)…' : '🔍 Szukaj urządzeń'}
             </button>
           </div>
 
           {noStation && !isYtMode && (
-            <p className="tvcp-hint-box">ÔÜá´ŞĆ Najpierw wybierz i odtw├│rz stacj─Ö radiow─ů w aplikacji.</p>
+            <p className="tvcp-hint-box">⚠️ Najpierw wybierz i odtwórz stację radiową w aplikacji.</p>
           )}
 
           {isYtMode && noTrack && (
-            <p className="tvcp-hint-box">ÔÜá´ŞĆ Najpierw wybierz utw├│r w playerze muzycznym.</p>
+            <p className="tvcp-hint-box">⚠️ Najpierw wybierz utwór w playerze muzycznym.</p>
           )}
 
           {isYtMode && !noTrack && (
             <p className="tvcp-current-station">
               Zostanie nadany: <strong>{currentTrack.title}</strong>
-              {currentTrack.author && <span style={{opacity:.7}}> ÔÇô {currentTrack.author}</span>}
+              {currentTrack.author && <span style={{opacity:.7}}> – {currentTrack.author}</span>}
             </p>
           )}
 
@@ -235,13 +235,13 @@ export default function TvCastPanel({ isOpen, onClose, currentStation, currentSt
 
           {devices.length === 0 && !discovering && !discoverDone && (
             <p className="tvcp-empty">
-              Kliknij ÔÇ×Szukaj urz─ůdze┼ä". Upewnij si─Ö, ┼╝e TV i komputer s─ů w tej samej sieci WiFi.
+              Kliknij „Szukaj urządzeń". Upewnij się, że TV i komputer są w tej samej sieci WiFi.
             </p>
           )}
           {devices.length === 0 && !discovering && discoverDone && (
             <div className="tvcp-not-found">
-              <p>ÔÜá´ŞĆ Nie znaleziono urz─ůdze┼ä. Sprawd┼║ czy TV jest w┼é─ůczony i w tej samej sieci WiFi.</p>
-              <button className="tvcp-retry-btn" onClick={discover}>­čöä Spr├│buj ponownie</button>
+              <p>⚠️ Nie znaleziono urządzeń. Sprawdź czy TV jest włączony i w tej samej sieci WiFi.</p>
+              <button className="tvcp-retry-btn" onClick={discover}>🔄 Spróbuj ponownie</button>
             </div>
           )}
 
@@ -253,7 +253,7 @@ export default function TvCastPanel({ isOpen, onClose, currentStation, currentSt
               return (
                 <div key={d.id} className={`tvcp-device${state === 'ok' ? ' success' : state === 'err' ? ' error' : ''}`}>
                   <div className="tvcp-device-left">
-                    <span className="tvcp-device-icon">­čô║</span>
+                    <span className="tvcp-device-icon">📺</span>
                     <div>
                       <strong className="tvcp-device-name">{d.name}</strong>
                       {d.model && <span className="tvcp-device-model">{d.model}</span>}
@@ -265,10 +265,10 @@ export default function TvCastPanel({ isOpen, onClose, currentStation, currentSt
                     disabled={disabled}
                     onClick={() => isYtMode ? castYtTo(d) : castTo(d)}
                   >
-                    {isCasting    ? (isYtMode ? 'ÔîŤ PobieramÔÇŽ' : 'ÔîŤ ┼ü─ůcz─ÖÔÇŽ')
-                     : state === 'ok'  ? 'Ôťô Gra!'
-                     : state === 'err' ? 'ÔÜá B┼é─ůd'
-                     : 'ÔľÂ Cast'}
+                    {isCasting    ? (isYtMode ? '⌛ Pobieram…' : '⌛ Łączę…')
+                     : state === 'ok'  ? '✓ Gra!'
+                     : state === 'err' ? '⚠ Błąd'
+                     : '▶ Cast'}
                   </button>
                 </div>
               )

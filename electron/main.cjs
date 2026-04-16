@@ -1,27 +1,27 @@
-﻿
+
 const { app, BrowserWindow, ipcMain, shell, session, desktopCapturer, nativeImage, nativeTheme } = require('electron')
 
-// ÔöÇÔöÇÔöÇ Nazwa i ikona ÔÇö MUSI by─ç przed ready, inaczej Windows ignoruje ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
+// ─── Nazwa i ikona — MUSI być przed ready, inaczej Windows ignoruje ──────────
 app.setName('Music App')
 app.setAppUserModelId('com.mateu.musicapp')
 
-// ÔöÇÔöÇÔöÇ Wy┼é─ůcz throttling animacji/timer├│w gdy okno nie jest sfokusowane ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
+// ─── Wyłącz throttling animacji/timerów gdy okno nie jest sfokusowane ────────
 // Bez tego Chromium wstrzymuje CSS animacje na drugim monitorze / w tle
 app.commandLine.appendSwitch('disable-renderer-backgrounding')
 app.commandLine.appendSwitch('disable-background-timer-throttling')
 app.commandLine.appendSwitch('disable-backgrounding-occluded-windows')
 
-// ÔöÇÔöÇÔöÇ Wy┼é─ůcz sprz─Ötowy overlay video ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
-// Chromium domy┼Ťlnie renderuje <video> przez OS-level overlay kt├│ry ignoruje
-// z-index i zawsze jest ponad elementami DOM. Ta flaga wy┼é─ůcza ten mechanizm,
-// dzi─Öki czemu przyciski nad playerem TV s─ů widoczne.
+// ─── Wyłącz sprzętowy overlay video ─────────────────────────────────────────
+// Chromium domyślnie renderuje <video> przez OS-level overlay który ignoruje
+// z-index i zawsze jest ponad elementami DOM. Ta flaga wyłącza ten mechanizm,
+// dzięki czemu przyciski nad playerem TV są widoczne.
 app.commandLine.appendSwitch('disable-features', 'HardwareMediaKeyHandling,UseChromeOSDirectVideoDecoder')
 app.commandLine.appendSwitch('disable-accelerated-video-decode')
 
-// ÔöÇÔöÇÔöÇ Auto-updater config ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
-// Po za┼éo┼╝eniu repo na GitHub wpisz tutaj swoje dane:
-const GITHUB_OWNER = 'MrP3rru'        // ÔćÉ twoja nazwa u┼╝ytkownika na GitHub, np. 'mateu123'
-const GITHUB_REPO  = 'music-app' // ÔćÉ nazwa repo na GitHub
+// ─── Auto-updater config ─────────────────────────────────────────────────────
+// Po założeniu repo na GitHub wpisz tutaj swoje dane:
+const GITHUB_OWNER = 'MrP3rru'        // ← twoja nazwa użytkownika na GitHub, np. 'mateu123'
+const GITHUB_REPO  = 'music-app' // ← nazwa repo na GitHub
 
 // Zapobiega wielokrotnemu uruchamianiu aplikacji
 const gotTheLock = app.requestSingleInstanceLock();
@@ -31,7 +31,7 @@ if (!gotTheLock) {
 }
 
 app.on('second-instance', () => {
-  // Skup si─Ö na istniej─ůcym oknie
+  // Skup się na istniejącym oknie
   const win = BrowserWindow.getAllWindows()[0];
   if (win) {
     if (win.isMinimized()) win.restore();
@@ -45,8 +45,8 @@ const zlib = require('node:zlib')
 const yts = require('yt-search')
 const ytdl = require('@distube/ytdl-core')
 
-// ÔöÇÔöÇÔöÇ Ustawienia aplikacji (zoom itp.) ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
-// Kroki co 2% od 70% do 130% ÔÇö "Normalne" to 1.0 (index 15)
+// ─── Ustawienia aplikacji (zoom itp.) ────────────────────────────────────────
+// Kroki co 2% od 70% do 130% — "Normalne" to 1.0 (index 15)
 const ZOOM_LEVELS = Array.from({ length: 31 }, (_, i) => Math.round((0.70 + i * 0.02) * 100) / 100)
 const BASE_W = 1460, BASE_H = 940
 
@@ -60,8 +60,8 @@ function writeSettings(data) {
   try { fs.writeFileSync(getSettingsPath(), JSON.stringify(data), 'utf8') } catch {}
 }
 
-// ÔöÇÔöÇÔöÇ YouTube Data API v3 (opcjonalny klucz) ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
-// Wygeneruj klucz: console.cloud.google.com Ôćĺ YouTube Data API v3 Ôćĺ Credentials
+// ─── YouTube Data API v3 (opcjonalny klucz) ─────────────────────────────────
+// Wygeneruj klucz: console.cloud.google.com → YouTube Data API v3 → Credentials
 const YOUTUBE_API_KEY = 'AIzaSyDNXXiAh4uFmiHEXFGnvCFo6bpkI8I0iTQ'
 
 async function searchYoutubeWithAPI(phrase, limit = 20, options = {}) {
@@ -127,8 +127,8 @@ async function searchYoutube(phrase, limit = 20, options = {}) {
 }
 const child_process = require('child_process')
 
-// ÔöÇÔöÇÔöÇ Discord RPC ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
-// ÔöÇÔöÇÔöÇ Discord IPC (bezpo┼Ťredni protok├│┼é, bez discord-rpc package) ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
+// ─── Discord RPC ────────────────────────────────────────────────────────────
+// ─── Discord IPC (bezpośredni protokół, bez discord-rpc package) ─────────────
 const net = require('net')
 const crypto = require('crypto')
 
@@ -149,7 +149,7 @@ class DiscordIPC {
   }
 
   _frame(op, data) {
-    // data mo┼╝e by─ç Buffer (raw echo) albo obiekt (serialyzowany do JSON)
+    // data może być Buffer (raw echo) albo obiekt (serialyzowany do JSON)
     const body = Buffer.isBuffer(data) ? data : Buffer.from(JSON.stringify(data), 'utf8')
     const buf = Buffer.allocUnsafe(8 + body.length)
     buf.writeUInt32LE(op, 0)
@@ -168,12 +168,12 @@ class DiscordIPC {
       this._buf = this._buf.slice(8 + len)
 
       if (op === 3) {
-        // PING Ôćĺ PONG: echouj raw bytes bez parsowania
+        // PING → PONG: echouj raw bytes bez parsowania
         try { this.socket?.write(this._frame(4, raw)) } catch {}
         continue
       }
       if (op === 2) {
-        // CLOSE ÔÇö Discord zamyka, nie pr├│buj ju┼╝ pisa─ç
+        // CLOSE — Discord zamyka, nie próbuj już pisać
         this.connected = false
         break
       }
@@ -229,7 +229,7 @@ class DiscordIPC {
 }
 
 let discordIPC = null
-let lastActivity = null  // zapami─Ötaj ostatni─ů aktywno┼Ť─ç do re-send po reconnect
+let lastActivity = null  // zapamiętaj ostatnią aktywność do re-send po reconnect
 
 function initDiscordRPC() {
   if (discordIPC) discordIPC.destroy()
@@ -246,7 +246,7 @@ function initDiscordRPC() {
     .catch(() => setTimeout(initDiscordRPC, 20000))
 }
 
-// ÔöÇÔöÇÔöÇ PNG generator dla ikon thumbara ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
+// ─── PNG generator dla ikon thumbara ────────────────────────────────────────
 function makePNG(w, h, drawFn) {
   const crcTable = new Uint32Array(256)
   for (let n = 0; n < 256; n++) {
@@ -297,27 +297,27 @@ function makeThumbIcons() {
   const S = 20
   const cy = S / 2
 
-  // |ÔŚÇ  bar na lewej + tr├│jk─ůt skierowany w lewo
+  // |◀  bar na lewej + trójkąt skierowany w lewo
   const prev = makePNG(S, S, (px, w) => {
     for (let y = 2; y < w - 2; y++) {
       setPixel(px, w, 2, y); setPixel(px, w, 3, y)  // bar
       const t = Math.abs(y - cy) / (cy - 2)
       const startX = Math.round(5 + t * (w - 7))
-      for (let x = startX; x < w - 2; x++) setPixel(px, w, x, y)  // ÔŚÇ
+      for (let x = startX; x < w - 2; x++) setPixel(px, w, x, y)  // ◀
     }
   })
 
-  // ÔľÂ|  tr├│jk─ůt skierowany w prawo + bar na prawej
+  // ▶|  trójkąt skierowany w prawo + bar na prawej
   const next = makePNG(S, S, (px, w) => {
     for (let y = 2; y < w - 2; y++) {
       setPixel(px, w, w - 3, y); setPixel(px, w, w - 4, y)  // bar
       const t = Math.abs(y - cy) / (cy - 2)
       const endX = Math.round((w - 6) - t * (w - 8))
-      for (let x = 2; x <= endX; x++) setPixel(px, w, x, y)  // ÔľÂ
+      for (let x = 2; x <= endX; x++) setPixel(px, w, x, y)  // ▶
     }
   })
 
-  // ÔľÂ  tr├│jk─ůt w prawo
+  // ▶  trójkąt w prawo
   const play = makePNG(S, S, (px, w) => {
     for (let y = 2; y < w - 2; y++) {
       const t = Math.abs(y - cy) / (cy - 2)
@@ -326,7 +326,7 @@ function makeThumbIcons() {
     }
   })
 
-  // ÔÇľ  dwie pionowe kreski
+  // ‖  dwie pionowe kreski
   const pause = makePNG(S, S, (px, w) => {
     for (let y = 3; y < w - 3; y++) {
       for (let x = 4; x <= 7; x++) setPixel(px, w, x, y)
@@ -388,19 +388,19 @@ function createWindow() {
     return { action: 'deny' }
   })
 
-  // ÔöÇÔöÇÔöÇ Thumbnail toolbar (Windows) ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
+  // ─── Thumbnail toolbar (Windows) ───────────────────────────────────────
   const icons = makeThumbIcons()
   let isPlaying = false
   function setThumbbar() {
     win.setThumbarButtons([
       { icon: icons.prev,  tooltip: 'Poprzedni', click() { win.webContents.send('thumbar:prev') } },
-      { icon: isPlaying ? icons.pause : icons.play, tooltip: isPlaying ? 'Pauza' : 'Odtw├│rz', click() { win.webContents.send('thumbar:toggle-play') } },
-      { icon: icons.next,  tooltip: 'Nast─Öpny',  click() { win.webContents.send('thumbar:next') } },
+      { icon: isPlaying ? icons.pause : icons.play, tooltip: isPlaying ? 'Pauza' : 'Odtwórz', click() { win.webContents.send('thumbar:toggle-play') } },
+      { icon: icons.next,  tooltip: 'Następny',  click() { win.webContents.send('thumbar:next') } },
     ])
   }
   win.once('ready-to-show', setThumbbar)
 
-  // ÔöÇÔöÇÔöÇ Zoom ÔÇö setZoomFactor skaluje stron─Ö razem z layoutem (media queries ok)
+  // ─── Zoom — setZoomFactor skaluje stronę razem z layoutem (media queries ok)
   function applyZoom(idx) {
     zoomIdx = Math.max(0, Math.min(ZOOM_LEVELS.length - 1, idx))
     const f = ZOOM_LEVELS[zoomIdx]
@@ -423,7 +423,7 @@ function createWindow() {
     }
   })
 
-  // ÔöÇÔöÇÔöÇ Kontrolki okna (custom titlebar) ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
+  // ─── Kontrolki okna (custom titlebar) ──────────────────────────────────
   ipcMain.on('window:minimize',    () => win.minimize())
   ipcMain.on('window:close',       () => win.close())
   ipcMain.on('window:setFullscreen', (_e, val) => {
@@ -440,7 +440,7 @@ function createWindow() {
   })
   ipcMain.handle('window:isFullscreen', () => win.isFullScreen())
 
-  // ÔöÇÔöÇÔöÇ Logowanie do YouTube (dla tre┼Ťci 18+) ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
+  // ─── Logowanie do YouTube (dla treści 18+) ───────────────────────────
   ipcMain.handle('youtube:login', () => {
     return new Promise((resolve) => {
       const loginWin = new BrowserWindow({
@@ -448,7 +448,7 @@ function createWindow() {
         height: 680,
         parent: win,
         modal: true,
-        title: 'Zaloguj si─Ö do YouTube',
+        title: 'Zaloguj się do YouTube',
         webPreferences: {
           nodeIntegration: false,
           contextIsolation: true,
@@ -472,17 +472,17 @@ function createWindow() {
   })
   ipcMain.on('thumbar:set-playing', (_e, p) => { isPlaying = p; setThumbbar() })
 
-  // ÔöÇÔöÇÔöÇ Zoom IPC ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
+  // ─── Zoom IPC ─────────────────────────────────────────────────────────
   ipcMain.handle('zoom:set', (_e, idx) => { applyZoom(idx); return zoomIdx })
 
-  // ÔöÇÔöÇÔöÇ Wydajno┼Ť─ç w tle ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
+  // ─── Wydajność w tle ────────────────────────────────────────────────────
   win.on('blur',  () => { win.webContents.send('app:background', true)  })
   win.on('focus', () => { win.webContents.send('app:background', false) })
 
   if (isDev) { win.loadURL('http://localhost:5173'); return }
 
   // W produkcji uruchamiamy static server (http://localhost:3000) zamiast file://
-  // ÔÇö YouTube i inne iframy wymagaj─ů HTTP origin (nie file://)
+  // — YouTube i inne iframy wymagają HTTP origin (nie file://)
   const serverPath = path.join(__dirname, 'static-server.cjs')
   const server = child_process.fork(serverPath, [], { silent: true })
   server.stdout.on('data', data => {
@@ -608,7 +608,7 @@ async function readNowPlayingFromIcyStream(streamUrl, options = {}) {
 
 
 
-// ÔöÇÔöÇÔöÇ Discord Rich Presence ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
+// ─── Discord Rich Presence ──────────────────────────────────────────────────
 function sanitizeDiscordAssetKey(key) {
   const value = String(key || '').trim()
   if (!value) return ''
@@ -684,7 +684,7 @@ ipcMain.handle('youtube:video-by-id', async (_event, videoId) => {
         id,
         title: v.snippet.title,
         author: v.snippet.channelTitle,
-        duration: isLive ? '­čö┤ LIVE' : (seconds > 0 ? `${mm}:${ss}` : 'live'),
+        duration: isLive ? '🔴 LIVE' : (seconds > 0 ? `${mm}:${ss}` : 'live'),
         seconds: isLive ? 0 : seconds,
         thumbnail: v.snippet.thumbnails?.medium?.url || v.snippet.thumbnails?.default?.url || '',
         url: `https://www.youtube.com/watch?v=${id}`,
@@ -703,7 +703,7 @@ ipcMain.handle('youtube:video-by-id', async (_event, videoId) => {
       id,
       title: result.title,
       author: result.author?.name || '',
-      duration: seconds > 0 ? `${mm}:${ss}` : '­čö┤ LIVE',
+      duration: seconds > 0 ? `${mm}:${ss}` : '🔴 LIVE',
       seconds,
       thumbnail: result.thumbnail,
       url: `https://www.youtube.com/watch?v=${id}`,
@@ -772,7 +772,7 @@ async function fetchPlaylistViaInnertube(playlistId) {
         data?.onResponseReceivedActions?.[0]?.appendContinuationItemsAction?.continuationItems ||
         []
 
-      // Token mo┼╝e by─ç w playlistVideoListRenderer.continuations lub w continuationItemRenderer
+      // Token może być w playlistVideoListRenderer.continuations lub w continuationItemRenderer
       continuation =
         pvlr?.continuations?.[0]?.nextContinuationData?.continuation ||
         null
@@ -793,7 +793,7 @@ async function fetchPlaylistViaInnertube(playlistId) {
         if (!v) continue
         const videoId = v.videoId
         if (!videoId) continue
-        const title = v.title?.runs?.[0]?.text || 'Utw├│r'
+        const title = v.title?.runs?.[0]?.text || 'Utwór'
         const author = v.shortBylineText?.runs?.[0]?.text || ''
         const thumbnail = v.thumbnail?.thumbnails?.slice(-1)?.[0]?.url || ''
         const lengthSec = parseInt(v.lengthSeconds || '0', 10)
@@ -803,7 +803,7 @@ async function fetchPlaylistViaInnertube(playlistId) {
           id: videoId,
           title,
           author,
-          duration: lengthSec > 0 ? `${mm}:${ss}` : '­čö┤ LIVE',
+          duration: lengthSec > 0 ? `${mm}:${ss}` : '🔴 LIVE',
           seconds: lengthSec,
           thumbnail,
           url: `https://www.youtube.com/watch?v=${videoId}`,
@@ -881,7 +881,7 @@ ipcMain.handle('youtube:playlist', async (_event, playlistId) => {
               id: v.id,
               title: v.snippet.title,
               author: v.snippet.channelTitle,
-              duration: seconds > 0 ? `${mm}:${ss}` : '­čö┤ LIVE',
+              duration: seconds > 0 ? `${mm}:${ss}` : '🔴 LIVE',
               seconds,
               thumbnail: v.snippet.thumbnails?.medium?.url || v.snippet.thumbnails?.default?.url || '',
               url: `https://www.youtube.com/watch?v=${v.id}`,
@@ -1009,7 +1009,7 @@ ipcMain.handle('youtube:logout', async () => {
   return true
 })
 
-// Direct audio URL ÔÇö u┼╝ywane przez crossfade (fadeout player bez ReactPlayer)
+// Direct audio URL — używane przez crossfade (fadeout player bez ReactPlayer)
 ipcMain.handle('youtube:get-audio-url', async (_event, videoUrl) => {
   try {
     const cookies = await session.defaultSession.cookies.get({ domain: '.youtube.com' })
@@ -1026,15 +1026,15 @@ ipcMain.handle('youtube:get-audio-url', async (_event, videoUrl) => {
 })
 
 app.whenReady().then(() => {
-  // ÔöÇÔöÇ Ciemny pasek tytu┼éu ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
+  // ── Ciemny pasek tytułu ────────────────────────────────────────────────
   nativeTheme.themeSource = 'dark'
 
   initDiscordRPC()
   createWindow()
 
-  // ÔöÇÔöÇ Opcjonalna blokada domen reklamowych ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
-  // Domy┼Ťlnie wy┼é─ůczona, aby nie generowa─ç ERR_BLOCKED_BY_CLIENT w konsoli.
-  // W┼é─ůcz przez: MUSICAPP_ENABLE_ADBLOCK=1
+  // ── Opcjonalna blokada domen reklamowych ──────────────────────────────────
+  // Domyślnie wyłączona, aby nie generować ERR_BLOCKED_BY_CLIENT w konsoli.
+  // Włącz przez: MUSICAPP_ENABLE_ADBLOCK=1
   if (process.env.MUSICAPP_ENABLE_ADBLOCK === '1') {
     const AD_DOMAINS = [
       'doubleclick.net', 'googlesyndication.com', 'googleadservices.com',
@@ -1077,7 +1077,7 @@ app.on('window-all-closed', () => {
 })
 
 
-// ÔöÇÔöÇÔöÇ Auto-updater handlers ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
+// ─── Auto-updater handlers ───────────────────────────────────────────────────
 function getLocalVersion() {
   try {
     return JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'version.json'), 'utf8'))
@@ -1116,7 +1116,7 @@ ipcMain.handle('updater:check', async () => {
 })
 
 ipcMain.handle('updater:download', async (event) => {
-  if (!GITHUB_OWNER) throw new Error('GitHub nie skonfigurowany ÔÇö uzupe┼énij GITHUB_OWNER w electron/main.cjs')
+  if (!GITHUB_OWNER) throw new Error('GitHub nie skonfigurowany — uzupełnij GITHUB_OWNER w electron/main.cjs')
   const zipUrl = `https://github.com/${GITHUB_OWNER}/${GITHUB_REPO}/archive/refs/heads/main.zip`
   const tempDir = path.join(os.tmpdir(), 'music-app-update')
   const zipPath = path.join(tempDir, 'update.zip')
@@ -1124,9 +1124,9 @@ ipcMain.handle('updater:download', async (event) => {
 
   fs.mkdirSync(tempDir, { recursive: true })
 
-  // Pobierz zip z paskiem post─Öpu
+  // Pobierz zip z paskiem postępu
   const res = await fetch(zipUrl)
-  if (!res.ok) throw new Error(`B┼é─ůd pobierania: HTTP ${res.status}`)
+  if (!res.ok) throw new Error(`Błąd pobierania: HTTP ${res.status}`)
   const total = parseInt(res.headers.get('content-length') || '0', 10)
   let downloaded = 0
   const chunks = []
@@ -1155,7 +1155,7 @@ ipcMain.handle('updater:download', async (event) => {
   })
   event.sender.send('updater:progress', { percent: 95, downloaded, total })
 
-  // Znajd┼║ rozpakowany folder (np. music-app-main)
+  // Znajdź rozpakowany folder (np. music-app-main)
   const items = fs.readdirSync(extractDir)
   const repoFolder = items.find(i => fs.statSync(path.join(extractDir, i)).isDirectory())
   if (!repoFolder) throw new Error('Nie znaleziono folderu po rozpakowaniu archiwum')
@@ -1179,7 +1179,7 @@ ipcMain.handle('updater:download', async (event) => {
   }
   copyDir(sourceDir, appDir)
 
-  // Flaga dla starter.bat ÔÇö uruchomi npm install przy restarcie
+  // Flaga dla starter.bat — uruchomi npm install przy restarcie
   fs.writeFileSync(path.join(appDir, 'update-pending'), '')
   event.sender.send('updater:progress', { percent: 100, downloaded, total })
   return { success: true }
@@ -1242,7 +1242,7 @@ ipcMain.handle('radiogarden:stream', (_event, channelId) => {
   })
 })
 
-// ÔöÇÔöÇÔöÇ TV Cast ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
+// ─── TV Cast ──────────────────────────────────────────────────────────────────
 ;(function () {
   const multicastDns = require('multicast-dns')
   const { Client: CastClient } = require('castv2')
@@ -1250,7 +1250,7 @@ ipcMain.handle('radiogarden:stream', (_event, channelId) => {
   const http = require('http')
   const fs = require('fs')
 
-  // ÔöÇÔöÇ Remote control WebSocket server ÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇÔöÇ
+  // ── Remote control WebSocket server ─────────────────────────────────────────
   const REMOTE_PORT = 7331
   let remoteState = { title: '', author: '', artUrl: '', isPlaying: false, isCasting: false, deviceName: '' }
   const remoteClients = new Set()
@@ -1287,7 +1287,7 @@ ipcMain.handle('radiogarden:stream', (_event, channelId) => {
     })
     ws.on('close', () => remoteClients.delete(ws))
   })
-  remoteHttpServer.on('error', () => {}) // ignore EADDRINUSE ÔÇö don't crash TV cast
+  remoteHttpServer.on('error', () => {}) // ignore EADDRINUSE — don't crash TV cast
   remoteHttpServer.listen(REMOTE_PORT)
 
   ipcMain.handle('tv:get-remote-url', () => {
@@ -1308,7 +1308,7 @@ ipcMain.handle('radiogarden:stream', (_event, channelId) => {
     broadcastRemoteState()
   })
 
-  // Persistent session ÔÇö stays alive so we can update metadata without full reconnect
+  // Persistent session — stays alive so we can update metadata without full reconnect
   let activeCast = null // { client, med, reqId, ip, port }
 
   function closeActiveCast () {
@@ -1519,7 +1519,7 @@ ipcMain.handle('radiogarden:stream', (_event, channelId) => {
           const appInfo = data.status?.applications?.[0]
           if (!appInfo?.transportId) return
           launched = true
-          // Keep pingTimer running ÔÇö Chromecast drops connection without heartbeat
+          // Keep pingTimer running — Chromecast drops connection without heartbeat
 
           const tid = appInfo.transportId
           const mc  = client.createChannel('sender-0', tid, NS_CONNECT, 'JSON')
@@ -1538,7 +1538,7 @@ ipcMain.handle('radiogarden:stream', (_event, channelId) => {
                 metadataType: 3,
                 title:       stationName || 'Radio',
                 albumName:   'Music App',
-                artist:      'Transmisja na ┼╝ywo',
+                artist:      'Transmisja na żywo',
                 images:      stationArt ? [{ url: stationArt }] : [],
               },
             },
@@ -1555,7 +1555,7 @@ ipcMain.handle('radiogarden:stream', (_event, channelId) => {
             }
           })
 
-          // Resolve after 6s regardless ÔÇö stream likely playing
+          // Resolve after 6s regardless — stream likely playing
           setTimeout(() => finish({ ok: true }), 6000)
         })
       })
@@ -1565,7 +1565,7 @@ ipcMain.handle('radiogarden:stream', (_event, channelId) => {
   // Casts a YouTube track audio to Chromecast (resolves direct audio URL via ytdl-core)
   ipcMain.handle('tv:cast-yt', async (_e, { ip, port = 8009, youtubeUrl, title, author, artUrl }) => {
     const ytUrlPattern = /^https:\/\/(www\.)?youtube\.com\/watch\?v=[\w-]{11}(&.*)?$|^https:\/\/youtu\.be\/[\w-]{11}$/
-    if (!ytUrlPattern.test(youtubeUrl)) throw new Error('Nieprawid┼éowy URL YouTube')
+    if (!ytUrlPattern.test(youtubeUrl)) throw new Error('Nieprawidłowy URL YouTube')
 
     const { spawn } = require('child_process')
     const path2 = require('path')
@@ -1644,7 +1644,7 @@ ipcMain.handle('radiogarden:stream', (_event, channelId) => {
           const appInfo = data.status?.applications?.[0]
           if (!appInfo?.transportId) return
           launched = true
-          // Keep pingTimer running ÔÇö Chromecast drops connection without heartbeat
+          // Keep pingTimer running — Chromecast drops connection without heartbeat
 
           const tid = appInfo.transportId
           const mc  = client.createChannel('sender-0', tid, NS_CONNECT, 'JSON')
@@ -1691,11 +1691,11 @@ ipcMain.handle('radiogarden:stream', (_event, channelId) => {
   ipcMain.handle('tv:update-meta', (_e, { streamUrl, stationName, stationArt, currentSong }) => {
     if (!activeCast) return { ok: false, reason: 'no_session' }
     // If only metadata (song title) changed but the stream URL is the same,
-    // do NOT send LOAD ÔÇö that would restart the stream and cause audio gaps.
+    // do NOT send LOAD — that would restart the stream and cause audio gaps.
     if (activeCast.streamUrl && activeCast.streamUrl === streamUrl) {
       return { ok: true }
     }
-    // Stream URL changed (e.g. station switch) ÔÇö do a full reload
+    // Stream URL changed (e.g. station switch) — do a full reload
     try {
       activeCast.streamUrl = streamUrl
       activeCast.med.send({
@@ -1709,7 +1709,7 @@ ipcMain.handle('radiogarden:stream', (_event, channelId) => {
             metadataType: 3,
             title:       stationName || 'Radio',
             albumName:   'Music App',
-            artist:      currentSong || 'Transmisja na ┼╝ywo',
+            artist:      currentSong || 'Transmisja na żywo',
             images:      stationArt ? [{ url: stationArt }] : [],
           },
         },
