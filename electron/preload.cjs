@@ -1,4 +1,4 @@
-const { contextBridge, ipcRenderer } = require('electron')
+﻿const { contextBridge, ipcRenderer } = require('electron')
 
 // Suppress uncaught renderer errors so Electron's red error bar never shows to users.
 // Errors are still logged to the DevTools console for debugging.
@@ -25,7 +25,7 @@ contextBridge.exposeInMainWorld('playerBridge', {
   // Radio Garden
   radioGardenSearch: (query) => ipcRenderer.invoke('radiogarden:search', query),
   radioGardenStream: (channelId) => ipcRenderer.invoke('radiogarden:stream', channelId),
-  // Tło / focus
+  // T┼éo / focus
   onAppBackground: (cb) => ipcRenderer.on('app:background', (_e, isBackground) => cb(isBackground)),
   // Custom titlebar
   minimizeWindow:      () => ipcRenderer.send('window:minimize'),
@@ -47,5 +47,16 @@ contextBridge.exposeInMainWorld('playerBridge', {
   tvGetUrl:    ()        => ipcRenderer.invoke('tv:get-url'),
   tvDiscover:  ()        => ipcRenderer.invoke('tv:discover'),
   tvCast:      (opts)    => ipcRenderer.invoke('tv:cast', opts),
+  tvCastYt:    (opts)    => ipcRenderer.invoke('tv:cast-yt', opts),
+  tvStop:      ()        => ipcRenderer.invoke('tv:stop'),
+  tvSeek:      (opts)    => ipcRenderer.invoke('tv:seek', opts),
+  tvPause:     ()        => ipcRenderer.invoke('tv:pause'),
+  tvResume:    ()        => ipcRenderer.invoke('tv:resume'),
+  tvRequestStatus: ()   => ipcRenderer.invoke('tv:request-status'),
+  tvGetRemoteUrl:  ()   => ipcRenderer.invoke('tv:get-remote-url'),
+  onCastStatus:(cb)     => ipcRenderer.on('cast:status', (_e, data) => cb(data)),
+  onCastQueueSkip:(cb) => ipcRenderer.on('cast:queue-skip', (_e, data) => cb(data)),
+  onRemoteCommand:(cb) => ipcRenderer.on('remote:command', (_e, cmd) => cb(cmd)),
+  updateRemoteState:(state) => ipcRenderer.send('remote:update-state', state),
   tvUpdateMeta:(opts)    => ipcRenderer.invoke('tv:update-meta', opts),
 })
