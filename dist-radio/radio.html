@@ -11,14 +11,23 @@
     <meta name="description" content="Streamuj radio online — telewizor, telefon, przeglądarka." />
 
     <link rel="manifest" href="/manifest.webmanifest" />
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="icon" type="image/x-icon" href="/branding/appicon.ico" />
+    <link rel="icon" type="image/png" sizes="192x192" href="/branding/appicon.png" />
     <link rel="apple-touch-icon" href="/branding/appicon.png" />
 
     <title>Music Radio</title>
-    <script type="module" crossorigin src="/assets/radio-CfVKq4hP.js"></script>
-    <link rel="stylesheet" crossorigin href="/assets/radio-VoIriueP.css">
+    <script type="module" crossorigin src="/assets/radio-BH_vnwtd.js"></script>
+    <link rel="stylesheet" crossorigin href="/assets/radio-DcXofGKt.css">
   </head>
   <body>
     <div id="root"></div>
+    <script>
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('/sw.js', { scope: '/' })
+            .catch(() => {})
+        })
+      }
+    </script>
   </body>
 </html>
