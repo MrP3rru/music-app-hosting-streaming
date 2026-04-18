@@ -251,25 +251,39 @@ export default function TvCastPanel({ isOpen, onClose, currentStation, currentSt
               const isCasting = castingId === d.id || ytCastingId === d.id
               const disabled  = isCasting || (isYtMode ? noTrack : noStation)
               return (
-                <div key={d.id} className={`tvcp-device${state === 'ok' ? ' success' : state === 'err' ? ' error' : ''}`}>
-                  <div className="tvcp-device-left">
-                    <span className="tvcp-device-icon">📺</span>
-                    <div>
-                      <strong className="tvcp-device-name">{d.name}</strong>
-                      {d.model && <span className="tvcp-device-model">{d.model}</span>}
-                      <span className="tvcp-device-ip">{d.ip}:{d.port}</span>
+                <div key={d.id}>
+                  <div className={`tvcp-device${state === 'ok' ? ' success' : state === 'err' ? ' error' : ''}`}>
+                    <div className="tvcp-device-left">
+                      <span className="tvcp-device-icon">📺</span>
+                      <div>
+                        <strong className="tvcp-device-name">{d.name}</strong>
+                        {d.model && <span className="tvcp-device-model">{d.model}</span>}
+                        <span className="tvcp-device-ip">{d.ip}:{d.port}</span>
+                      </div>
                     </div>
+                    <button
+                      className={`tvcp-cast-btn${state === 'ok' ? ' done' : ''}${state === 'err' ? ' err' : ''}`}
+                      disabled={disabled}
+                      onClick={() => isYtMode ? castYtTo(d) : castTo(d)}
+                    >
+                      {isCasting    ? (isYtMode ? '⌛ Pobieram…' : '⌛ Łączę…')
+                       : state === 'ok'  ? '✓ Gra!'
+                       : state === 'err' ? '↺ Spróbuj ponownie'
+                       : '▶ Cast'}
+                    </button>
                   </div>
-                  <button
-                    className={`tvcp-cast-btn${state === 'ok' ? ' done' : ''}${state === 'err' ? ' err' : ''}`}
-                    disabled={disabled}
-                    onClick={() => isYtMode ? castYtTo(d) : castTo(d)}
-                  >
-                    {isCasting    ? (isYtMode ? '⌛ Pobieram…' : '⌛ Łączę…')
-                     : state === 'ok'  ? '✓ Gra!'
-                     : state === 'err' ? '⚠ Błąd'
-                     : '▶ Cast'}
-                  </button>
+                  {state === 'err' && (
+                    <div className="tvcp-cast-error-box">
+                      <p className="tvcp-cast-error-title">❌ Nie udało się połączyć z tym urządzeniem</p>
+                      <p className="tvcp-cast-error-desc">
+                        Ten telewizor prawdopodobnie <strong>nie obsługuje Chromecast ani Android TV</strong>.
+                        Streaming bezpośredni działa tylko z urządzeniami Google Cast (Chromecast, Android TV, Google TV).
+                      </p>
+                      <p className="tvcp-cast-error-tip">
+                        💡 <strong>Alternatywa:</strong> Zeskanuj QR kod powyżej — strona otworzy się w przeglądarce TV (Samsung Tizen, LG webOS, Fire TV i inne).
+                      </p>
+                    </div>
+                  )}
                 </div>
               )
             })}

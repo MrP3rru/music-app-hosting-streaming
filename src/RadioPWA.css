@@ -67,8 +67,6 @@ html, body, #root {
   justify-content: space-between;
   padding: clamp(8px, 1.5vh, 14px) clamp(12px, 2.5vw, 28px);
   background: rgba(4, 10, 20, 0.60);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
   border-bottom: 1px solid var(--border);
   gap: 12px;
 }
@@ -163,8 +161,6 @@ html, body, #root {
   padding: clamp(12px, 2vh, 22px) clamp(12px, 2.5vw, 28px);
   background: linear-gradient(135deg, rgba(255,107,43,0.08) 0%, rgba(8,18,34,0.0) 60%),
               rgba(6, 14, 26, 0.55);
-  backdrop-filter: blur(var(--blur));
-  -webkit-backdrop-filter: blur(var(--blur));
   border-bottom: 1px solid var(--border);
   min-height: clamp(80px, 14vh, 120px);
 }
@@ -201,6 +197,7 @@ html, body, #root {
   border-top-color: var(--accent);
   border-right-color: var(--accent-light);
   animation: spin 0.9s linear infinite;
+  will-change: transform;
 }
 .pwa-buffering-ring.playing {
   border-color: #3ddc84;
@@ -415,8 +412,6 @@ html, body, #root {
   background:
     linear-gradient(125deg, rgba(255,255,255,0.08) 0%, rgba(255,255,255,0.03) 55%, rgba(255,255,255,0.06) 100%),
     rgba(8, 16, 30, 0.65);
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
   box-shadow: inset 0 1px 0 rgba(255,255,255,0.08), 0 6px 18px rgba(0,0,0,0.22);
   flex-shrink: 0;
   transition: border-color 140ms ease, box-shadow 180ms ease, transform 120ms ease;
@@ -571,8 +566,6 @@ html, body, #root {
   place-items: center;
   padding: 16px;
   background: rgba(2, 6, 14, 0.62);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
   opacity: 0;
   pointer-events: none;
   transition: opacity 140ms ease;
@@ -699,8 +692,6 @@ html, body, #root {
   z-index: 200;
   display: flex;
   align-items: flex-end;
-  backdrop-filter: blur(2px);
-  -webkit-backdrop-filter: blur(2px);
   animation: fade-in 0.15s ease;
 }
 
@@ -716,8 +707,6 @@ html, body, #root {
   flex-direction: column;
   gap: 12px;
   animation: slide-up 0.22s cubic-bezier(0.25, 0.46, 0.45, 0.94);
-  backdrop-filter: blur(24px);
-  -webkit-backdrop-filter: blur(24px);
 }
 
 @keyframes slide-up {
@@ -780,6 +769,8 @@ html, body, #root {
   min-height: 0; /* required: lets grid 1fr row shrink below content height */
   scrollbar-width: thin;
   scrollbar-color: rgba(255,255,255,0.12) transparent;
+  -webkit-overflow-scrolling: touch; /* smooth scroll on TV/iOS webkit */
+  touch-action: pan-y;               /* allow vertical swipe on TV browsers */
 }
 
 .pwa-station-list::-webkit-scrollbar        { width: 4px; }
@@ -799,6 +790,7 @@ html, body, #root {
   transition: background 120ms, border-color 120ms;
   width: 100%;
   overflow: hidden;
+  contain: layout style;
 }
 
 .pwa-station-row:hover {
@@ -907,6 +899,7 @@ html, body, #root {
   background: var(--accent);
   border-radius: 2px;
   animation: eq-bar 0.8s ease-in-out infinite;
+  will-change: transform;
 }
 .pwa-card-eq span:nth-child(1) { animation-delay: 0s;    height: 4px; }
 .pwa-card-eq span:nth-child(2) { animation-delay: 0.1s;  height: 10px; }

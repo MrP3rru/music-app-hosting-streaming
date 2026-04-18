@@ -384,6 +384,46 @@
   background: rgba(167, 139, 250, 0.22);
 }
 
+/* ── Cast error explanation box ───────────────────────────────────────────── */
+.tvcp-cast-error-box {
+  margin: 4px 0 8px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: rgba(255, 80, 80, 0.08);
+  border: 1px solid rgba(255, 100, 100, 0.28);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.tvcp-cast-error-title {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: #ff9ea1;
+}
+
+.tvcp-cast-error-desc {
+  font-size: 0.78rem;
+  color: rgba(242, 245, 248, 0.72);
+  line-height: 1.55;
+}
+
+.tvcp-cast-error-desc strong {
+  color: #ffcdd0;
+}
+
+.tvcp-cast-error-tip {
+  font-size: 0.78rem;
+  color: rgba(242, 245, 248, 0.60);
+  line-height: 1.55;
+  padding-top: 4px;
+  border-top: 1px solid rgba(255,255,255,0.08);
+}
+
+.tvcp-cast-error-tip strong {
+  color: #ffe8c0;
+}
+
 /* ── Device list ──────────────────────────────────────────────────────────── */
 .tvcp-device-list {
   display: flex;
