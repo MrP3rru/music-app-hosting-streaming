@@ -118,7 +118,6 @@ export default function RadioPWA() {
 
   const audioRef           = useRef(null)
   const listRef            = useRef(null)
-  const scrollRafRef       = useRef(null)
   const failedUrls         = useRef(new Set())
   const nowPlayingTimerRef = useRef(null)
   const isPlayingRef       = useRef(false)
@@ -555,23 +554,11 @@ export default function RadioPWA() {
         case 'MediaPlayPause': e.preventDefault(); togglePlay(); break
         case 'ArrowRight': case 'MediaTrackNext': e.preventDefault(); goNext(); break
         case 'ArrowLeft': case 'MediaTrackPrevious': e.preventDefault(); goPrev(); break
-        case 'ArrowDown': {
-          // D-pad down — scroll station list
-          const list = listRef.current
-          if (list) { e.preventDefault(); list.scrollBy({ top: 64, behavior: 'smooth' }) }
-          break
-        }
-        case 'ArrowUp': {
-          // D-pad up — scroll station list
-          const list = listRef.current
-          if (list) { e.preventDefault(); list.scrollBy({ top: -64, behavior: 'smooth' }) }
-          break
-        }
       }
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [togglePlay, goNext, goPrev, listRef])
+  }, [togglePlay, goNext, goPrev])
 
   // ─── Media Session API (lock screen / notification controls) ─────────────
   useEffect(() => {
@@ -665,9 +652,11 @@ export default function RadioPWA() {
           </div>
 
           <div className="pwa-station-info">
-            <h1 className="pwa-station-name">
-              {currentStation?.name || 'Wybierz stację...'}
-            </h1>
+            <div className="pwa-station-name-wrapper">
+              <h1 className="pwa-station-name">
+                {currentStation?.name || 'Wybierz stację...'}
+              </h1>
+            </div>
             {nowPlaying && <p className="pwa-now-song" title={nowPlaying}>{nowPlaying}</p>}
             {isBuffering && !isPlaying && <p className="pwa-status">Łączenie...</p>}
             {currentStation && !isBuffering && !isPlaying && <p className="pwa-status">Zatrzymano</p>}
@@ -774,14 +763,7 @@ export default function RadioPWA() {
         </div>
 
         {/* Station list */}
-        <div className="pwa-station-list" role="list" ref={listRef} onScroll={e => {
-            const top = e.currentTarget.scrollTop
-            if (scrollRafRef.current) return
-            scrollRafRef.current = requestAnimationFrame(() => {
-              scrollRafRef.current = null
-              setListScrollTop(top)
-            })
-          }}>
+        <div className="pwa-station-list" role="list" ref={listRef} onScroll={e => setListScrollTop(e.currentTarget.scrollTop)}>
           {spacerTop > 0 && <div style={{height: spacerTop, flexShrink: 0}} aria-hidden="true" />}
           {filteredStations.slice(startIdx, endIdx).map(s => {
             const isActive = currentStation?.id === s.id
