@@ -172,8 +172,9 @@ html, body, #root {
 .pwa-art-wrap {
   position: relative;
   flex-shrink: 0;
-  width: clamp(52px, 8vw, 84px);
-  height: clamp(52px, 8vw, 84px);
+  width: 68px;
+  height: 68px;
+  flex-basis: 68px;
 }
 
 .pwa-station-logo {
@@ -1008,8 +1009,8 @@ html, body, #root {
   }
 
   .pwa-art-wrap {
-    width: clamp(90px, 11vw, 150px);
-    height: clamp(90px, 11vw, 150px);
+    width: 120px;
+    height: 120px;
   }
 
   .pwa-station-name {
