@@ -669,7 +669,11 @@ export default function RadioPWA() {
 
           <div className="pwa-station-info">
             <div className="pwa-station-name-wrapper">
-              <h1 className={`pwa-station-name${isNameTooLong ? ' animate-marquee' : ''}`} ref={stationNameRef}>
+              <h1 
+                className={`pwa-station-name${isNameTooLong ? ' animate-marquee' : ''}`} 
+                ref={stationNameRef}
+                data-text={currentStation?.name || 'Wybierz stację...'}
+              >
                 {currentStation?.name || 'Wybierz stację...'}
               </h1>
             </div>
