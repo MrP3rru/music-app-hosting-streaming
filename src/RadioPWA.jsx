@@ -115,9 +115,11 @@ export default function RadioPWA() {
   const [listHeight, setListHeight]           = useState(400)
   const [showSearchModal, setShowSearchModal] = useState(false)
   const [searchDraft, setSearchDraft]         = useState('')
+  const [isNameTooLong, setIsNameTooLong]     = useState(false)
 
   const audioRef           = useRef(null)
   const listRef            = useRef(null)
+  const stationNameRef     = useRef(null)
   const failedUrls         = useRef(new Set())
   const nowPlayingTimerRef = useRef(null)
   const isPlayingRef       = useRef(false)
@@ -133,6 +135,20 @@ export default function RadioPWA() {
   }, [])
 
   useEffect(() => { isPlayingRef.current = isPlaying }, [isPlaying])
+
+  // Check if station name is too long for marquee animation
+  useEffect(() => {
+    const el = stationNameRef.current
+    if (!el) return
+    const isTooLong = el.scrollWidth > el.clientWidth
+    setIsNameTooLong(isTooLong)
+    // Re-check on window resize
+    const timer = setTimeout(() => {
+      const isTooLongNow = el.scrollWidth > el.clientWidth
+      setIsNameTooLong(isTooLongNow)
+    }, 100)
+    return () => clearTimeout(timer)
+  }, [currentStation?.name])
 
   const openIOSSearchPrompt = useCallback(() => {
     setSearchDraft(searchQuery)
@@ -653,7 +669,7 @@ export default function RadioPWA() {
 
           <div className="pwa-station-info">
             <div className="pwa-station-name-wrapper">
-              <h1 className="pwa-station-name">
+              <h1 className={`pwa-station-name${isNameTooLong ? ' animate-marquee' : ''}`} ref={stationNameRef}>
                 {currentStation?.name || 'Wybierz stację...'}
               </h1>
             </div>
