@@ -212,7 +212,7 @@ html, body, #root {
 
 @keyframes marqueeScroll {
   0% { transform: translateX(0); }
-  100% { transform: translateX(-100%); }
+  100% { transform: translateX(-50%); }
 }
 
 .pwa-station-info {
@@ -236,8 +236,16 @@ html, body, #root {
 }
 
 .pwa-station-name.animate-marquee {
-  animation: marqueeScroll 18s linear infinite;
-  padding-right: 30px;
+  animation: marqueeScroll 20s linear infinite;
+  display: inline-flex;
+  align-items: center;
+  gap: 30px;
+}
+
+.pwa-station-name.animate-marquee::after {
+  content: attr(data-text);
+  flex-shrink: 0;
+  white-space: nowrap;
 }
 
 .pwa-now-song {
