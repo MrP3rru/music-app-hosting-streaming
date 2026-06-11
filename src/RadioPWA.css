@@ -211,7 +211,7 @@ html, body, #root {
 @keyframes spin { to { transform: rotate(360deg); } }
 
 @keyframes marqueeScroll {
-  0% { transform: translateX(100%); }
+  0% { transform: translateX(0); }
   100% { transform: translateX(-100%); }
 }
 
@@ -233,6 +233,9 @@ html, body, #root {
   letter-spacing: -0.01em;
   white-space: nowrap;
   line-height: 1.2;
+}
+
+.pwa-station-name.animate-marquee {
   animation: marqueeScroll 18s linear infinite;
   padding-right: 30px;
 }
