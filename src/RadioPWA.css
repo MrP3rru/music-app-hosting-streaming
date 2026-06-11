@@ -224,6 +224,8 @@ html, body, #root {
   overflow: hidden;
   width: 100%;
   white-space: nowrap;
+  flex: 1;
+  min-width: 0;
 }
 
 .pwa-station-name {
@@ -237,14 +239,14 @@ html, body, #root {
 
 .pwa-station-name.animate-marquee {
   animation: marqueeScroll 20s linear infinite;
-  display: inline-flex;
-  align-items: center;
-  gap: 30px;
+  display: inline-block;
+  will-change: transform;
 }
 
 .pwa-station-name.animate-marquee::after {
-  content: attr(data-text);
-  flex-shrink: 0;
+  content: ' • ' attr(data-text);
+  margin-left: 30px;
+  display: inline;
   white-space: nowrap;
 }
 
